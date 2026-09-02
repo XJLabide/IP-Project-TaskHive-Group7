@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum TaskStatus {
+  OPEN
+  PENDING_APPROVAL
+  PENDING_PAYMENT
+  ASSIGNED
+  IN_PROGRESS
+  AWAITING_CONFIRMATION
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum TaskMode {
+  BIDDING
+  FIXED_PRICE_MANUAL
+  FIXED_PRICE_AUTO
+}
+
+enum BidStatus {
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PaymentStatus {
+  UNPAID
+  CHECKOUT_STARTED
+  PAID_PENDING_COMPLETION
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+enum ModerationStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
+model User {
+  id            String     @id
+  name          String
+  email         String     @unique
+  emailVerified Boolean    @default(false)
+  image         String?
+  status        UserStatus @default(PENDING_VERIFICATION)
+  isAdmin       Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  profile       Profile?
+  postedTasks   Task[]     @relation("PostedTasks")
+  bids          Bid[]
+  taskRequests  TaskRequest[]
+  assignments   Assignment[] @relation("AssignedTasker")
+  givenReviews  Review[]   @relation("GivenReviews")
+  receivedReviews Review[] @relation("ReceivedReviews")
+  reportsMade   Report[]   @relation("ReportsMade")
+  reportsAgainst Report[]  @relation("ReportsAgainst")
+  disputes      Dispute[]  @relation("DisputesOpened")
+  adminActions  AdminAction[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Profile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  bio                String?
+  community          String?
+  contactNumber      String?
+  locationLabel      String?
+  isPosterEnabled    Boolean  @default(true)
+  isTaskerEnabled    Boolean  @default(true)
+  verificationStatus String   @default("pending")
+  skills             String[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  tasks Task[]
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  posterId    String
+  categoryId  String?
+  title       String
+  description String
+  budgetCents Int
+  currency    String     @default("PHP")
+  deadline    DateTime?
+  locationLabel String?
+  latitude    Float?
+  longitude   Float?
+  mode        TaskMode
+  status      TaskStatus @default(OPEN)
+  autoApprove Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  poster      User       @relation("PostedTasks", fields: [posterId], references: [id], onDelete: Cascade)
+  category    Category?  @relation(fields: [categoryId], references: [id])
+  bids        Bid[]
+  taskRequests TaskRequest[]
+  assignment  Assignment?
+  payments    Payment[]
+  reviews     Review[]
+  reports     Report[]
+  disputes    Dispute[]
+}
+
+model Bid {
+  id          String    @id @default(cuid())
+  taskId      String
+  taskerId    String
+  amountCents Int
+  message     String
+  estimatedTime String?
+  status      BidStatus @default(SUBMITTED)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tasker      User      @relation(fields: [taskerId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, taskerId])
+}
+
+model TaskRequest {
+  id        String    @id @default(cuid())
+  taskId    String
+  taskerId  String
+  message   String?
+  status    BidStatus @default(SUBMITTED)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tasker    User      @relation(fields: [taskerId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, taskerId])
+}
+
+model Assignment {
+  id        String   @id @default(cuid())
+  taskId    String   @unique
+  taskerId  String
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tasker    User     @relation("AssignedTasker", fields: [taskerId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  taskId                String
+  posterId              String
+  stripeCheckoutSession String?
+  amountCents           Int
+  platformFeeCents      Int
+  status                PaymentStatus @default(UNPAID)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  task                  Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id               String   @id @default(cuid())
+  paymentId        String   @unique
+  taskerId         String
+  amountCents      Int
+  platformFeeCents Int
+  releasedAt       DateTime?
+  createdAt        DateTime @default(now())
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  taskId     String
+  reviewerId String
+  revieweeId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewer   User     @relation("GivenReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee   User     @relation("ReceivedReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, reviewerId, revieweeId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Report {
+  id             String           @id @default(cuid())
+  reporterId     String
+  reportedUserId String?
+  taskId         String?
+  reason         String
+  status         ModerationStatus @default(OPEN)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  reporter       User             @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser   User?            @relation("ReportsAgainst", fields: [reportedUserId], references: [id])
+  task           Task?            @relation(fields: [taskId], references: [id])
+}
+
+model Dispute {
+  id        String           @id @default(cuid())
+  taskId    String
+  openedById String
+  reason    String
+  status    ModerationStatus @default(OPEN)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  openedBy  User             @relation("DisputesOpened", fields: [openedById], references: [id], onDelete: Cascade)
+}
+
+model AdminAction {
+  id        String   @id @default(cuid())
+  adminId   String
+  action    String
+  targetType String
+  targetId  String
+  notes     String?
+  createdAt DateTime @default(now())
+  admin     User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model UploadAsset {
+  id           String   @id @default(cuid())
+  ownerId      String
+  cloudinaryId String
+  url          String
+  purpose      String
+  createdAt    DateTime @default(now())
+}

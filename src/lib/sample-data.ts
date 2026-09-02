@@ -1,0 +1,77 @@
+export const tasks = [
+  {
+    id: "task_groceries",
+    title: "Pick up groceries",
+    category: "Delivery",
+    mode: "Bidding",
+    status: "Open",
+    budget: 450,
+    distance: "1.2 km",
+    location: "Community Market",
+    deadline: "Today, 5:00 PM",
+    poster: "Maria Santos",
+    description: "Buy groceries from the community market and deliver nearby.",
+    bids: 4,
+  },
+  {
+    id: "task_storage",
+    title: "Clean storage room",
+    category: "Cleaning",
+    mode: "Fixed price",
+    status: "Assigned",
+    budget: 900,
+    distance: "2.8 km",
+    location: "North Community Hall",
+    deadline: "Tomorrow, 10:00 AM",
+    poster: "Jose Reyes",
+    description: "Clean and organize a small storage room.",
+    bids: 8,
+  },
+  {
+    id: "task_tutoring",
+    title: "Math tutoring",
+    category: "Tutoring",
+    mode: "Bidding",
+    status: "Awaiting confirmation",
+    budget: 600,
+    distance: "0.8 km",
+    location: "Community Library",
+    deadline: "Friday, 3:00 PM",
+    poster: "Ana Cruz",
+    description: "One-hour algebra tutoring session for a high school student.",
+    bids: 3,
+  },
+];
+
+export const bids = [
+  {
+    id: "bid_ana",
+    tasker: "Ana Reyes",
+    offer: 430,
+    eta: "1 hour",
+    rating: 4.8,
+    message: "I can deliver before 5 PM.",
+  },
+  {
+    id: "bid_marco",
+    tasker: "Marco Cruz",
+    offer: 450,
+    eta: "45 minutes",
+    rating: 4.7,
+    message: "I live nearby and can start now.",
+  },
+  {
+    id: "bid_lia",
+    tasker: "Lia Ramos",
+    offer: 500,
+    eta: "30 minutes",
+    rating: 4.9,
+    message: "Fastest option, available immediately.",
+  },
+];
+
+export const reports = [
+  { id: "report_1", type: "User", subject: "Suspicious profile", status: "Open" },
+  { id: "report_2", type: "Task", subject: "Fake listing", status: "Reviewing" },
+  { id: "report_3", type: "Payment", subject: "Completion dispute", status: "Open" },
+];
