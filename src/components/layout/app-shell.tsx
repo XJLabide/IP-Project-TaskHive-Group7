@@ -9,6 +9,7 @@ import {
   Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -70,13 +71,16 @@ export function AppShell({
           <Link className="text-xl font-bold text-zinc-950 dark:text-zinc-50" href="/">
             <span className="text-[#FFC800]">Task</span>Hive
           </Link>
-          <nav aria-label="Main navigation" className="flex gap-2 overflow-x-auto">
-            {navItems.slice(0, 4).map((item) => (
-              <Link className="whitespace-nowrap rounded px-3 py-2 text-sm text-zinc-900 dark:text-zinc-300 hover:bg-white/50 dark:hover:bg-zinc-800 transition-colors" href={item.href} key={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <nav aria-label="Main navigation" className="flex gap-2 overflow-x-auto">
+              {navItems.slice(0, 4).map((item) => (
+                <Link className="whitespace-nowrap rounded px-3 py-2 text-sm text-zinc-900 dark:text-zinc-300 hover:bg-white/50 dark:hover:bg-zinc-800 transition-colors" href={item.href} key={item.href}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
       </header>
       
@@ -92,6 +96,7 @@ export function AppShell({
                 <Search className="h-4 w-4" />
                 Search tasks, people, messages
               </div>
+              <ThemeToggle />
               <Button 
                 variant="outline" 
                 size="sm" 

@@ -54,7 +54,7 @@ export function ThemeToggle() {
       type="button"
       onClick={handleToggle}
       aria-label={`Current theme: ${theme}. Toggle to next theme.`}
-      className="inline-flex items-center justify-center p-1.5 text-zinc-700 transition-colors hover:text-zinc-950 dark:text-zinc-200 dark:hover:text-white"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#FFC800] bg-transparent text-zinc-900 transition-colors hover:border-[#D19300] hover:bg-[#FFD50D]/10 hover:text-[#D19300] dark:border-[#FFC800] dark:text-zinc-100 dark:hover:border-[#FFD50D] dark:hover:bg-[#FFC800]/10 dark:hover:text-[#FFD50D]"
     >
       <Icon className="h-4 w-4" />
       <span className="sr-only">Toggle theme</span>

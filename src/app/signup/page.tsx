@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function SignupPage() {
   return (
-    <main className="grid min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 transition-colors duration-200 lg:grid-cols-[0.9fr_1.1fr]">
+    <main className="relative grid min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 transition-colors duration-200 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="absolute right-4 top-4 z-50 lg:right-8 lg:top-8">
+        <ThemeToggle />
+      </div>
+
       <section className="hidden border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-10 lg:grid lg:content-between transition-colors">
         <Link href="/" className="text-xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50">
           <span className="text-[#FFC800]">Task</span>Hive

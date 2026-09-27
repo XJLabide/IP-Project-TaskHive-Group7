@@ -7,6 +7,7 @@ import {
   Star,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { tasks } from "@/lib/sample-data";
 
 const categories = ["All tasks", "Delivery", "Cleaning", "Tutoring"];
@@ -19,7 +20,12 @@ export default function DashboardPage() {
       showHeader={false}
       contentClassName="mx-auto max-w-[1229px] px-4 py-6 sm:px-6 lg:px-7 lg:py-9"
     >
-        <section className="flex min-h-[397px] flex-col justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 px-7 py-8 sm:px-10 lg:px-[56px] transition-colors">
+        <section className="relative flex min-h-[397px] flex-col justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 px-7 py-8 sm:px-10 lg:px-[56px] transition-colors">
+          
+          <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+            <ThemeToggle />
+          </div>
+
           <p className="text-xl sm:text-[25px] dark:text-zinc-300">Welcome back, Ana!</p>
           <h1 className="mt-5 max-w-4xl text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-[55px] dark:text-zinc-50">
             What can your neighborhood help you with?
