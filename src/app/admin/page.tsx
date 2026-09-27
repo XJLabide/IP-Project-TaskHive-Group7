@@ -1,179 +1,18 @@
-import { AlertTriangle, Banknote, ClipboardList, ShieldCheck, Users } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Banknote, ClipboardList, ShieldCheck, Users } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { reports, tasks } from "@/lib/sample-data";
 
-const metrics = [
-  ["Total users", "12,458"],
-  ["Active tasks", "1,243"],
-  ["Platform fees", "PHP 18,452"],
-  ["Pending reports", "58"],
-  ["Open disputes", "23"],
-];
-
-const payments = [
-  ["PAY-10091", "Pick up groceries", "PHP 450", "Held"],
-  ["PAY-10088", "Clean storage room", "PHP 900", "Released"],
-  ["PAY-10077", "Math tutoring", "PHP 600", "Disputed"],
-];
-
-// Reusable outline button styles for the admin dashboard
-const outlineButtonStyles = "border-[#FFC800] text-zinc-900 dark:text-zinc-100 hover:border-[#D19300] hover:bg-[#FFD50D]/10 dark:hover:border-[#FFD50D] dark:hover:bg-[#FFC800]/10 hover:text-[#D19300] dark:hover:text-[#FFD50D]";
+const metrics = [["Total users", "12,458", "Across the platform"], ["Active tasks", "1,243", "Open right now"], ["Platform fees", "PHP 18,452", "This month"], ["Pending reports", "58", "Need review"], ["Open disputes", "23", "Awaiting action"]];
+const payments = [["PAY-10091", "Pick up groceries", "PHP 450", "Held"], ["PAY-10088", "Clean storage room", "PHP 900", "Released"], ["PAY-10077", "Math tutoring", "PHP 600", "Disputed"]];
 
 export default function AdminPage() {
-  return (
-    <AppShell
-      title="Global Admin"
-      description="Platform-level oversight for users, tasks, reports, disputes, and payment metadata."
-    >
-      <div className="grid gap-6">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {metrics.map(([label, value]) => (
-            <Card key={label}>
-              <CardContent className="p-5">
-                <strong className="text-2xl tracking-tight">{value}</strong>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{label}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <CardTitle>Report and dispute queue</CardTitle>
-                <Button size="sm" type="button" variant="outline" className={outlineButtonStyles}>
-                  View all
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                  <span>Type</span>
-                  <span>Subject</span>
-                  <span>Status</span>
-                  <span>Action</span>
-                </div>
-                {reports.map((report) => (
-                  <div
-                    className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 border-t border-zinc-100 dark:border-zinc-800 p-3 text-sm first:border-t-0"
-                    key={report.id}
-                  >
-                    <span>{report.type}</span>
-                    <span>{report.subject}</span>
-                    <Badge>{report.status}</Badge>
-                    <Button size="sm" type="button" variant="outline" className={outlineButtonStyles}>
-                      Review
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Marketplace health</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 text-sm">
-              {[
-                [Users, "User trust", "94% verified profiles"],
-                [ClipboardList, "Task flow", "38 completed this week"],
-                [Banknote, "Escrow status", "PHP 12,458 held"],
-                [ShieldCheck, "Moderation", "5 high-priority items"],
-              ].map(([Icon, label, value]) => (
-                <div className="flex gap-3" key={label as string}>
-                  <Icon className="mt-0.5 h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                  <div>
-                    <strong>{label as string}</strong>
-                    <p className="mt-1 text-zinc-600 dark:text-zinc-400">{value as string}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Task management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-                {tasks.map((task) => (
-                  <div
-                    className="grid gap-3 border-t border-zinc-100 dark:border-zinc-800 p-4 first:border-t-0 md:grid-cols-[1fr_auto_auto]"
-                    key={task.id}
-                  >
-                    <div>
-                      <strong>{task.title}</strong>
-                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        {task.poster} · {task.deadline}
-                      </p>
-                    </div>
-                    <Badge>{task.status}</Badge>
-                    <Button size="sm" type="button" variant="outline" className={outlineButtonStyles}>
-                      View
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Payments overview</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-4 text-sm">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                  <p className="leading-6 text-zinc-600 dark:text-zinc-400">
-                    Admins see payment metadata only: task, users, amount,
-                    status, dates, and provider reference.
-                  </p>
-                </div>
-              </div>
-              <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-                {payments.map(([id, task, amount, status]) => (
-                  <div
-                    className="grid gap-3 border-t border-zinc-100 dark:border-zinc-800 p-4 text-sm first:border-t-0 md:grid-cols-[auto_1fr_auto_auto]"
-                    key={id}
-                  >
-                    <span className="font-medium">{id}</span>
-                    <span>{task}</span>
-                    <strong>{amount}</strong>
-                    <Badge>{status}</Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent admin activity</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm">
-            {[
-              "Resolved dispute DP-1024 for Paint bedroom",
-              "Suspended user after repeated fake task reports",
-              "Restored task after manual review",
-            ].map((item) => (
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-3" key={item}>
-                {item}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </AppShell>
-  );
+  return <AppShell title="Global Admin" description="Platform-level oversight for users, tasks, reports, disputes, and payments.">
+    <section className="flex flex-col justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Operations overview</p><h2 className="mt-2 text-2xl font-bold tracking-tight">Keep TaskHive safe, fair, and moving.</h2><p className="mt-2 max-w-xl text-sm text-zinc-600 dark:text-zinc-400">Prioritize moderation work first, then monitor marketplace and payment health.</p></div><Button variant="outline"><ShieldCheck className="h-4 w-4" />Review queue</Button></section>
+    <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{metrics.map(([label, value, detail], index) => <Card key={label} className={index >= 3 ? "border-[#FFC800]/50" : undefined}><CardContent className="p-5"><p className="text-2xl font-bold tracking-tight">{value}</p><p className="mt-2 text-sm font-semibold">{label}</p><p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{detail}</p></CardContent></Card>)}</section>
+    <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]"><Card><CardContent className="p-5 sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Priority work</p><h2 className="mt-1 text-xl font-bold">Report &amp; dispute queue</h2></div><Button size="sm" variant="outline">View all</Button></div><div className="mt-5 overflow-x-auto"><div className="min-w-[560px] divide-y divide-zinc-100 rounded-xl border border-zinc-100 dark:divide-zinc-800 dark:border-zinc-800"><div className="grid grid-cols-[0.8fr_1.5fr_0.8fr_auto] gap-4 bg-zinc-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:bg-zinc-800/60"><span>Type</span><span>Subject</span><span>Status</span><span>Action</span></div>{reports.map((report) => <div className="grid grid-cols-[0.8fr_1.5fr_0.8fr_auto] items-center gap-4 px-4 py-3.5 text-sm" key={report.id}><span className="font-medium">{report.type}</span><span>{report.subject}</span><Badge>{report.status}</Badge><Button size="sm" variant="ghost">Review <ArrowUpRight className="h-3.5 w-3.5" /></Button></div>)}</div></div></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm font-bold">Marketplace health</p><div className="mt-5 grid gap-5 text-sm">{[[Users, "User trust", "94% verified profiles"], [ClipboardList, "Task flow", "38 completed this week"], [Banknote, "Escrow status", "PHP 12,458 held"], [ShieldCheck, "Moderation", "5 high-priority items"]].map(([Icon, label, value]) => <div className="flex gap-3" key={label as string}><Icon className="mt-0.5 h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" /><div><strong>{label as string}</strong><p className="mt-1 text-zinc-500 dark:text-zinc-400">{value as string}</p></div></div>)}</div></CardContent></Card></section>
+    <section className="mt-6 grid gap-6 xl:grid-cols-2"><Card><CardContent className="p-5 sm:p-6"><h2 className="text-lg font-bold">Task management</h2><div className="mt-5 divide-y divide-zinc-100 rounded-xl border border-zinc-100 dark:divide-zinc-800 dark:border-zinc-800">{tasks.map((task) => <div className="flex items-center justify-between gap-4 p-4" key={task.id}><div><strong className="text-sm">{task.title}</strong><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{task.poster} · {task.deadline}</p></div><div className="flex items-center gap-2"><Badge>{task.status}</Badge><Button size="sm" variant="outline">View</Button></div></div>)}</div></CardContent></Card><Card><CardContent className="p-5 sm:p-6"><h2 className="text-lg font-bold">Payments overview</h2><div className="mt-4 flex gap-3 rounded-xl bg-[#FFD50D]/15 p-4 text-sm text-zinc-700 dark:bg-[#FFC800]/10 dark:text-zinc-300"><AlertTriangle className="h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />Admins see payment metadata only: task, users, amount, status, dates, and provider reference.</div><div className="mt-4 divide-y divide-zinc-100 rounded-xl border border-zinc-100 dark:divide-zinc-800 dark:border-zinc-800">{payments.map(([id, task, amount, status]) => <div className="grid grid-cols-[auto_1fr_auto] gap-3 p-4 text-sm" key={id}><div><strong>{id}</strong><p className="mt-1 text-zinc-500 dark:text-zinc-400">{task}</p></div><strong className="self-center">{amount}</strong><Badge className="self-center">{status}</Badge></div>)}</div></CardContent></Card></section>
+  </AppShell>;
 }
