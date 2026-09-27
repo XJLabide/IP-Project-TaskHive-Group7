@@ -60,8 +60,10 @@ export default function LoginPage() {
             <Link className="text-sm text-zinc-600 underline underline-offset-4" href="/login">
               Forgot password?
             </Link>
-            <Button type="button">
-              Log in <ArrowRight className="h-4 w-4" />
+            <Button asChild>
+              <Link href="/dashboard">
+                Log in <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           </form>
 

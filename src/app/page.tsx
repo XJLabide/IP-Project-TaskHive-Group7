@@ -1,223 +1,155 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Clock,
-  MapPin,
-  MessageSquare,
-  Search,
-  ShieldCheck,
-  Star,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const steps = [
   {
-    title: "Post the task",
-    text: "Add the errand, budget, deadline, and location so nearby Taskers can respond.",
+    number: "01",
+    title: "Post a task",
+    text: "Describe what you need, where you need it, and the budget you have in mind.",
   },
   {
-    title: "Choose who helps",
-    text: "Review bids, check profiles, and chat before confirming the hire.",
+    number: "02",
+    title: "Choose your Tasker",
+    text: "Compare offers from people nearby, check their profiles, and chat before you hire.",
   },
   {
-    title: "Pay after approval",
-    text: "Use test checkout after hiring, then release is recorded after completion.",
+    number: "03",
+    title: "Get it done",
+    text: "Pay securely after hiring and confirm the task when the work is complete.",
   },
 ];
 
-const categories = ["Groceries", "Cleaning", "Repairs", "Delivery", "Tutoring", "Moving"];
+const categories = ["Groceries & errands", "Home repairs", "Cleaning", "Delivery", "Moving help", "Tutoring"];
+
+const questions = [
+  ["How does TaskHive work?", "Post a task, review offers from local Taskers, and hire the person who suits your needs."],
+  ["When do I pay for a task?", "You pay after choosing a Tasker. Payment is recorded while the task is underway and released after completion is confirmed."],
+  ["Can I talk to a Tasker before hiring?", "Yes. Use chat to clarify the task details, timing, and expectations before you decide."],
+  ["How do I earn as a Tasker?", "Create a profile, browse tasks in your area, and send an offer for work you can complete."],
+];
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-zinc-950">
-      <header className="border-b border-zinc-900 bg-zinc-950 text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            TaskHive
-          </Link>
-          <nav className="hidden items-center gap-8 text-sm text-zinc-300 md:flex">
-            <Link className="hover:text-white" href="/tasks">
-              Categories
-            </Link>
-            <Link className="hover:text-white" href="/dashboard">
-              Dashboard
-            </Link>
-            <Link className="hover:text-white" href="/admin">
-              Admin
-            </Link>
+      <header className="bg-black text-white">
+        <div className="mx-auto flex h-[75px] max-w-[1512px] items-center justify-between px-6 lg:px-16">
+          <Link href="/" className="text-2xl font-extrabold tracking-tight">TaskHive</Link>
+          <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
+            <Link href="/tasks" className="hover:text-zinc-300">Categories</Link>
           </nav>
-          <div className="flex items-center gap-3 text-sm">
-            <Link className="hidden text-zinc-300 hover:text-white sm:block" href="/login">
-              Log in
-            </Link>
-            <Button
-              asChild
-              className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
-              variant="outline"
-            >
-              <Link href="/signup">Sign up</Link>
-            </Button>
+          <div className="flex items-center gap-6 text-sm font-semibold">
+            <Link className="hover:text-zinc-300" href="/login">Log in</Link>
+            <Link className="hover:text-zinc-300" href="/signup">Sign up</Link>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-7xl gap-12 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <div>
-          <h1 className="max-w-2xl text-5xl font-semibold leading-[0.95] tracking-tight md:text-7xl">
-            Can your neighborhood help today?
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600">
-            Post errands, compare nearby Taskers, chat before hiring, and build
-            trust through completed work and two-way reviews.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <Link href="/tasks/new">
-                Post a task <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/tasks">Become a Tasker</Link>
-            </Button>
+      <section className="border-b border-zinc-400">
+        <div className="mx-auto grid min-h-[625px] max-w-[1512px] items-center gap-12 px-6 py-14 lg:grid-cols-[1fr_1.05fr] lg:px-[8.5%]">
+          <div>
+            <h1 className="max-w-xl text-5xl font-light leading-[1.02] tracking-tight sm:text-6xl lg:text-[72px]">
+              CAN YOUR <span className="font-semibold">TASKS</span> GET DONE?
+            </h1>
+            <p className="mt-7 max-w-xl text-base leading-7 text-zinc-600">
+              When digital tools fall short, TaskHive brings real help to your doorstep. Post a task, pick a hero, and get it done.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Button asChild className="min-w-52" size="lg"><Link href="/tasks/new">Post a Task</Link></Button>
+              <Button asChild className="min-w-56" size="lg" variant="outline"><Link href="/tasks">Become a Tasker</Link></Button>
+            </div>
           </div>
-        </div>
-
-        <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-4">
-          <div className="rounded-md border border-zinc-200 bg-white">
-            <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium">Tasks near San Pedro</p>
-                <p className="text-xs text-zinc-500">12 open tasks within 3 km</p>
-              </div>
-              <div className="flex h-9 w-full items-center gap-2 rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-500 sm:w-56">
-                <Search className="h-4 w-4" />
-                Search errands
-              </div>
-            </div>
-            <div className="grid gap-0 md:grid-cols-[1fr_220px]">
-              <div className="divide-y divide-zinc-100">
-                {[
-                  ["Pick up groceries", "Maria Santos", "PHP 450", "1.2 km", "Open"],
-                  ["Fix kitchen cabinet", "Jose Reyes", "PHP 850", "2.1 km", "Bidding"],
-                  ["Deliver documents", "Ana Cruz", "PHP 300", "0.8 km", "Open"],
-                ].map(([task, poster, budget, distance, status]) => (
-                  <div className="grid gap-3 p-4 sm:grid-cols-[1fr_auto]" key={task}>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <strong>{task}</strong>
-                        <span className="rounded-md border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs text-zinc-600">
-                          {status}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-4 text-sm text-zinc-600">
-                        <span>{poster}</span>
-                        <span className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-zinc-900 text-zinc-900" />
-                          4.9
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {distance}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <strong>{budget}</strong>
-                      <p className="mt-1 text-xs text-zinc-500">Due today</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-zinc-200 bg-zinc-50 p-4 md:border-l md:border-t-0">
-                <div className="grid h-full min-h-48 place-items-center rounded-md border border-dashed border-zinc-300 bg-white p-4 text-center">
-                  <div>
-                    <MapPin className="mx-auto h-7 w-7 text-zinc-700" />
-                    <p className="mt-3 text-sm font-medium">Map-based browsing</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      Nearby task markers connect to the task list.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div aria-label="Illustration placeholder" className="relative aspect-[1.3] w-full border-2 border-black bg-zinc-200">
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-medium text-zinc-600">Local help, right around the corner</span>
+            <span className="absolute inset-0 overflow-hidden" aria-hidden="true">
+              <span className="absolute left-1/2 top-1/2 h-[140%] w-px origin-center -translate-x-1/2 -translate-y-1/2 rotate-[52deg] bg-black" />
+              <span className="absolute left-1/2 top-1/2 h-[140%] w-px origin-center -translate-x-1/2 -translate-y-1/2 -rotate-[52deg] bg-black" />
+            </span>
           </div>
         </div>
       </section>
 
-      <section className="border-y border-zinc-200 bg-zinc-50">
-        <div className="mx-auto max-w-7xl px-6 py-14">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            3 steps. Zero hassle.
-          </h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {steps.map((step, index) => (
-              <div className="rounded-lg border border-zinc-200 bg-white p-5" key={step.title}>
-                <div className="grid h-9 w-9 place-items-center rounded-full border border-zinc-300 text-sm font-semibold">
-                  {index + 1}
-                </div>
-                <h3 className="mt-5 font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">{step.text}</p>
-              </div>
+      <section className="border-b border-zinc-400">
+        <div className="mx-auto max-w-[1512px] px-6 py-16 lg:px-[8.5%] lg:py-20">
+          <h2 className="text-center text-4xl font-light tracking-tight sm:text-[50px]"><strong className="font-bold">3</strong> Steps. <strong className="font-bold">Zero</strong> Hassle.</h2>
+          <div className="mt-12 grid gap-5 md:grid-cols-[1.4fr_1fr_0.9fr]">
+            {steps.map((step) => (
+              <article className="min-h-[250px] bg-zinc-200 p-7 sm:p-9" key={step.number}>
+                <p className="text-sm font-semibold text-zinc-500">{step.number}</p>
+                <h3 className="mt-10 text-2xl font-semibold">{step.title}</h3>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-700">{step.text}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[0.8fr_1.2fr]">
-        <div>
-          <h2 className="text-3xl font-semibold tracking-tight">
-            What can we help you cross off today?
-          </h2>
-          <p className="mt-4 text-sm leading-6 text-zinc-600">
-            The marketplace starts with practical local work: chores, pickup,
-            delivery, tutoring, repair help, and one-off errands.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {categories.map((category) => (
-            <Link
-              className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium hover:bg-zinc-50"
-              href="/tasks"
-              key={category}
-            >
-              {category}
-              <ArrowRight className="h-4 w-4 text-zinc-500" />
-            </Link>
-          ))}
+      <section className="border-b border-zinc-400">
+        <div className="mx-auto max-w-[1512px] px-6 py-16 lg:px-[8.5%] lg:py-20">
+          <h2 className="text-center text-3xl font-light tracking-tight sm:text-[42px]">What Can We Help You Cross Off Today?</h2>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {categories.map((category) => (
+              <Link className="flex min-h-[50px] items-center justify-between bg-zinc-200 px-5 text-sm font-medium hover:bg-zinc-300" href="/tasks" key={category}>
+                {category}<ArrowRight className="h-4 w-4" />
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="border-t border-zinc-200">
-        <div className="mx-auto grid max-w-7xl gap-6 px-6 py-14 md:grid-cols-3">
-          <div className="flex gap-3">
-            <ShieldCheck className="mt-1 h-5 w-5" />
-            <div>
-              <h3 className="font-semibold">Verified profiles</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Users build trust with identity, skills, portfolio, and ratings.
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <MessageSquare className="mt-1 h-5 w-5" />
-            <div>
-              <h3 className="font-semibold">Chat before hiring</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Posters and Taskers can clarify scope before payment starts.
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Clock className="mt-1 h-5 w-5" />
-            <div>
-              <h3 className="font-semibold">Completion-based release</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">
-                Payment is recorded after hiring and released after confirmation.
-              </p>
-            </div>
+      <section className="border-b border-zinc-400">
+        <div className="mx-auto max-w-[1512px] px-6 py-16 lg:px-[11.5%] lg:py-20">
+          <h2 className="text-center text-3xl font-light tracking-tight sm:text-[42px]">Got <strong className="font-bold">Questions</strong>? We’ve Got <strong className="font-bold">Answers</strong></h2>
+          <div className="mt-12">
+            {questions.map(([question, answer]) => (
+              <details className="group border-b border-zinc-400 py-5 first:border-t" key={question}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-medium marker:hidden">
+                  {question}<span aria-hidden="true" className="text-xl text-zinc-500 group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">{answer}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
+
+      <section className="border-b border-zinc-400">
+        <div className="mx-auto grid max-w-[1512px] items-center gap-9 px-6 py-16 lg:grid-cols-[0.9fr_2.1fr] lg:px-[8.5%] lg:py-20">
+          <div>
+            <h2 className="text-4xl font-light tracking-tight">Why <strong className="font-bold">TaskHive</strong>?</h2>
+            <p className="mt-3 text-sm text-zinc-500">Built for local trust.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <article className="min-h-[210px] bg-zinc-200 p-6">
+              <ShieldCheck className="h-7 w-7" /><h3 className="mt-8 font-semibold">Profiles you can trust</h3><p className="mt-2 text-sm leading-5 text-zinc-700">Get to know the people in your community.</p>
+            </article>
+            <article className="min-h-[210px] bg-zinc-200 p-6">
+              <Star className="h-7 w-7" /><h3 className="mt-8 font-semibold">Real reviews</h3><p className="mt-2 text-sm leading-5 text-zinc-700">Build confidence with ratings after a job.</p>
+            </article>
+            <article className="min-h-[210px] bg-zinc-200 p-6">
+              <MapPin className="h-7 w-7" /><h3 className="mt-8 font-semibold">Help nearby</h3><p className="mt-2 text-sm leading-5 text-zinc-700">Find people who work in your area.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-zinc-400">
+        <div className="mx-auto flex min-h-[400px] max-w-[1512px] flex-col items-center justify-center px-6 py-20 text-center">
+          <h2 className="max-w-4xl text-4xl font-light leading-tight tracking-tight sm:text-[48px]">
+            Got an <strong className="font-bold">endless to-do list</strong>? Or free time to <strong className="font-bold">earn extra cash</strong>?
+          </h2>
+          <Button asChild className="mt-9 min-w-52" size="lg"><Link href="/signup">Join the Hive</Link></Button>
+        </div>
+      </section>
+
+      <footer className="bg-black text-white">
+        <div className="mx-auto flex min-h-[190px] max-w-[1512px] flex-col items-center justify-center gap-8 px-6 py-10 text-center">
+          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs text-zinc-400">
+            <Link href="/">About Us</Link><Link href="/tasks">Browse Tasks</Link><Link href="/signup">Terms</Link><Link href="/signup">Privacy Policy</Link>
+          </nav>
+          <p className="flex items-center gap-1 text-lg font-bold">TaskHive © 2026 <Clock3 className="hidden h-4 w-4" aria-hidden="true" /><CheckCircle2 className="hidden h-4 w-4" aria-hidden="true" /></p>
+        </div>
+      </footer>
     </main>
   );
 }
