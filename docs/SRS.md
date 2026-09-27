@@ -10,8 +10,8 @@ The following documents support this SRS:
 
 - `docs/PHASE_1.md`: Phase 1 checklist and deliverables.
 - `docs/ARCHITECTURE.md`: Architecture plan and technology stack.
-- `docs/USER_FLOWS.md`: Main user journeys.
-- `docs/WIREFRAME_PLAN.md`: Figma page and screen checklist.
+- `docs/Design Guidelines/USER_FLOWS.md`: Main user journeys.
+- `docs/Design Guidelines/WIREFRAME_PLAN.md`: Figma page and screen checklist.
 - `docs/TEAM_TASKS.md`: Team role and module assignment plan.
 
 ### 1.2 Project Background

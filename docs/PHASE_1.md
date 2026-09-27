@@ -6,8 +6,8 @@ Finalize the planning foundation for TaskHive before implementation starts. Phas
 ## Phase 1 Deliverables
 - Completed SRS: `docs/SRS.md`
 - Architecture plan: `docs/ARCHITECTURE.md`
-- Main user flows: `docs/USER_FLOWS.md`
-- Figma wireframe guide: `docs/WIREFRAME_PLAN.md`
+- Main user flows: `docs/Design Guidelines/USER_FLOWS.md`
+- Figma wireframe guide: `docs/Design Guidelines/WIREFRAME_PLAN.md`
 - Team task assignment: `docs/TEAM_TASKS.md`
 
 ## Locked Product Decisions
@@ -47,7 +47,7 @@ Finalize the planning foundation for TaskHive before implementation starts. Phas
 - The team has a task assignment plan for implementation.
 
 ## Recommended Next Step
-Create the Figma wireframes using `docs/WIREFRAME_PLAN.md`, starting with the core marketplace flow:
+Create the Figma wireframes using `docs/Design Guidelines/WIREFRAME_PLAN.md`, starting with the core marketplace flow:
 
 1. Landing page
 2. Sign up/login
