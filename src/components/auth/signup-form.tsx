@@ -50,6 +50,7 @@ export function SignupForm() {
       name: form.name.trim(),
       email: form.email.trim(),
       password: form.password,
+      callbackURL: "/profile",
     });
 
     if (error) {

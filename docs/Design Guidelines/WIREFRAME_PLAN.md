@@ -77,7 +77,7 @@ Create these Figma pages:
 - Notifications center
 
 ### 7. Payments & Reviews
-- Stripe checkout placeholder
+- Payment-provider checkout and status (provider not selected)
 - Payment confirmation
 - Payment history
 - Payout status
@@ -93,8 +93,8 @@ Create these Figma pages:
 - Payment/payout management
 - Reports queue
 - Dispute detail/resolution
-- Analytics dashboard
-- Category/settings management
+- Basic user/task oversight
+- Verification exception queue
 
 ## Priority Screens for Tomorrow
 If time is limited, finish these first:
@@ -143,4 +143,8 @@ Every wireframe screen should show:
 - Use the SRS page inventory as the source of truth.
 - Match Figma screen names to the names in this document.
 - Keep admin as a global platform admin.
-- Keep payment as: pay after hiring, release after completion confirmation.
+- Keep payment as: Poster pays at hire; provider-managed payout follows completion confirmation or undisputed 48-hour auto-release. PayMongo is only the first provider to evaluate, not a selection.
+- Show pending-verification applications as visible but not approvable.
+- Keep the exact local service address hidden until payment succeeds and the assignment activates.
+- Include the 24-hour payment retry hold, cancellation/dispute support review, and two-way review publication window.
+- Defer advanced analytics and category management from Admin v1.

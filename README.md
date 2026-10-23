@@ -1,15 +1,17 @@
 # TaskHive
 
-TaskHive is a full-stack Next.js app for a community-based local errands marketplace. One account can post tasks, apply as a Tasker, chat before hiring, pay after approval, confirm completion, and review both sides.
+TaskHive is currently a static frontend prototype for a planned production-ready marketplace across the Philippines. Adults can browse local services and curated remote tasks; one account can post and task. The intended product includes task applications, provider-managed payment/payout, completion, support, and reviews. See [the SRS](docs/SRS.md) and [user flows](docs/Design%20Guidelines/USER_FLOWS.md) for the approved direction.
 
-## Architecture
+The UI does not yet connect to a marketplace backend. Local/static interactions are demonstration behavior, not durable accounts, real verification, or payment processing.
+
+## Proposed Production Architecture
 - Next.js App Router + React + TypeScript
 - REST API Route Handlers under `src/app/api`
 - Better Auth for authentication
 - Prisma + Supabase PostgreSQL for core marketplace data
 - MongoDB Atlas for chat/log-style data
 - Upstash QStash for async jobs
-- Stripe test mode for payments
+- Payment provider not selected; evaluate PayMongo first, subject to eligibility and capability confirmation
 - Mapbox for task locations
 - Resend for email notifications
 - Cloudinary for profile, portfolio, and proof uploads
@@ -53,7 +55,8 @@ pnpm verify
 ```
 
 ## Important Notes
-- Stripe is intended for test mode only in this project.
-- Escrow and payout release are simulated through internal payment statuses.
-- The frontend should call the app's custom REST API instead of directly mutating external services.
+- PayMongo is an evaluation candidate, not a confirmed provider. Do not implement provider-managed payout until marketplace eligibility and required capabilities are verified.
+- TaskHive must not describe provider-managed payout as legal escrow.
+- The frontend should call the app's custom REST API instead of directly mutating external services once the backend is implemented.
+- The 5% TaskHive fee is provisional and deducted from Tasker payout in the approved product direction.
 - Admin is global across the whole TaskHive app, not per community.

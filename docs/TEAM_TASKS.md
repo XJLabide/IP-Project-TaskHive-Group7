@@ -8,7 +8,7 @@ Use this assignment if the team has five members:
 | Frontend/UI Lead | Wireframes, page layouts, frontend screens, user navigation. |
 | Backend/API Lead | REST API routes, services, controllers, validation, auth middleware. |
 | Database Lead | Schema, models, relationships, seed data, status fields. |
-| Integrations Lead | Stripe, Maps, message broker, notifications. |
+| Integrations Lead | Payment-provider evaluation, maps, message broker, notifications. |
 | QA/Admin Lead | Admin module, reports/disputes, CI, tests, demo validation. |
 
 If the team has three members:
@@ -17,7 +17,7 @@ If the team has three members:
 | --- | --- |
 | Member 1 | Wireframes, frontend pages, profile/dashboard/task screens. |
 | Member 2 | Backend API, database, authentication, task marketplace logic. |
-| Member 3 | Stripe, Maps, message broker, admin, QA, CI. |
+| Member 3 | Payment-provider evaluation, Maps, message broker, admin, QA, CI. |
 
 ## Phase-by-Phase Work Split
 
@@ -32,7 +32,7 @@ If the team has three members:
 - Frontend/UI: Create frontend project and routing shell.
 - Backend/API: Create backend project and base API structure.
 - Database: Connect SQL database and create first schema.
-- Integrations: Configure env var structure for Stripe, Maps, broker.
+- Integrations: Configure environment variable structure for selected services only after the provider/vendor choices are confirmed.
 - QA/Admin: Configure CI pipeline.
 
 ### Phase 3: Authentication, Profiles, and Roles
@@ -55,9 +55,9 @@ If the team has three members:
 
 ### Phase 6: Payments, Completion, and Reviews
 - Frontend/UI: Payment confirmation, completion, reviews, earnings.
-- Backend/API: Stripe checkout, payment status, completion, reviews.
+- Backend/API: Provider checkout/payout boundary, payment status, completion, reviews.
 - Database: Payments, payouts, reviews.
-- Integrations: Stripe test mode.
+- Integrations: Evaluate PayMongo marketplace eligibility and required capabilities; do not assume approval or implement until confirmed.
 - QA/Admin: Payment and review tests.
 
 ### Phase 7: Maps and Location Features
@@ -84,4 +84,4 @@ Start with:
 4. User profiles.
 5. Task creation and browsing.
 
-Do not start Stripe, Maps, or admin dashboards before the basic marketplace flow works.
+Do not start payment-provider integration, Maps, or Admin dashboards before the basic marketplace flow works and the required service capabilities are confirmed.

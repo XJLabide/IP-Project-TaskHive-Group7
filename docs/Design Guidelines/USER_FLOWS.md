@@ -1,130 +1,158 @@
 # TaskHive User Flows
 
-## Flow 1: Signup and Profile Setup
+These flows describe the intended first production release. The current app is a static frontend prototype, so its local interactions do not imply a connected backend, real authentication, verification, or payment processing. Product terms are defined in `../../GLOSSARY.md`; requirements and acceptance scenarios are in `../SRS.md`.
+
+## 1. Public browse and account access
+
 ```text
 Guest
-  -> Landing Page
-  -> Sign Up
-  -> Login
-  -> Profile Setup
-  -> Profile Verification
-  -> Main Dashboard
+  -> Landing page or Browse Tasks
+  -> Search/filter public tasks
+  -> Public task detail (approximate area for local work)
+  -> Sign up / Sign in to chat, post, bid, or request
 ```
 
-Purpose:
-- Establish a verified account.
-- Allow one user to act as both Poster and Tasker.
+Before posting or applying:
 
-## Flow 2: Poster Creates a Bidding Task
 ```text
-Poster Dashboard
-  -> Create Task
-  -> Select Bidding Mode
-  -> Add Title, Description, Category, Budget, Deadline, Location
-  -> Publish Task
-  -> Posted Task Detail
-  -> Receive Bids
+Create account / Sign in
+  -> Enter name and contact details
+  -> Verify email and phone
+  -> Attest age 18+
+  -> Basic profile complete
+  -> Enter marketplace dashboard
 ```
 
-Purpose:
-- Let Posters request local help and receive multiple offers.
+The same account supports Poster and Tasker activity. Skills and portfolio are optional/deferred for the first release. Public browsing remains available if a user has not signed in or a Tasker is restricted.
 
-## Flow 3: Tasker Bids on a Task
+## 2. Create and publish a task
+
 ```text
-Tasker Dashboard
-  -> Browse Tasks
-  -> Search / Filter
-  -> Task Detail
-  -> Chat with Poster
-  -> Submit Bid
-  -> Tasks I Applied To
+Poster
+  -> Create task
+  -> Choose Local or Remote fulfillment
+  -> Choose Bidding or Fixed-price hiring
+  -> Choose an eligible launch category
+  -> Enter title/scope, details, budget or price, deadline
+  -> If Local: set service location and exact address
+  -> Save draft or publish
+  -> Task appears in public discovery
 ```
 
-Purpose:
-- Let Taskers discover tasks and apply before being hired.
+Local categories: errands, delivery, cleaning, repairs, moving, tutoring. Remote categories: tutoring, writing, design, translation. Medical/childcare services, passenger transport, and hazardous or regulated work are unavailable at launch unless an approved credential policy is added.
 
-## Flow 4: Fixed-Price Task Request
+The Poster may delete a draft. After publication, the Poster may cancel it; task and application history remain. If the Poster changes title/scope, budget, deadline, local service location, fulfillment mode, or hiring mode, existing bids/requests are cleared and affected Taskers are notified.
+
+## 3. Find tasks and choose a local search area
+
 ```text
-Poster Creates Fixed-Price Task
-  -> Tasker Opens Task Detail
-  -> Tasker Requests Task
-  -> Poster Reviews Request
-  -> Poster Approves Tasker
+Tasker
+  -> Browse public tasks
+  -> Select origin and radius for Local tasks
+       default: 10 km around saved location
+  -> Search/filter by category, keywords, price, deadline, mode, or area
+  -> Open task detail
 ```
 
-Alternative:
+Remote tasks do not use a physical service location. Before hire, local task detail reveals only an approximate area. The exact address appears only to the selected Tasker after payment succeeds and the assignment activates.
+
+## 4. Ask questions, then apply
+
 ```text
-Poster Enables Auto-Approval
-  -> First Valid Tasker Requests Task
-  -> System Assigns Tasker
+Signed-in user
+  -> Open an open task
+  -> Start task-specific chat with Poster (optional, before applying)
+  -> Clarify scope
+  -> If Bidding: submit bid with proposed price/message/estimated timing
+     If Fixed-price: submit request at listed price with message/availability
+  -> Track application in My Tasks / My Applications
 ```
 
-Purpose:
-- Support simpler tasks where the Poster already knows the price.
+The conversation is scoped to that task and available only while it is open. A Tasker may withdraw an application until assignment. Pending-verification Taskers may browse and apply; their application is visible as **Pending verification** and cannot be selected. A verification-rejected Tasker can browse only. They may file one Admin appeal; existing applications are withdrawn and their Posters notified. If approved on appeal, they must apply again.
 
-## Flow 5: Hiring and Payment
+## 5. Poster reviews applications and selects one Tasker
+
 ```text
-Poster Opens Bid/Request List
-  -> Compares Taskers
-  -> Approves One Tasker
-  -> Stripe Test Checkout
-  -> Payment Recorded as Paid Pending Completion
-  -> Task Status Becomes In Progress
+Poster receives in-app + email update
+  -> Open task application list
+  -> Compare bids or fixed-price requests
+  -> View Tasker profile and task chat
+  -> Select one eligible, identity-verified Tasker
+  -> Selected Tasker/task enter 24-hour payment retry hold
+  -> Other applications stay pending; new applications are blocked
 ```
 
-Purpose:
-- Poster pays when hiring is confirmed.
-- Payment is not released until completion is confirmed.
+If payment succeeds during the 24-hour hold, the assignment activates. If payment is still unsuccessful at expiry, the selection clears, the task reopens, and other pending applications remain available. If the task is materially edited while open, applications are cleared instead and authors are notified.
 
-## Flow 6: Task Completion and Reviews
+## 6. Pay and activate assignment
+
 ```text
-Tasker Opens Assigned Task
-  -> Marks Task Complete
-  -> Poster Receives Notification
-  -> Poster Confirms Completion
-  -> Payout Release Recorded
-  -> Poster Reviews Tasker
-  -> Tasker Reviews Poster
-  -> Reviews Appear on Profiles
+Poster
+  -> Review task price and provisional 5% platform fee (deducted from Tasker payout)
+  -> Checkout through the selected marketplace payment provider
+  -> Payment succeeds
+  -> Assignment activates
+  -> Assigned Tasker receives exact local service address, if applicable
 ```
 
-Purpose:
-- Complete the marketplace trust loop.
+The provider is not selected yet. PayMongo is the first provider to evaluate; production implementation depends on eligibility and confirmation of the required marketplace payout, refund, and dispute capabilities. Do not call the flow legal escrow. Provider failure stays within the 24-hour retry hold.
 
-## Flow 7: Chat Before Hiring
+## 7. Perform work and resolve completion
+
 ```text
-Task Detail
-  -> Start Chat
-  -> Conversation Page
-  -> Poster and Tasker Exchange Messages
-  -> Notification Job Created
+Assigned Tasker performs task
+  -> Local: submit completion note (photo/receipt optional)
+     Remote: submit online deliverable
+  -> Poster reviews evidence
+     -> Confirm completion -> provider payout proceeds
+     -> Either party disputes before release -> freeze payout for Admin review
+     -> No action at 24 hours -> send one Poster reminder
+     -> No dispute by 48 hours -> auto-release payout and complete task
 ```
 
-Purpose:
-- Allow clarification before bidding, requesting, or hiring.
+After confirmation or undisputed auto-release:
 
-## Flow 8: Report and Dispute
 ```text
-User Opens Task / Profile / Chat
-  -> Submit Report or Dispute
-  -> Admin Receives Alert
-  -> Admin Opens Reports Queue
-  -> Admin Reviews Details
-  -> Admin Updates Status
+Poster and Tasker can submit reviews
+  -> Keep each review hidden while the other party can submit
+  -> Publish both when both submit, or publish submitted review(s) after 14 days
 ```
 
-Purpose:
-- Give the platform a moderation and conflict-resolution process.
+## 8. Request cancellation after hire
 
-## Flow 9: Global Admin Monitoring
 ```text
-Admin Login
-  -> Admin Dashboard
-  -> User Management / Task Management / Payments / Reports / Disputes / Analytics
-  -> Review Records
-  -> Take Action
-  -> Admin Action Logged
+Poster or Tasker requests cancellation
+  -> Pause work and payout
+  -> Notify both parties and create support case
+  -> Admin reviews evidence and task/payment history (target: within 2 business days)
+  -> Admin records full refund, partial payout, or full payout decision
+  -> Notify both parties and close support case
 ```
 
-Purpose:
-- Admin manages the whole web app, not individual communities.
+## 9. Report, dispute, and Admin review
+
+```text
+User reports a person/task/message, or either party disputes completion/payment
+  -> Create report or dispute with supporting context/evidence
+  -> In-app inbox + email acknowledgment
+  -> Admin queue: Reports / Disputes / Verification exceptions
+  -> Admin reviews relevant task, messages, payment status, and evidence
+  -> Admin records action and outcome
+  -> Notify affected users
+```
+
+Disputes opened before payout release freeze payout. Admin v1 includes these support queues and basic user/task oversight; advanced analytics and category management are deferred.
+
+## 10. Key state rules
+
+| Event | Result |
+| --- | --- |
+| Pending Tasker applies | Application is visible but cannot be approved. |
+| Verification rejected | Browse only; one appeal; existing applications withdrawn and Posters notified. |
+| Poster selects eligible Tasker | 24-hour selected-tasker/payment hold; other applications stay pending. |
+| Payment hold expires | Reopen task and retain other pending applications. |
+| Material task edit | Clear all current applications and notify their authors. |
+| Payment succeeds | Assignment activates; exact local address becomes visible to assigned Tasker. |
+| Either party disputes completion | Freeze payout for Admin review. |
+| No response after completion | Reminder at 24h; undisputed payout auto-releases at 48h. |
+| Published task cancelled | Remove from active discovery; retain task and related history. |
