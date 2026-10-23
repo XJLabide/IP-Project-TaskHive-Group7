@@ -187,4 +187,4 @@ The model must preserve task and payment history, exact-address access rules, ap
 
 ## 10. Current prototype boundary
 
-The marketplace UI is a static frontend prototype. Firebase Authentication integration exists but is not configured in this checkout. Treat local/static marketplace interactions as demonstration behavior only. Do not represent them as durable task records, secure Tasker identity checks, real provider payments/payouts, persistent support cases, or production notifications. Backend acceptance must be verified against the production scenarios above.
+The marketplace UI is a static frontend prototype. Firebase Authentication is configured for Production, but the Firebase-auth application build still needs deployment and live-flow verification. Treat local/static marketplace interactions as demonstration behavior only. Do not represent them as durable task records, secure Tasker identity checks, real provider payments/payouts, persistent support cases, or production notifications. Backend acceptance must be verified against the production scenarios above.

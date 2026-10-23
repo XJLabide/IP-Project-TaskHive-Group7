@@ -103,4 +103,4 @@ Use Next.js full-stack instead of Vite + NestJS + Render. This reduces deploymen
 - The architecture must support payment retry, refunds, disputes, completion auto-release, in-app/email notifications, and auditable Admin decisions.
 
 ## Prototype boundary
-The marketplace UI still uses static/local data and must not be presented as connected identity verification, marketplace persistence, payment, payout, or notification infrastructure. Firebase Authentication integration is implemented in code but requires a configured Firebase project before it is live. Update the stack table as other vendors are actually selected and implemented.
+The marketplace UI still uses static/local data and must not be presented as connected identity verification, marketplace persistence, payment, payout, or notification infrastructure. Firebase Authentication is configured for Production; the Firebase-auth application build still needs deployment and live-flow verification. Update the stack table as other vendors are actually selected and implemented.
