@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import type { ReactNode } from "react";
+import { ViewerProvider } from "@/components/viewer/viewer-provider";
 import "./globals.css";
 
 const themeScript = `
@@ -29,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script id="theme-init" strategy="beforeInteractive">
           {themeScript}
         </Script>
-        {children}
+        <ViewerProvider>{children}</ViewerProvider>
       </body>
     </html>
   );

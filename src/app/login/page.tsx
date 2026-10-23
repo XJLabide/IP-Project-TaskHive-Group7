@@ -1,6 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
+
+const benefits = [
+  "Post tasks and apply for work",
+  "Message a Poster before applying",
+  "Track your verification and appeal state",
+];
 
 export default function LoginPage() {
   return (
@@ -19,7 +26,7 @@ export default function LoginPage() {
           </p>
         </div>
         <div className="grid gap-3 text-sm text-zinc-700 dark:text-zinc-300">
-          {["Verified profile flow", "Chat before hiring", "Two-way reviews"].map((item) => (
+          {benefits.map((item) => (
             <div className="flex items-center gap-2" key={item}>
               <CheckCircle2 className="h-4 w-4 text-[#D19300] dark:text-[#FFC800]" />
               {item}
@@ -35,35 +42,27 @@ export default function LoginPage() {
               <span className="text-[#FFC800]">Task</span>Hive
             </Link>
             <h2 className="mt-4 text-3xl font-bold tracking-tight dark:text-zinc-50 lg:mt-0">
-              Welcome back
+              Sign in
             </h2>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Continue to your tasks, bids, messages, and payment records.
+              Continue to your tasks, bids, messages, and verification.
             </p>
           </div>
 
           <form className="grid gap-4">
             <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
               Email address
-              <input
-                className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors"
-                type="email"
-              />
+              <input autoComplete="email" className={fieldClass} required type="email" />
             </label>
             <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
               Password
-              <input
-                className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors"
-                type="password"
-              />
+              <input autoComplete="current-password" className={fieldClass} required type="password" />
             </label>
             <Link className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors underline underline-offset-4" href="/login">
               Forgot password?
             </Link>
-            <Button asChild className="mt-2">
-              <Link href="/dashboard">
-                Log in <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button className="mt-2" type="submit">
+              Sign in <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
 
@@ -77,10 +76,24 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
+          <div className="mt-6 flex gap-2 rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D19300] dark:text-[#FFC800]" />
+            <p>
+              Browsing does not need an account. Signing in is required for posting, applying, chat,
+              and private account pages.
+            </p>
+          </div>
+
           <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
             New to the Hive?{" "}
             <Link className="font-semibold text-zinc-950 dark:text-zinc-100 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors" href="/signup">
               Create an account
+            </Link>
+          </p>
+          <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
+            Just looking?{" "}
+            <Link className="font-semibold text-zinc-950 dark:text-zinc-100 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors" href="/tasks">
+              Browse tasks as a guest
             </Link>
           </p>
         </div>

@@ -1,6 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
+
+const promises = [
+  "One account for posting and tasking",
+  "Verified email and phone before you act",
+  "18+ marketplace, no identity documents in TaskHive",
+];
 
 export default function SignupPage() {
   return (
@@ -14,16 +21,12 @@ export default function SignupPage() {
             Build one profile for posting and tasking.
           </h1>
           <p className="mt-5 max-w-md text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Start with account details, then complete identity, location,
-            skills, and portfolio setup before marketplace use.
+            Guests can browse. An account with a verified email, a verified phone, and an 18+
+            attestation unlocks posting, applying, and chat.
           </p>
         </div>
         <div className="grid gap-3 text-sm text-zinc-700 dark:text-zinc-300">
-          {[
-            "Poster and Tasker in one account",
-            "Phone and location fields",
-            "Google sign up ready",
-          ].map((item) => (
+          {promises.map((item) => (
             <div className="flex items-center gap-2" key={item}>
               <CheckCircle2 className="h-4 w-4 text-[#D19300] dark:text-[#FFC800]" />
               {item}
@@ -43,7 +46,7 @@ export default function SignupPage() {
                 Create your account
               </h2>
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                Use one account to post tasks, apply for work, and build reputation.
+                Start with the basics. You can add location, skills, and portfolio later.
               </p>
             </div>
             <Link className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors" href="/login">
@@ -51,52 +54,93 @@ export default function SignupPage() {
             </Link>
           </div>
 
-          <form className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-              Full name
-              <input className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors" />
-            </label>
-            <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-              Phone number
-              <input className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors" />
-            </label>
-            <label className="grid gap-2 text-sm font-medium dark:text-zinc-200 sm:col-span-2">
-              Email address
-              <input
-                className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors"
-                type="email"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-              Password
-              <input
-                className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors"
-                type="password"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-              Confirm password
-              <input
-                className="h-11 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 font-normal dark:text-zinc-50 outline-none focus:border-[#FFC800] dark:focus:border-[#FFC800] transition-colors"
-                type="password"
-              />
-            </label>
-            <div className="grid gap-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 p-4 text-sm sm:col-span-2 transition-colors">
-              <label className="flex items-start gap-3">
-                <input className="mt-1" defaultChecked type="checkbox" />
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  I agree to TaskHive terms, marketplace rules, and safety policies.
+          <form className="grid gap-6">
+            <p className="rounded-lg bg-zinc-100 p-3 text-xs leading-5 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
+              Prototype note: account creation is not connected in this build. These fields show
+              the required steps and states; nothing is submitted.
+            </p>
+            <fieldset className="grid gap-4 sm:grid-cols-2">
+              <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
+                1. Account
+              </legend>
+              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+                Full name
+                <input autoComplete="name" className={fieldClass} required />
+              </label>
+              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+                Phone number
+                <input autoComplete="tel" className={fieldClass} inputMode="tel" required />
+                <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                  We text a six-digit code. Verified phone is required before posting or applying.
                 </span>
               </label>
-            </div>
-            <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
-              <Button type="button">
+              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200 sm:col-span-2">
+                Email address
+                <input autoComplete="email" className={fieldClass} required type="email" />
+                <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                  We email a confirmation link. Verified email is required before posting or applying.
+                </span>
+              </label>
+              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+                Password
+                <input autoComplete="new-password" className={fieldClass} minLength={8} required type="password" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+                Confirm password
+                <input autoComplete="new-password" className={fieldClass} minLength={8} required type="password" />
+              </label>
+            </fieldset>
+
+            <fieldset className="grid gap-3">
+              <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
+                2. Age attestation
+              </legend>
+              <label className="flex items-start gap-3 rounded-lg border border-zinc-300 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+                <input className="mt-1" required type="checkbox" />
+                <span className="text-zinc-700 dark:text-zinc-300">
+                  I confirm that I am 18 years of age or older.
+                  <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                    TaskHive is an adults-only marketplace. This attestation gates posting and
+                    applying for every account.
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+
+            <fieldset className="grid gap-3">
+              <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
+                3. Marketplace agreement
+              </legend>
+              <label className="flex items-start gap-3 rounded-lg border border-zinc-300 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+                <input className="mt-1" required type="checkbox" />
+                <span className="text-zinc-700 dark:text-zinc-300">
+                  I agree to the TaskHive terms, marketplace rules, and safety policies.
+                </span>
+              </label>
+              <div className="flex gap-3 rounded-lg bg-[#FFD50D]/15 p-4 text-sm leading-6 text-zinc-700 dark:bg-[#FFC800]/10 dark:text-zinc-300">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFC800]" />
+                <p>
+                  TaskHive never asks for identity documents. When you want to be assigned work, a
+                  verification provider checks your identity and keeps the documents; TaskHive
+                  stores only the result and a provider reference.
+                </p>
+              </div>
+            </fieldset>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button type="submit">
                 Create account <ArrowRight className="h-4 w-4" />
               </Button>
               <Button type="button" variant="outline">
                 Continue with Google
               </Button>
             </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Already have an account?{" "}
+              <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFC800]" href="/login">
+                Sign in
+              </Link>
+            </p>
           </form>
         </div>
       </section>

@@ -9,6 +9,7 @@ import { TaskCard } from "@/components/task/task-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks } from "@/lib/mock-task-store";
+import { useViewer } from "@/components/viewer/viewer-provider";
 
 const quickFilters = ["All", "Open", "Bidding", "Fixed price", "Within 3 km"] as const;
 type QuickFilter = (typeof quickFilters)[number];
@@ -18,6 +19,7 @@ const selectClass = "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3
 export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch: string; initialCategory: string }) {
   const router = useRouter();
   const { tasks, ready } = useMockTasks();
+  const { viewer } = useViewer();
   const [search, setSearch] = useState(initialSearch);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("All");
   const [category, setCategory] = useState(initialCategory || "All categories");
@@ -116,6 +118,14 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
         </CardContent>
       </Card>
 
+      {!viewer.signedIn ? (
+        <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-zinc-300 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+          <span className="font-semibold text-zinc-950 dark:text-zinc-50">Browsing as a guest.</span>
+          Sign in to apply, message a Poster, or post a task.
+          <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFD50D]" href="/login">Sign in</Link>
+        </p>
+      ) : null}
+
       <div className="mt-6 grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)_280px]">
         <aside className="h-fit rounded-2xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(24,24,27,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" /><h2 className="font-bold">Refine results</h2></div>
@@ -156,7 +166,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
                   <option value="budget-desc">Highest budget</option>
                 </select>
               </label>
-              <Button asChild className="shrink-0" size="sm"><Link href="/tasks/new">Create task</Link></Button>
+              <Button asChild className="shrink-0" size="sm">{viewer.canPost ? <Link href="/tasks/new">Create task</Link> : <Link href="/login">Sign in to post</Link>}</Button>
             </div>
           </div>
           <div className="mt-5 grid gap-4">

@@ -7,11 +7,15 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ApplicantList } from "@/components/viewer/applicant-list";
+import { GateNotice } from "@/components/viewer/gate-notice";
+import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMockTasks } from "@/lib/mock-task-store";
 
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { viewer } = useViewer();
   const { tasks, ready, deleteTask } = useMockTasks();
   const task = tasks.find((item) => item.id === id);
 
@@ -71,12 +75,25 @@ export default function TaskDetailPage() {
         </Card>
 
         <aside className="grid content-start gap-5">
-          <Card><CardContent className="grid gap-3 p-5">
-            <h2 className="font-bold">Manage task</h2>
-            <Button asChild><Link href={`/tasks/${task.id}/edit`}><Pencil className="h-4 w-4" /> Edit task</Link></Button>
-            <Button onClick={handleDelete} type="button" variant="outline"><Trash2 className="h-4 w-4" /> Delete task</Button>
-            <Button asChild variant="ghost"><Link href="/tasks">Back to Browse Tasks</Link></Button>
-          </CardContent></Card>
+          {viewer.canApply || viewer.canChat ? (
+            <Card><CardContent className="grid gap-3 p-5">
+              <h2 className="font-bold">Work on this task</h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{viewer.canApply ? "Apply while the task is open. The Poster chooses one Tasker." : "Messaging the Poster is open to signed-in accounts."}</p>
+              {viewer.canApply ? <Button type="button">Apply to this task</Button> : viewer.denials.apply ? <GateNotice code={viewer.denials.apply} /> : null}
+              {viewer.canChat ? <Button type="button" variant="outline">Message Poster</Button> : viewer.denials.chat ? <GateNotice code={viewer.denials.chat} /> : null}
+            </CardContent></Card>
+          ) : viewer.denials.apply ? (
+            <GateNotice code={viewer.denials.apply} />
+          ) : null}
+          {/* Ownership is not modelled in the mock store yet, so any signed-in viewer sees the demo controls. */}
+          {viewer.signedIn ? (
+            <Card><CardContent className="grid gap-3 p-5">
+              <h2 className="font-bold">Manage task</h2>
+              <Button asChild><Link href={`/tasks/${task.id}/edit`}><Pencil className="h-4 w-4" /> Edit task</Link></Button>
+              <Button onClick={handleDelete} type="button" variant="outline"><Trash2 className="h-4 w-4" /> Delete task</Button>
+              <Button asChild variant="ghost"><Link href="/tasks">Back to Browse Tasks</Link></Button>
+            </CardContent></Card>
+          ) : null}
           <Card><CardContent className="p-5">
             <p className="text-sm font-bold">Frontend demo</p>
             <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">This task lives in session storage only. Bids, chat, payment, and map services are not connected.</p>
@@ -84,6 +101,14 @@ export default function TaskDetailPage() {
           </CardContent></Card>
         </aside>
       </div>
+      {viewer.canPost ? (
+        <section className="mt-6 max-w-2xl">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+            Sample applicants · applications are not connected yet
+          </p>
+          <ApplicantList />
+        </section>
+      ) : null}
     </AppShell>
   );
 }
