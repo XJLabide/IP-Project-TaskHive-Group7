@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 const steps = [
@@ -32,7 +31,7 @@ const questions = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-white text-zinc-950 transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50">
+    <main className="h-dvh overflow-y-auto overscroll-y-none bg-white text-zinc-950 transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50">
       <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/75 text-zinc-950 backdrop-blur-md shadow-[0_1px_0_rgba(24,24,27,0.06)] dark:border-zinc-800/80 dark:bg-zinc-950/75 dark:text-zinc-50">
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 md:px-8 lg:px-12">
           <Link href="/" className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50">
@@ -44,7 +43,6 @@ export default function Home() {
           <div className="flex items-center gap-3 text-sm font-semibold md:gap-4">
             <Link className="text-zinc-700 transition-colors hover:text-yellow-500 dark:text-zinc-300 dark:hover:text-yellow-300" href="/login">Log in</Link>
             <Link className="text-zinc-700 transition-colors hover:text-yellow-500 dark:text-zinc-300 dark:hover:text-yellow-300" href="/signup">Sign up</Link>
-            <ThemeToggle />
           </div>
         </div>
       </header>
