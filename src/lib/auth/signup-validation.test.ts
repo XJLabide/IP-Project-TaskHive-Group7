@@ -21,7 +21,8 @@ describe("signup validation", () => {
     expect(validateSignup({ ...valid, email: "not-an-email" }).email).toBeDefined();
   });
 
-  it("requires a Philippine-usable phone number", () => {
+  it("accepts an optional phone number but rejects a malformed one", () => {
+    expect(validateSignup({ ...valid, phone: "" }).phone).toBeUndefined();
     expect(validateSignup({ ...valid, phone: "12345" }).phone).toBeDefined();
     expect(validateSignup({ ...valid, phone: "+63 917 123 4567" }).phone).toBeUndefined();
   });

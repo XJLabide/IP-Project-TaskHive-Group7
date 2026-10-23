@@ -11,6 +11,8 @@ import { fieldClass } from "@/components/ui/field";
 import { PasswordField } from "@/components/ui/password-field";
 
 
+const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
+
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -60,7 +62,7 @@ export function LoginForm() {
       />
       <Link
         className="text-sm text-zinc-600 underline underline-offset-4 transition-colors hover:text-[#D19300] dark:text-zinc-400 dark:hover:text-[#FFC800]"
-        href="/login"
+        href="/forgot-password"
       >
         Forgot password?
       </Link>
@@ -78,11 +80,22 @@ export function LoginForm() {
         {pending ? "Signing in…" : "Sign in"} <ArrowRight className="h-4 w-4" />
       </Button>
 
-      <div className="my-2 flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-        or
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-      </div>
+      {googleEnabled ? (
+        <>
+          <div className="my-2 flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+            or
+            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+          <Button
+            onClick={() => void authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" })}
+            type="button"
+            variant="outline"
+          >
+            Continue with Google
+          </Button>
+        </>
+      ) : null}
 
       <Button asChild type="button" variant="outline">
         <Link href="/signup">Create an account</Link>

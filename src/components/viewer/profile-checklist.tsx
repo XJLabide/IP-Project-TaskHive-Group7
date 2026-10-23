@@ -5,7 +5,6 @@ import type { ViewerSnapshot } from "@/lib/viewer/presentation";
 const requirements = [
   { key: "name", label: "Name", hint: "The name Posters and Taskers see." },
   { key: "verified email", label: "Verified email", hint: "Confirm the link we send to your inbox." },
-  { key: "verified phone", label: "Verified phone", hint: "Confirm the code we text you." },
   { key: "18+ attestation", label: "18 or older", hint: "Required to post or apply for work." },
 ] as const;
 

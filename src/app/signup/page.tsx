@@ -4,7 +4,7 @@ import { SignupForm } from "@/components/auth/signup-form";
 
 const promises = [
   "One account for posting and tasking",
-  "Verified email and phone before you act",
+  "Verified email before you post or apply",
   "18+ marketplace, no identity documents in TaskHive",
 ];
 
@@ -20,8 +20,8 @@ export default function SignupPage() {
             Build one profile for posting and tasking.
           </h1>
           <p className="mt-5 max-w-md text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Guests can browse. An account with a verified email, a verified phone, and an 18+
-            attestation unlocks posting, applying, and chat.
+            Guests can browse. An account with a verified email and an 18+ attestation
+            unlocks posting, applying, and chat.
           </p>
         </div>
         <div className="grid gap-3 text-sm text-zinc-700 dark:text-zinc-300">

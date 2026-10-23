@@ -12,6 +12,8 @@ export type ViewerSnapshot = {
   kind: ViewerKind;
   signedIn: boolean;
   isAdmin: boolean;
+  emailVerified: boolean;
+  phoneVerified: boolean;
   displayName: string | null;
   missingProfileFields: string[];
   canPost: boolean;
@@ -47,6 +49,8 @@ export function viewerSnapshot(actor: MarketplaceActor | null): ViewerSnapshot {
     kind: !signedIn ? "guest" : missingProfileFields.length ? "incomplete" : "participant",
     signedIn,
     isAdmin: actor?.isAdmin ?? false,
+    emailVerified: actor?.emailVerified ?? false,
+    phoneVerified: actor?.phoneVerified ?? false,
     displayName: actor?.name?.trim() || null,
     missingProfileFields,
     canPost: denialCode(actor, "post_task") === null,

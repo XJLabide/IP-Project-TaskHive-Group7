@@ -120,7 +120,6 @@ export function missingBasicProfileFields(actor: MarketplaceActor): string[] {
   const missing: string[] = [];
   if (!actor.name?.trim()) missing.push("name");
   if (!actor.emailVerified) missing.push("verified email");
-  if (!actor.phoneVerified) missing.push("verified phone");
   if (!actor.ageAttested) missing.push("18+ attestation");
   return missing;
 }

@@ -44,10 +44,10 @@ describe("marketplace access gates", () => {
   });
 
   it("blocks posting and applying until the basic profile is complete", () => {
-    expect(can(actor({ phoneVerified: false }), "post_task")).toEqual({
+    expect(can(actor({ emailVerified: false }), "post_task")).toEqual({
       allowed: false,
       code: "profile_incomplete",
-      reason: expect.stringContaining("phone"),
+      reason: expect.stringContaining("email"),
     });
     expect(denial(can(actor({ name: null }), "post_task")).code).toBe("profile_incomplete");
     expect(denial(can(actor({ emailVerified: false }), "apply_to_task")).code).toBe(

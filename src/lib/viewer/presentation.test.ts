@@ -35,7 +35,7 @@ describe("viewer snapshot", () => {
     );
 
     expect(viewer.kind).toBe("incomplete");
-    expect(viewer.missingProfileFields).toEqual(["name", "verified phone", "18+ attestation"]);
+    expect(viewer.missingProfileFields).toEqual(["name", "18+ attestation"]);
     expect(viewer.canApply).toBe(false);
     expect(viewer.denials.apply).toBe("profile_incomplete");
     expect(viewer.canChat).toBe(true);

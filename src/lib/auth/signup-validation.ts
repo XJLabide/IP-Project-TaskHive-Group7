@@ -25,8 +25,9 @@ export function validateSignup(input: SignupInput): SignupErrors {
     errors.email = "Enter a valid email address.";
   }
 
-  if (!phoneDigits.test(input.phone.trim()) || input.phone.replace(/\D/g, "").length < 10) {
-    errors.phone = "Enter a phone number we can text, including the area code.";
+  const phone = input.phone.trim();
+  if (phone && (!phoneDigits.test(phone) || phone.replace(/\D/g, "").length < 10)) {
+    errors.phone = "Enter a valid phone number, including the area code.";
   }
 
   if (input.password.length < 8) {

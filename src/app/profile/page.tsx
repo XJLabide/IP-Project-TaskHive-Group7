@@ -1,6 +1,8 @@
 "use client";
 
-import { Check, Mail, Phone, UserRound } from "lucide-react";
+import Link from "next/link";
+import { Check, Mail, UserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,8 +35,7 @@ export default function ProfilePage() {
     );
   }
 
-  const emailDone = !viewer.missingProfileFields.includes("verified email");
-  const phoneDone = !viewer.missingProfileFields.includes("verified phone");
+  const emailDone = viewer.emailVerified;
 
   return (
     <AppShell title="Profile" description="Your basic profile, contact verification, and Tasker identity check.">
@@ -64,14 +65,14 @@ export default function ProfilePage() {
                 label="Email"
                 value={emailDone ? "Verified" : "Verification needed"}
               />
-              <ContactRow
-                done={phoneDone}
-                icon={<Phone className="h-4 w-4" />}
-                label="Phone"
-                value={phoneDone ? "Verified" : "Verification needed"}
-              />
+              {!emailDone ? (
+                <Button asChild className="w-full" size="sm" variant="outline">
+                  <Link href="/verify-email">Verify email</Link>
+                </Button>
+              ) : null}
               <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                Posting and applying stay locked until every item is complete.
+                Posting and applying unlock when your name, verified email, and 18+ attestation are
+                complete.
               </p>
             </CardContent>
           </Card>

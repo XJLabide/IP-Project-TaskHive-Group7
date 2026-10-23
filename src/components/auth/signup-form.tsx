@@ -23,6 +23,8 @@ const initial = {
 };
 
 
+const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH === "1";
+
 export function SignupForm() {
   const router = useRouter();
   const [form, setForm] = useState(initial);
@@ -97,9 +99,9 @@ export function SignupForm() {
         </label>
         <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
           <span className="flex items-center gap-1.5">
-            Phone number
-            <HelpTip id="phone-help" label="Why we verify your phone">
-              We text a six-digit code. Verified phone is required before posting or applying.
+            Phone number (optional)
+            <HelpTip id="phone-help" label="Why we ask for a phone number">
+              Used for task coordination only. TaskHive does not require phone verification.
             </HelpTip>
           </span>
           <input
@@ -109,7 +111,6 @@ export function SignupForm() {
             className={fieldClass}
             inputMode="tel"
             onChange={(event) => update("phone", event.target.value)}
-            required
             value={form.phone}
           />
           {errors.phone ? (
@@ -235,6 +236,16 @@ export function SignupForm() {
           <Link href="/login">I already have an account</Link>
         </Button>
       </div>
+
+      {googleEnabled ? (
+        <Button
+          onClick={() => void authClient.signIn.social({ provider: "google", callbackURL: "/profile" })}
+          type="button"
+          variant="outline"
+        >
+          Continue with Google
+        </Button>
+      ) : null}
     </form>
   );
 }
