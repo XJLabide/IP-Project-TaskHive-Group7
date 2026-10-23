@@ -11,6 +11,7 @@
     "test": "vitest run",
     "prisma:validate": "DATABASE_URL=\"postgresql://taskhive:taskhive@localhost:5432/taskhive?schema=public\" prisma validate",
     "prisma:generate": "DATABASE_URL=\"postgresql://taskhive:taskhive@localhost:5432/taskhive?schema=public\" prisma generate",
+    "prisma:push": "prisma db push",
     "verify": "pnpm lint && pnpm typecheck && pnpm prisma:validate && pnpm test && pnpm build"
   },
   "dependencies": {

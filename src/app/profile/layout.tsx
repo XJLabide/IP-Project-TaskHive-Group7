@@ -2,8 +2,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { loadActorFromHeaders } from "@/lib/auth/actor";
 import { can } from "@/lib/domain/access";
-import { ViewerProvider } from "@/components/viewer/viewer-provider";
-import { viewerSnapshot } from "@/lib/viewer/presentation";
 
 export default async function ProfileLayout({
   children,
@@ -14,7 +12,5 @@ export default async function ProfileLayout({
 
   if (!can(actor, "view_private_account").allowed) redirect("/login");
 
-  return (
-    <ViewerProvider initialViewer={viewerSnapshot(actor)}>{children}</ViewerProvider>
-  );
+  return children;
 }

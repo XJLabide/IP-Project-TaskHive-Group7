@@ -114,6 +114,7 @@ model Session {
 
 model Account {
   id                    String    @id
+  issuer                String?
   accountId             String
   providerId            String
   userId                String

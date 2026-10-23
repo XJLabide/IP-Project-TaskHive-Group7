@@ -11,6 +11,9 @@ type PasswordFieldProps = {
   autoComplete?: "current-password" | "new-password";
   minLength?: number;
   required?: boolean;
+  value?: string;
+  onChange?: (value: string) => void;
+  error?: string;
 };
 
 /** Password input with a reveal control that keeps the value in the same field. */
@@ -20,6 +23,9 @@ export function PasswordField({
   autoComplete = "new-password",
   minLength,
   required = true,
+  value,
+  onChange,
+  error,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
@@ -30,13 +36,17 @@ export function PasswordField({
       </label>
       <div className="relative">
         <input
+          aria-describedby={error ? `${id}-error` : undefined}
+          aria-invalid={error ? true : undefined}
           autoComplete={autoComplete}
-          className={cn(fieldClass, "pr-11")}
+          className={cn(fieldClass, "pr-11", error && "border-[#F04452] dark:border-[#F04452]")}
           id={id}
           minLength={minLength}
           name={id}
+          onChange={(event) => onChange?.(event.target.value)}
           required={required}
           type={visible ? "text" : "password"}
+          value={value}
         />
         <button
           aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
@@ -48,6 +58,11 @@ export function PasswordField({
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
+      {error ? (
+        <p className="text-xs font-medium text-[#a01a26] dark:text-[#F04452]" id={`${id}-error`} role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -25,9 +25,9 @@ export default function PreviewPage() {
         <CardContent className="p-5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
           <p className="font-bold text-zinc-950 dark:text-zinc-50">Prototype preview</p>
           <p className="mt-2">
-            Sign-in, persistence, and the verification provider are not connected in this build.
-            This page renders the same components the real screens use, so each state can be
-            reviewed and demonstrated. Controls are disabled here; nothing is saved.
+            The verification provider is not connected in this build. This page renders the same
+            components the real screens use, so each state can be reviewed without changing an
+            account. Controls are disabled here; nothing is saved.
           </p>
           <p className="mt-2">
             To walk the whole app in one state, add <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800">?as=pending</code>,{" "}

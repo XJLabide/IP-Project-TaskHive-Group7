@@ -56,3 +56,13 @@ export const verificationDecisionSchema = z
 export const providerCallbackSchema = z.object({
   userId: z.string().min(1),
 });
+
+export const profileUpdateSchema = z.object({
+  name: z.string().trim().min(2).optional(),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[\d\s()-]{10,}$/, "Enter a phone number we can text.")
+    .optional(),
+  ageAttested: z.boolean().optional(),
+});

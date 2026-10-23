@@ -45,8 +45,8 @@ export function StatePreview({ className }: { className?: string }) {
       </label>
       <p className="mt-2 text-[11px] leading-4 text-zinc-500 dark:text-zinc-400">
         {isPreview
-          ? "Demo state. No account data is used and nothing is saved."
-          : "Sign-in is not connected in this prototype, so the app renders a guest."}
+          ? "Demo state. Your live account is ignored while this is on."
+          : "Showing your live session."}
       </p>
     </div>
   );

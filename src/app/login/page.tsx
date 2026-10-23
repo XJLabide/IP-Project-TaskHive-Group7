@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { fieldClass } from "@/components/ui/field";
-import { PasswordField } from "@/components/ui/password-field";
+import { CheckCircle2 } from "lucide-react";
+import { LoginForm } from "@/components/auth/login-form";
 
 const benefits = [
   "Post tasks and apply for work",
@@ -51,54 +49,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form className="grid gap-4">
-              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-                Email address
-                <input autoComplete="email" className={fieldClass} required type="email" />
-              </label>
-              <PasswordField
-                autoComplete="current-password"
-                id="login-password"
-                label="Password"
-              />
-              <Link className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors underline underline-offset-4" href="/login">
-                Forgot password?
-              </Link>
-              <Button className="mt-2" type="submit">
-                Sign in <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-
-            <div className="my-6 flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-              <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-              or
-              <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-            </div>
-
-            <Button className="w-full" type="button" variant="outline">
-              Continue with Google
-            </Button>
-
-            <div className="mt-6 flex gap-2 rounded-lg bg-zinc-50 p-3 text-xs leading-5 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D19300] dark:text-[#FFC800]" />
-              <p>
-                Browsing does not need an account. Signing in is required for posting, applying, chat,
-                and private account pages.
-              </p>
-            </div>
-
-            <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-              New to the Hive?{" "}
-              <Link className="font-semibold text-zinc-950 dark:text-zinc-100 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors" href="/signup">
-                Create an account
-              </Link>
-            </p>
-            <p className="mt-2 text-center text-sm text-zinc-600 dark:text-zinc-400">
-              Just looking?{" "}
-              <Link className="font-semibold text-zinc-950 dark:text-zinc-100 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors" href="/tasks">
-                Browse tasks as a guest
-              </Link>
-            </p>
+            <LoginForm />
           </div>
         </div>
       </section>

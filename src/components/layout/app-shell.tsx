@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, LayoutDashboard, LogIn, Plus, Search, Shield, Star, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { authClient } from "@/lib/auth/client";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { verificationSummary } from "@/lib/viewer/presentation";
 
@@ -23,6 +26,15 @@ const adminItem: NavItem = { href: "/admin", label: "Admin", icon: Shield };
 
 export function AppShell({ title, description, children, showHeader = true, contentClassName }: { title: string; description: string; children: React.ReactNode; showHeader?: boolean; contentClassName?: string }) {
   const { viewer } = useViewer();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await authClient.signOut();
+    router.push("/");
+    router.refresh();
+  }
   const active = activeHref(title);
   const navItems: NavItem[] = viewer.signedIn
     ? [
@@ -55,7 +67,13 @@ export function AppShell({ title, description, children, showHeader = true, cont
           <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">Theme</span>
           <ThemeToggle />
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-950">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-semibold">{identity}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{identityDetail}</p></div></div>{!viewer.signedIn && <Button asChild className="mt-3 w-full" size="sm"><Link href="/login">Sign in to act</Link></Button>}</div>
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-950">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-semibold">{identity}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{identityDetail}</p></div></div>{viewer.signedIn ? (
+          <Button className="mt-3 w-full" disabled={signingOut} onClick={handleSignOut} size="sm" type="button" variant="outline">
+            {signingOut ? "Signing out…" : "Sign out"}
+          </Button>
+        ) : (
+          <Button asChild className="mt-3 w-full" size="sm"><Link href="/login">Sign in to act</Link></Button>
+        )}</div>
       </aside>
       <header className="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 lg:hidden"><div className="flex items-center justify-between gap-3"><Link className="flex items-center gap-2 text-lg font-bold tracking-tight" href="/"><span className="grid h-7 w-7 place-items-center rounded-lg bg-[#FFC800] text-sm text-zinc-950">T</span><span><span className="text-[#FFC800]">Task</span>Hive</span></Link><div className="flex items-center gap-2"><ThemeToggle />{viewer.canPost ? <Button asChild size="sm"><Link href="/tasks/new"><Plus className="h-4 w-4" />Create</Link></Button> : !viewer.signedIn ? <Button asChild size="sm"><Link href="/login"><LogIn className="h-4 w-4" />Sign in</Link></Button> : null}</div></div><nav aria-label="Main navigation" className="mt-3 flex gap-2 overflow-x-auto pb-1">{navItems.map((item) => { const selected = item.href === active; return <Link aria-current={selected ? "page" : undefined} className={cn("inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium", selected ? "bg-[#FFD50D]/30 text-zinc-950 dark:bg-[#FFC800]/15 dark:text-zinc-50" : "text-zinc-600 dark:text-zinc-400")} href={item.href} key={item.href}><item.icon className="h-4 w-4" />{item.label}</Link>; })}</nav></header>
       <div className="lg:ml-64">

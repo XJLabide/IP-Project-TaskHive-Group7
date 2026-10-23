@@ -80,8 +80,8 @@ export default function ProfilePage() {
             <CardContent className="p-5">
               <p className="text-sm font-bold">Review every state</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                Sign-in is not connected in this prototype. Use the state preview to inspect the
-                pending, rejected, appeal, and verified views.
+                Preview the pending, rejected, appeal, and verified views without changing your
+                account.
               </p>
               <StatePreview className="mt-4" />
             </CardContent>

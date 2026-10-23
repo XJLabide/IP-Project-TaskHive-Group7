@@ -1,7 +1,10 @@
-import { ok, requireUser } from "@/lib/api/response";
+import { ok, problem, requireUser } from "@/lib/api/response";
 import { loadActorById } from "@/lib/auth/actor";
 import { can } from "@/lib/domain/access";
+import { profileUpdateSchema } from "@/lib/validation";
 import { getVerification } from "@/lib/verification/service";
+import { prisma } from "@/lib/prisma";
+import { viewerSnapshot } from "@/lib/viewer/presentation";
 
 export const runtime = "nodejs";
 
@@ -10,7 +13,7 @@ export async function GET(request: Request) {
   if (authResult.response) return authResult.response;
 
   const actor = await loadActorById(authResult.session.user.id);
-  if (!actor) return ok({ ...authResult.session.user, verification: null });
+  if (!actor) return problem("Account not found", 404);
 
   return ok({
     ...authResult.session.user,
@@ -24,19 +27,36 @@ export async function GET(request: Request) {
       canBeAssigned: can(actor, "be_assigned").allowed,
       canAppealVerification: can(actor, "appeal_verification").allowed,
     },
+    viewer: viewerSnapshot(actor),
     verification: await getVerification(actor.id),
   });
 }
 
+/** Completes the basic-profile fields that Better Auth does not own. */
 export async function PATCH(request: Request) {
   const authResult = await requireUser(request);
   if (authResult.response) return authResult.response;
 
-  const body = await request.json().catch(() => ({}));
+  const parsed = profileUpdateSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) return problem("Invalid profile update", 422);
+
+  const { name, phone, ageAttested } = parsed.data;
+  const userId = authResult.session.user.id;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(name ? { name } : {}),
+      ...(phone ? { phone } : {}),
+      ...(ageAttested ? { ageAttestedAt: new Date() } : {}),
+    },
+  });
+
+  const actor = await loadActorById(userId);
+  if (!actor) return problem("Account not found", 404);
 
   return ok({
-    userId: authResult.session.user.id,
-    profile: body,
-    status: "updated_demo",
+    viewer: viewerSnapshot(actor),
+    verification: await getVerification(userId),
   });
 }

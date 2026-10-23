@@ -1,9 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { fieldClass } from "@/components/ui/field";
-import { HelpTip } from "@/components/ui/help-tip";
-import { PasswordField } from "@/components/ui/password-field";
+import { CheckCircle2 } from "lucide-react";
+import { SignupForm } from "@/components/auth/signup-form";
 
 const promises = [
   "One account for posting and tasking",
@@ -57,101 +54,7 @@ export default function SignupPage() {
               </Link>
             </div>
 
-            <form className="grid gap-6">
-              <p className="rounded-lg bg-zinc-100 p-3 text-xs leading-5 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
-                Prototype note: account creation is not connected in this build. These fields show
-                the required steps and states; nothing is submitted.
-              </p>
-              <fieldset className="grid gap-4 sm:grid-cols-2">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
-                  1. Account
-                </legend>
-                <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
-                  Full name
-                  <input autoComplete="name" className={fieldClass} required />
-                </label>
-                <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
-                  <span className="flex items-center gap-1.5">
-                    Phone number
-                    <HelpTip id="phone-help" label="Why we verify your phone">
-                      We text a six-digit code. Verified phone is required before posting or
-                      applying.
-                    </HelpTip>
-                  </span>
-                  <input autoComplete="tel" className={fieldClass} inputMode="tel" required />
-                </label>
-                <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200 sm:col-span-2">
-                  Email address
-                  <input autoComplete="email" className={fieldClass} required type="email" />
-                  <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
-                    We email a confirmation link. Verified email is required before posting or applying.
-                  </span>
-                </label>
-                <PasswordField
-                  autoComplete="new-password"
-                  id="signup-password"
-                  label="Password"
-                  minLength={8}
-                />
-                <PasswordField
-                  autoComplete="new-password"
-                  id="signup-confirm-password"
-                  label="Confirm password"
-                  minLength={8}
-                />
-              </fieldset>
-
-              <fieldset className="grid gap-3">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
-                  2. Age attestation
-                </legend>
-                <label className="flex items-start gap-3 rounded-lg border border-zinc-300 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-                  <input className="mt-1" required type="checkbox" />
-                  <span className="text-zinc-700 dark:text-zinc-300">
-                    I confirm that I am 18 years of age or older.
-                    <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                      TaskHive is an adults-only marketplace. This attestation gates posting and
-                      applying for every account.
-                    </span>
-                  </span>
-                </label>
-              </fieldset>
-
-              <fieldset className="grid gap-3">
-                <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
-                  3. Marketplace agreement
-                </legend>
-                <label className="flex items-start gap-3 rounded-lg border border-zinc-300 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-                  <input className="mt-1" required type="checkbox" />
-                  <span className="text-zinc-700 dark:text-zinc-300">
-                    I agree to the TaskHive terms, marketplace rules, and safety policies.
-                  </span>
-                </label>
-                <div className="flex gap-3 rounded-lg bg-[#FFD50D]/15 p-4 text-sm leading-6 text-zinc-700 dark:bg-[#FFC800]/10 dark:text-zinc-300">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFC800]" />
-                  <p>
-                    TaskHive never asks for identity documents. When you want to be assigned work, a
-                    verification provider checks your identity and keeps the documents; TaskHive
-                    stores only the result and a provider reference.
-                  </p>
-                </div>
-              </fieldset>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button type="submit">
-                  Create account <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button type="button" variant="outline">
-                  Continue with Google
-                </Button>
-              </div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Already have an account?{" "}
-                <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFC800]" href="/login">
-                  Sign in
-                </Link>
-              </p>
-            </form>
+            <SignupForm />
           </div>
         </div>
       </section>
