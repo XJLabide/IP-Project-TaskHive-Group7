@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Info } from "lucide-react";
-import { authClient } from "@/lib/auth/client";
+import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { establishServerSession } from "@/lib/auth/client";
+import { getFirebaseClientAuth } from "@/lib/auth/firebase-client";
 import { describeAuthError } from "@/lib/auth/messages";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
@@ -25,19 +27,29 @@ export function LoginForm() {
     setFormError("");
     setPending(true);
 
-    const { error } = await authClient.signIn.email({
-      email: email.trim(),
-      password,
-    });
-
-    if (error) {
-      setFormError(describeAuthError(error, "signin"));
+    try {
+      const credential = await signInWithEmailAndPassword(getFirebaseClientAuth(), email.trim(), password);
+      await establishServerSession(credential.user);
+      router.push("/dashboard");
+      router.refresh();
+    } catch (error) {
+      setFormError(describeAuthError(error as { code?: string; message?: string }, "signin"));
       setPending(false);
-      return;
     }
+  }
 
-    router.push("/dashboard");
-    router.refresh();
+  async function handleGoogleSignIn() {
+    setFormError("");
+    setPending(true);
+    try {
+      const result = await signInWithPopup(getFirebaseClientAuth(), new GoogleAuthProvider());
+      await establishServerSession(result.user);
+      router.push("/dashboard");
+      router.refresh();
+    } catch (error) {
+      setFormError(describeAuthError(error as { code?: string; message?: string }, "signin"));
+      setPending(false);
+    }
   }
 
   return (
@@ -88,7 +100,8 @@ export function LoginForm() {
             <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
           </div>
           <Button
-            onClick={() => void authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" })}
+            disabled={pending}
+            onClick={() => void handleGoogleSignIn()}
             type="button"
             variant="outline"
           >

@@ -1,7 +1,7 @@
 # TaskHive Architecture Plan
 
 ## Architecture Summary
-The current repository is a static frontend prototype. The proposed production direction is a **single full-stack Next.js app** with a custom REST API exposed through Route Handlers under `src/app/api`. This architecture is a proposal, not a claim that the API or integrations are implemented.
+The repository is a **single full-stack Next.js app** with a REST API exposed through Route Handlers under `src/app/api`. Firebase Authentication handles identity and sessions; PostgreSQL remains the marketplace system of record. Several non-auth integrations and marketplace functions remain proposals or incomplete.
 
 ## High-Level Architecture
 ```text
@@ -14,7 +14,7 @@ Next.js App on Vercel
     |
     +--> REST API Route Handlers
           |
-          +--> Better Auth
+          +--> Firebase Authentication (identity and sessions only)
           +--> Prisma -> Supabase PostgreSQL
           +--> MongoDB Atlas
           +--> Upstash QStash
@@ -30,14 +30,14 @@ Next.js App on Vercel
 | App framework | Next.js App Router | Full-stack React app and REST route handlers. |
 | Language | TypeScript | Shared typing across UI, API, validation, and services. |
 | UI | Tailwind CSS + shadcn-style components | Product screens and reusable owned UI primitives. |
-| Auth | Better Auth | Email/password auth, sessions, protected API access. |
+| Auth | Firebase Authentication | Email/password identity, email actions, optional Google sign-in; server verifies Firebase session cookies. |
 | Main database | Supabase PostgreSQL | Relational marketplace data. |
 | ORM | Prisma | Schema, migrations, and typed database client. |
 | NoSQL | MongoDB Atlas | Chat messages and log-style data. |
 | Queue | Upstash QStash | Serverless-friendly async jobs. |
 | Payments | Not selected | Evaluate PayMongo first; confirm platform eligibility and marketplace payout, refund, and dispute capabilities before implementation. |
 | Maps | Mapbox | Location search, picker, and nearby task support. |
-| Email | Resend | Transactional notifications. |
+| Email | Firebase Authentication + Resend | Firebase-managed verification/reset email; Resend for other transactional notifications. |
 | Uploads | Cloudinary | Profile, portfolio, attachment, and proof uploads. |
 | CI | GitHub Actions | Lint, typecheck, tests, Prisma validation, build. |
 
@@ -103,4 +103,4 @@ Use Next.js full-stack instead of Vite + NestJS + Render. This reduces deploymen
 - The architecture must support payment retry, refunds, disputes, completion auto-release, in-app/email notifications, and auditable Admin decisions.
 
 ## Prototype boundary
-The current UI uses static/local data and must not be presented as connected authentication, identity verification, persistence, payment, payout, or notification infrastructure. Update the stack table as vendors are actually selected and implemented.
+The marketplace UI still uses static/local data and must not be presented as connected identity verification, marketplace persistence, payment, payout, or notification infrastructure. Firebase Authentication is configured for Production; the Firebase-auth application build still needs deployment and live-flow verification. Update the stack table as other vendors are actually selected and implemented.

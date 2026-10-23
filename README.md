@@ -1,13 +1,13 @@
 # TaskHive
 
-TaskHive is currently a static frontend prototype for a planned production-ready marketplace across the Philippines. Adults can browse local services and curated remote tasks; one account can post and task. The intended product includes task applications, provider-managed payment/payout, completion, support, and reviews. See [the SRS](docs/SRS.md) and [user flows](docs/Design%20Guidelines/USER_FLOWS.md) for the approved direction.
+TaskHive is a frontend prototype for a planned production-ready marketplace across the Philippines. Adults can browse local services and curated remote tasks; one account can post and task. The intended product includes task applications, provider-managed payment/payout, completion, support, and reviews. See [the SRS](docs/SRS.md) and [user flows](docs/Design%20Guidelines/USER_FLOWS.md) for the approved direction.
 
-The UI does not yet connect to a marketplace backend. Local/static interactions are demonstration behavior, not durable accounts, real verification, or payment processing.
+The UI does not yet connect to a marketplace backend. Firebase Authentication is configured for Production, but this Firebase-auth code has not yet been deployed or smoke-tested. Local/static marketplace interactions remain demonstration behavior, not durable task data, real identity checks, or payment processing.
 
 ## Proposed Production Architecture
 - Next.js App Router + React + TypeScript
 - REST API Route Handlers under `src/app/api`
-- Better Auth for authentication
+- Firebase Authentication for identity and sessions only
 - Prisma + Supabase PostgreSQL for core marketplace data
 - MongoDB Atlas for chat/log-style data
 - Upstash QStash for async jobs

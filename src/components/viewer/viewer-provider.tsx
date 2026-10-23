@@ -4,11 +4,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { onAuthStateChanged, reload } from "firebase/auth";
+import { establishServerSession } from "@/lib/auth/client";
+import { getFirebaseClientAuth, isFirebaseClientConfigured } from "@/lib/auth/firebase-client";
 import { viewerSnapshot } from "@/lib/viewer/presentation";
 import { previewKinds, previewViewer, type PreviewKind } from "@/lib/viewer/demo";
 import type { ViewerSnapshot } from "@/lib/viewer/presentation";
@@ -148,7 +152,37 @@ export function ViewerProvider({
     };
   }, [initialViewer, previewKind, setPreviewKind, startVerification, submitAppeal]);
 
-  return <ViewerContext.Provider value={value}>{children}</ViewerContext.Provider>;
+  return (
+    <ViewerContext.Provider value={value}>
+      <FirebaseSessionBridge />
+      {children}
+    </ViewerContext.Provider>
+  );
+}
+
+function FirebaseSessionBridge() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isFirebaseClientConfigured()) return;
+
+    let synchronizing = false;
+    return onAuthStateChanged(getFirebaseClientAuth(), async (user) => {
+      if (!user || synchronizing) return;
+      synchronizing = true;
+      try {
+        await reload(user);
+        await establishServerSession(user);
+        router.refresh();
+      } catch {
+        // Login and signup surfaces report actionable errors; passive refresh is best effort.
+      } finally {
+        synchronizing = false;
+      }
+    });
+  }, [router]);
+
+  return null;
 }
 
 export function useViewer(): ViewerContextValue {

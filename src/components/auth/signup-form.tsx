@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import { authClient } from "@/lib/auth/client";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, sendEmailVerification, signInWithPopup, updateProfile } from "firebase/auth";
+import { establishServerSession } from "@/lib/auth/client";
+import { getFirebaseClientAuth } from "@/lib/auth/firebase-client";
 import { describeAuthError } from "@/lib/auth/messages";
 import { validateSignup, type SignupErrors } from "@/lib/auth/signup-validation";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,8 @@ export function SignupForm() {
   const [errors, setErrors] = useState<SignupErrors>({});
   const [formError, setFormError] = useState("");
   const [pending, setPending] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [serverSessionReady, setServerSessionReady] = useState(false);
 
   function update<Key extends keyof typeof initial>(key: Key, value: (typeof initial)[Key]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -46,28 +50,80 @@ export function SignupForm() {
 
     setPending(true);
 
-    const { error } = await authClient.signUp.email({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      password: form.password,
-      callbackURL: "/profile",
-    });
+    let created = false;
+    try {
+      const auth = getFirebaseClientAuth();
+      const credential = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
+      created = true;
+      setAccountCreated(true);
+      await updateProfile(credential.user, { displayName: form.name.trim() });
+      await establishServerSession(credential.user);
+      setServerSessionReady(true);
 
-    if (error) {
-      setFormError(describeAuthError(error, "signup"));
+      const profileResponse = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: form.phone.trim(), ageAttested: true }),
+      });
+      if (!profileResponse.ok) {
+        throw new Error("Your account was created, but profile setup did not finish. Complete it on your profile page.");
+      }
+
+      await sendEmailVerification(credential.user, {
+        url: `${window.location.origin}/profile`,
+        handleCodeInApp: false,
+      });
+
+      router.push("/profile");
+      router.refresh();
+    } catch (error) {
+      setFormError(
+        created
+          ? "Your account was created, but setup did not finish. Continue to your profile to retry setup or resend verification."
+          : describeAuthError(error as { code?: string; message?: string }, "signup"),
+      );
       setPending(false);
+    }
+  }
+
+  async function handleGoogleSignUp() {
+    setFormError("");
+    if (!form.ageAttested || !form.acceptedTerms) {
+      setFormError("Confirm the age attestation and marketplace agreement before continuing with Google.");
       return;
     }
+    setPending(true);
+    try {
+      const result = await signInWithPopup(getFirebaseClientAuth(), new GoogleAuthProvider());
+      await establishServerSession(result.user);
+      setServerSessionReady(true);
+      const profileResponse = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: form.phone.trim(), ageAttested: true }),
+      });
+      if (!profileResponse.ok) throw new Error("Profile setup did not finish.");
+      router.push("/profile");
+      router.refresh();
+    } catch (error) {
+      setFormError(describeAuthError(error as { code?: string; message?: string }, "signup"));
+      setPending(false);
+    }
+  }
 
-    // The basic-profile fields Better Auth does not own.
-    await fetch("/api/users/me", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phone: form.phone.trim(), ageAttested: true }),
-    });
-
-    router.push("/profile");
-    router.refresh();
+  if (accountCreated) {
+    return (
+      <div className="grid gap-4">
+        <p className="rounded-lg bg-[#75D333]/15 p-3 text-sm leading-6 text-zinc-700 dark:text-zinc-200" role="status">
+          {formError || "Your account is ready. Check your email to verify it before posting or applying."}
+        </p>
+        <Button asChild>
+          <Link href={serverSessionReady ? "/profile" : "/login"}>
+            {serverSessionReady ? "Continue to profile" : "Continue to sign in"}
+          </Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -240,7 +296,8 @@ export function SignupForm() {
 
       {googleEnabled ? (
         <Button
-          onClick={() => void authClient.signIn.social({ provider: "google", callbackURL: "/profile" })}
+          disabled={pending}
+          onClick={() => void handleGoogleSignUp()}
           type="button"
           variant="outline"
         >

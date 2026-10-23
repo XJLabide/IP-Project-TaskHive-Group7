@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/auth";
+import { getAuthSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import type { MarketplaceActor } from "@/lib/domain/access";
 import { toDomainStatus } from "@/lib/verification/mapping";
@@ -38,7 +38,7 @@ export async function loadActorById(userId: string): Promise<MarketplaceActor | 
 
 /** Resolves the signed-in actor for a request, or null for a guest. */
 export async function loadActorFromHeaders(headers: Headers): Promise<MarketplaceActor | null> {
-  const session = await auth.api.getSession({ headers });
+  const session = await getAuthSession(headers);
   if (!session?.user) return null;
   return loadActorById(session.user.id);
 }
