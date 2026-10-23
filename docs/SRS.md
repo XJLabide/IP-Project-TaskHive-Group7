@@ -7,7 +7,7 @@
 
 TaskHive is a production-ready marketplace for adults across the Philippines to post and complete local services and a curated set of remote tasks. One account can act as both Poster and Tasker. Guests can browse public tasks, while signing in and meeting the relevant account gates is required to act.
 
-This SRS defines the intended first production release. The current repository is a frontend prototype with static/local data and no connected marketplace backend; screens or interactions in the prototype do not imply that production authentication, payments, verification, messaging, or persistence are already implemented.
+This SRS defines the intended first production release. The repository has Firebase Authentication integration code, but no Firebase project is configured in this checkout and the marketplace UI still uses static/local data with no connected marketplace backend. Screens or interactions do not imply that production payments, identity verification, messaging, or marketplace persistence are implemented.
 
 ### 1.1 First-release outcome
 
@@ -187,4 +187,4 @@ The model must preserve task and payment history, exact-address access rules, ap
 
 ## 10. Current prototype boundary
 
-The current web app is a static frontend prototype. Until a backend project is explicitly started, treat local/static interactions as demonstration behavior only. Do not represent them as durable accounts, secure identity checks, real provider payments/payouts, persistent support cases, or production notifications. The UI should progressively reflect the decisions in this SRS, but backend acceptance must be verified against the production scenarios above.
+The marketplace UI is a static frontend prototype. Firebase Authentication integration exists but is not configured in this checkout. Treat local/static marketplace interactions as demonstration behavior only. Do not represent them as durable task records, secure Tasker identity checks, real provider payments/payouts, persistent support cases, or production notifications. Backend acceptance must be verified against the production scenarios above.

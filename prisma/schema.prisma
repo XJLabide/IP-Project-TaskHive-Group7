@@ -69,7 +69,8 @@ enum ModerationStatus {
 }
 
 model User {
-  id            String     @id
+  id            String     @id @default(cuid())
+  firebaseUid   String?    @unique
   name          String
   email         String     @unique
   emailVerified Boolean    @default(false)

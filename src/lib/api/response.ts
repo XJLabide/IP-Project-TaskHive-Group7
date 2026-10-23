@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/auth";
+import { getAuthSession } from "@/lib/auth/session";
 import { loadActorFromHeaders } from "@/lib/auth/actor";
 import { prisma } from "@/lib/prisma";
 import {
@@ -62,9 +62,7 @@ export function problem(message: string, status = 400) {
 }
 
 export async function requireUser(request: Request) {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const session = await getAuthSession(request.headers);
 
   if (!session?.user) {
     return { session: null, response: problem("Authentication required", 401) };

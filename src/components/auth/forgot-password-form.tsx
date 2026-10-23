@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { authClient } from "@/lib/auth/client";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { getFirebaseClientAuth } from "@/lib/auth/firebase-client";
 import { describeAuthError } from "@/lib/auth/messages";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
@@ -17,15 +18,20 @@ export function ForgotPasswordForm() {
     setPending(true);
     setError("");
 
-    const { error: sendError } = await authClient.requestPasswordReset({
-      email: email.trim(),
-      redirectTo: "/reset-password",
-    });
-
-    if (sendError) {
-      setError(describeAuthError(sendError, "signin"));
-    } else {
+    try {
+      await sendPasswordResetEmail(getFirebaseClientAuth(), email.trim(), {
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: false,
+      });
       setSent(true);
+    } catch (sendError) {
+      const code = (sendError as { code?: string }).code;
+      if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+        // Keep account existence private.
+        setSent(true);
+      } else {
+        setError(describeAuthError(sendError as { code?: string; message?: string }, "email"));
+      }
     }
 
     setPending(false);
@@ -38,10 +44,7 @@ export function ForgotPasswordForm() {
           If <strong>{email}</strong> has an account, a reset link is on its way. It expires in one
           hour.
         </p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Local development without <code>RESEND_API_KEY</code>? The link is printed in the server
-          console.
-        </p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Follow Firebase’s secure password reset page, then sign in with your new password.</p>
       </div>
     );
   }

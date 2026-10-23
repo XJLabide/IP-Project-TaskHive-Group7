@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   });
 }
 
-/** Completes the basic-profile fields that Better Auth does not own. */
+/** Completes basic-profile fields stored separately from Firebase Authentication. */
 export async function PATCH(request: Request) {
   const authResult = await requireUser(request);
   if (authResult.response) return authResult.response;

@@ -7,7 +7,7 @@ import { Bell, LayoutDashboard, LogIn, Plus, Search, Shield, Star, UserRound } f
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { authClient } from "@/lib/auth/client";
+import { signOutFromTaskHive } from "@/lib/auth/client";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { verificationSummary } from "@/lib/viewer/presentation";
 
@@ -28,12 +28,19 @@ export function AppShell({ title, description, children, showHeader = true, cont
   const { viewer } = useViewer();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
 
   async function handleSignOut() {
     setSigningOut(true);
-    await authClient.signOut();
-    router.push("/");
-    router.refresh();
+    setSignOutError("");
+    try {
+      await signOutFromTaskHive();
+      router.push("/");
+      router.refresh();
+    } catch {
+      setSignOutError("Could not finish signing out. Please try again.");
+      setSigningOut(false);
+    }
   }
   const active = activeHref(title);
   const navItems: NavItem[] = viewer.signedIn
@@ -67,7 +74,7 @@ export function AppShell({ title, description, children, showHeader = true, cont
           <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">Theme</span>
           <ThemeToggle />
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-950">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-semibold">{identity}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{identityDetail}</p></div></div>{viewer.signedIn ? (
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-950">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-semibold">{identity}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{identityDetail}</p></div></div>{signOutError ? <p className="mt-2 text-xs text-[#a01a26] dark:text-[#F04452]" role="alert">{signOutError}</p> : null}{viewer.signedIn ? (
           <Button className="mt-3 w-full" disabled={signingOut} onClick={handleSignOut} size="sm" type="button" variant="outline">
             {signingOut ? "Signing out…" : "Sign out"}
           </Button>
