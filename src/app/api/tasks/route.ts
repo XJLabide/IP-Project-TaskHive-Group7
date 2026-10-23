@@ -1,4 +1,4 @@
-import { created, ok, problem, requireUser } from "@/lib/api/response";
+import { created, ok, problem, requireCapability } from "@/lib/api/response";
 import { tasks } from "@/lib/sample-data";
 import { publishJob } from "@/lib/queue/qstash";
 import { createTaskSchema } from "@/lib/validation";
@@ -18,21 +18,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authResult = await requireUser(request);
-  if (authResult.response) return authResult.response;
+  const gate = await requireCapability(request, "post_task");
+  if (gate.response) return gate.response;
+  const actor = gate.actor;
 
   const parsed = createTaskSchema.safeParse(await request.json());
   if (!parsed.success) return problem("Invalid task payload", 422);
 
   await publishJob("notify.task.created", {
     title: parsed.data.title,
-    userId: authResult.session.user.id,
+    userId: actor.id,
   });
 
   return created({
     id: "task_created_demo",
     ...parsed.data,
     status: "OPEN",
-    posterId: authResult.session.user.id,
+    posterId: actor.id,
   });
 }

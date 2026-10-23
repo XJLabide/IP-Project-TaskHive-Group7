@@ -1,4 +1,4 @@
-import { created, problem, requireUser } from "@/lib/api/response";
+import { created, problem, requireCapability } from "@/lib/api/response";
 import { publishJob } from "@/lib/queue/qstash";
 import { taskRequestSchema } from "@/lib/validation";
 
@@ -8,8 +8,9 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const authResult = await requireUser(request);
+  const authResult = await requireCapability(request, "apply_to_task");
   if (authResult.response) return authResult.response;
+  const actor = authResult.actor;
 
   const parsed = taskRequestSchema.safeParse(await request.json());
   if (!parsed.success) return problem("Invalid request payload", 422);
@@ -17,14 +18,15 @@ export async function POST(
   const { id } = await context.params;
   await publishJob("notify.task.requested", {
     taskId: id,
-    taskerId: authResult.session.user.id,
+    taskerId: actor.id,
   });
 
   return created({
     id: "request_created_demo",
     taskId: id,
-    taskerId: authResult.session.user.id,
+    taskerId: actor.id,
     status: "SUBMITTED",
+    verificationStatus: actor.verification,
     ...parsed.data,
   });
 }

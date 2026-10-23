@@ -1,6 +1,53 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
+import { loadActorFromHeaders } from "@/lib/auth/actor";
 import { prisma } from "@/lib/prisma";
+import {
+  can,
+  type DenialCode,
+  type MarketplaceAction,
+  type MarketplaceActor,
+} from "@/lib/domain/access";
+
+const denialStatus: Record<DenialCode, number> = {
+  sign_in_required: 401,
+  profile_incomplete: 403,
+  verification_required: 403,
+  verification_rejected: 403,
+  appeal_already_used: 409,
+  appeal_not_available: 409,
+  admin_required: 403,
+};
+
+export function statusForDenial(code: DenialCode): number {
+  return denialStatus[code];
+}
+
+export function problemWithCode(message: string, status: number, code: DenialCode) {
+  return NextResponse.json({ error: message, code }, { status });
+}
+
+/**
+ * Enforces one marketplace action for the signed-in actor.
+ * Guests get 401; signed-in accounts that fail a gate get a coded 403/409.
+ */
+export async function requireCapability(request: Request, action: MarketplaceAction) {
+  const actor = await loadActorFromHeaders(request.headers);
+  const decision = can(actor, action);
+
+  if (!decision.allowed) {
+    return {
+      actor: null,
+      response: problemWithCode(
+        decision.reason,
+        denialStatus[decision.code],
+        decision.code,
+      ),
+    };
+  }
+
+  return { actor: actor as MarketplaceActor, response: null };
+}
 
 export function ok<T>(data: T, init?: ResponseInit) {
   return NextResponse.json({ data }, init);
