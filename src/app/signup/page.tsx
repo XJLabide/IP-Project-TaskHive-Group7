@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
+import { HelpTip } from "@/components/ui/help-tip";
 
 const promises = [
   "One account for posting and tasking",
@@ -63,29 +64,32 @@ export default function SignupPage() {
               <legend className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFC800]">
                 1. Account
               </legend>
-              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
                 Full name
                 <input autoComplete="name" className={fieldClass} required />
               </label>
-              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-                Phone number
-                <input autoComplete="tel" className={fieldClass} inputMode="tel" required />
-                <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
-                  We text a six-digit code. Verified phone is required before posting or applying.
+              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
+                <span className="flex items-center gap-1.5">
+                  Phone number
+                  <HelpTip id="phone-help" label="Why we verify your phone">
+                    We text a six-digit code. Verified phone is required before posting or
+                    applying.
+                  </HelpTip>
                 </span>
+                <input autoComplete="tel" className={fieldClass} inputMode="tel" required />
               </label>
-              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200 sm:col-span-2">
+              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200 sm:col-span-2">
                 Email address
                 <input autoComplete="email" className={fieldClass} required type="email" />
                 <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
                   We email a confirmation link. Verified email is required before posting or applying.
                 </span>
               </label>
-              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
                 Password
                 <input autoComplete="new-password" className={fieldClass} minLength={8} required type="password" />
               </label>
-              <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
+              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
                 Confirm password
                 <input autoComplete="new-password" className={fieldClass} minLength={8} required type="password" />
               </label>
