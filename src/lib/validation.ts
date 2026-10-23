@@ -38,3 +38,21 @@ export const disputeSchema = z.object({
   taskId: z.string(),
   reason: z.string().min(5),
 });
+
+export const verificationAppealSchema = z.object({
+  note: z.string().min(10).max(2000),
+});
+
+export const verificationDecisionSchema = z
+  .object({
+    outcome: z.enum(["approved", "denied"]),
+    reason: z.string().min(3).optional(),
+  })
+  .refine((value) => value.outcome !== "denied" || Boolean(value.reason?.trim()), {
+    message: "A denial needs a reason.",
+    path: ["reason"],
+  });
+
+export const providerCallbackSchema = z.object({
+  userId: z.string().min(1),
+});

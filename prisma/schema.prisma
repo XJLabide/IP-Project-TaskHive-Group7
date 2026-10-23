@@ -13,6 +13,20 @@ enum UserStatus {
   PENDING_VERIFICATION
 }
 
+enum VerificationStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VerificationAppealStatus {
+  NONE
+  PENDING
+  APPROVED
+  DENIED
+}
+
 enum TaskStatus {
   OPEN
   PENDING_APPROVAL
@@ -59,6 +73,9 @@ model User {
   name          String
   email         String     @unique
   emailVerified Boolean    @default(false)
+  phone         String?
+  phoneVerified Boolean    @default(false)
+  ageAttestedAt DateTime?
   image         String?
   status        UserStatus @default(PENDING_VERIFICATION)
   isAdmin       Boolean    @default(false)
@@ -68,6 +85,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   profile       Profile?
+  taskerVerification TaskerVerification?
   postedTasks   Task[]     @relation("PostedTasks")
   bids          Bid[]
   taskRequests  TaskRequest[]
@@ -131,11 +149,33 @@ model Profile {
   locationLabel      String?
   isPosterEnabled    Boolean  @default(true)
   isTaskerEnabled    Boolean  @default(true)
-  verificationStatus String   @default("pending")
   skills             String[]
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Stronger Tasker identity check. The provider retains identity documents;
+/// TaskHive stores only the decision, provider reference, rejection reason,
+/// and the Tasker's own appeal note — never identity documents or images.
+model TaskerVerification {
+  id                      String                   @id @default(cuid())
+  userId                  String                   @unique
+  status                  VerificationStatus       @default(NOT_STARTED)
+  providerReference       String?
+  rejectionReason         String?
+  appealStatus            VerificationAppealStatus @default(NONE)
+  appealCount             Int                      @default(0)
+  appealNote              String?
+  submittedAt             DateTime?
+  decidedAt               DateTime?
+  appealedAt              DateTime?
+  applicationsWithdrawnAt DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }
 
 model Category {

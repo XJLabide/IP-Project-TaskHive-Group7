@@ -1,5 +1,5 @@
 import { bids } from "@/lib/sample-data";
-import { created, ok, problem, requireUser } from "@/lib/api/response";
+import { created, ok, problem, requireCapability } from "@/lib/api/response";
 import { publishJob } from "@/lib/queue/qstash";
 import { bidSchema } from "@/lib/validation";
 
@@ -21,8 +21,9 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const authResult = await requireUser(request);
+  const authResult = await requireCapability(request, "apply_to_task");
   if (authResult.response) return authResult.response;
+  const actor = authResult.actor;
 
   const parsed = bidSchema.safeParse(await request.json());
   if (!parsed.success) return problem("Invalid bid payload", 422);
@@ -30,14 +31,15 @@ export async function POST(
   const { id } = await context.params;
   await publishJob("notify.bid.created", {
     taskId: id,
-    taskerId: authResult.session.user.id,
+    taskerId: actor.id,
   });
 
   return created({
     id: "bid_created_demo",
     taskId: id,
-    taskerId: authResult.session.user.id,
+    taskerId: actor.id,
     status: "SUBMITTED",
+    verificationStatus: actor.verification,
     ...parsed.data,
   });
 }
