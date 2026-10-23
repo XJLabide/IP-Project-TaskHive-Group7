@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import type { ComponentType, ReactNode } from "react";
 import { Clock, MapPin, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PublicShell } from "@/components/layout/public-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +18,9 @@ export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { viewer } = useViewer();
+  // Guests keep the public site chrome; signed-in accounts get the workspace shell.
+  const Shell: ComponentType<{ title: string; description: string; children: ReactNode }> =
+    viewer.signedIn ? AppShell : PublicShell;
   const { tasks, ready, deleteTask } = useMockTasks();
   const task = tasks.find((item) => item.id === id);
 
@@ -28,22 +33,22 @@ export default function TaskDetailPage() {
   }
 
   if (!ready) {
-    return <AppShell title="Task details" description="Loading this browser session’s tasks."><p>Loading task…</p></AppShell>;
+    return <Shell title="Task details" description="Loading this browser session’s tasks."><p>Loading task…</p></Shell>;
   }
 
   if (!task) {
     return (
-      <AppShell title="Task not found" description="This task is not available in this browser session.">
+      <Shell title="Task not found" description="This task is not available in this browser session.">
         <Card><CardContent className="grid gap-4 p-6">
           <p>The task may have been deleted or this browser session may have been cleared.</p>
           <Button asChild className="w-fit"><Link href="/tasks">Back to Browse Tasks</Link></Button>
         </CardContent></Card>
-      </AppShell>
+      </Shell>
     );
   }
 
   return (
-    <AppShell title={task.title} description={`${task.category} task in ${task.location}.`}>
+    <Shell title={task.title} description={`${task.category} task in ${task.location}.`}>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
           <CardHeader>
@@ -109,6 +114,6 @@ export default function TaskDetailPage() {
           <ApplicantList />
         </section>
       ) : null}
-    </AppShell>
+    </Shell>
   );
 }

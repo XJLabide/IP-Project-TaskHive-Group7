@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
+import { ArrowRight, ShieldCheck, Star, MapPin } from "lucide-react";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 
 const steps = [
@@ -32,20 +34,7 @@ const questions = [
 export default function Home() {
   return (
     <main className="h-dvh overflow-y-auto overscroll-y-none bg-white text-zinc-950 transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50">
-      <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/75 text-zinc-950 backdrop-blur-md shadow-[0_1px_0_rgba(24,24,27,0.06)] dark:border-zinc-800/80 dark:bg-zinc-950/75 dark:text-zinc-50">
-        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 md:px-8 lg:px-12">
-          <Link href="/" className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50">
-            <span className="text-yellow-500">Task</span>Hive
-          </Link>
-          <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
-            <Link href="/tasks" className="text-zinc-700 transition-colors hover:text-yellow-500 dark:text-zinc-300 dark:hover:text-yellow-300">Categories</Link>
-          </nav>
-          <div className="flex items-center gap-3 text-sm font-semibold md:gap-4">
-            <Link className="text-zinc-700 transition-colors hover:text-yellow-500 dark:text-zinc-300 dark:hover:text-yellow-300" href="/login">Log in</Link>
-            <Link className="text-zinc-700 transition-colors hover:text-yellow-500 dark:text-zinc-300 dark:hover:text-yellow-300" href="/signup">Sign up</Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader active="home" />
 
       <section>
         <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1600px] items-center gap-10 px-4 py-10 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:px-12">
@@ -145,14 +134,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-black text-white">
-        <div className="mx-auto flex min-h-[190px] w-full max-w-[1600px] flex-col items-center justify-center gap-8 px-4 py-10 text-center md:px-8 lg:px-12">
-          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-xs text-zinc-400">
-            <Link href="/">About Us</Link><Link href="/tasks">Browse Tasks</Link><Link href="/signup">Terms</Link><Link href="/signup">Privacy Policy</Link>
-          </nav>
-          <p className="flex items-center gap-1 text-lg font-bold">TaskHive © 2026 <Clock3 className="hidden h-4 w-4" aria-hidden="true" /><CheckCircle2 className="hidden h-4 w-4" aria-hidden="true" /></p>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

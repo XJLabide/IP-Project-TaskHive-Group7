@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PublicShell } from "@/components/layout/public-shell";
 import { TaskCard } from "@/components/task/task-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +21,9 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
   const router = useRouter();
   const { tasks, ready } = useMockTasks();
   const { viewer } = useViewer();
+  // Guests keep the public site chrome; signed-in accounts get the workspace shell.
+  const Shell: ComponentType<{ title: string; description: string; children: ReactNode }> =
+    viewer.signedIn ? AppShell : PublicShell;
   const [search, setSearch] = useState(initialSearch);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("All");
   const [category, setCategory] = useState(initialCategory || "All categories");
@@ -82,7 +86,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
   const allCategories = [...new Set([initialCategory, ...tasks.map((task) => task.category)].filter(Boolean))].sort();
 
   return (
-    <AppShell title="Browse Tasks" description="Find nearby errands by category, budget, status, and distance.">
+    <Shell title="Browse Tasks" description="Find nearby errands by category, budget, status, and distance.">
       <Card>
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row">
@@ -185,6 +189,6 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
           </div>
         </CardContent></Card></aside>
       </div>
-    </AppShell>
+    </Shell>
   );
 }
