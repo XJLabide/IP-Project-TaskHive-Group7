@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
 import { HelpTip } from "@/components/ui/help-tip";
+import { PasswordField } from "@/components/ui/password-field";
 
 const promises = [
   "One account for posting and tasking",
@@ -85,14 +86,18 @@ export default function SignupPage() {
                   We email a confirmation link. Verified email is required before posting or applying.
                 </span>
               </label>
-              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
-                Password
-                <input autoComplete="new-password" className={fieldClass} minLength={8} required type="password" />
-              </label>
-              <label className="grid content-start gap-2 text-sm font-medium dark:text-zinc-200">
-                Confirm password
-                <input autoComplete="new-password" className={fieldClass} minLength={8} required type="password" />
-              </label>
+              <PasswordField
+                autoComplete="new-password"
+                id="signup-password"
+                label="Password"
+                minLength={8}
+              />
+              <PasswordField
+                autoComplete="new-password"
+                id="signup-confirm-password"
+                label="Confirm password"
+                minLength={8}
+              />
             </fieldset>
 
             <fieldset className="grid gap-3">

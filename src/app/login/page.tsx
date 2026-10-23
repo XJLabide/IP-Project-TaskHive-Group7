@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
+import { PasswordField } from "@/components/ui/password-field";
 
 const benefits = [
   "Post tasks and apply for work",
@@ -54,10 +55,11 @@ export default function LoginPage() {
               Email address
               <input autoComplete="email" className={fieldClass} required type="email" />
             </label>
-            <label className="grid gap-2 text-sm font-medium dark:text-zinc-200">
-              Password
-              <input autoComplete="current-password" className={fieldClass} required type="password" />
-            </label>
+            <PasswordField
+              autoComplete="current-password"
+              id="login-password"
+              label="Password"
+            />
             <Link className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-[#D19300] dark:hover:text-[#FFC800] transition-colors underline underline-offset-4" href="/login">
               Forgot password?
             </Link>
