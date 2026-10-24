@@ -55,7 +55,6 @@ export function SignupForm() {
       const auth = getFirebaseClientAuth();
       const credential = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
       created = true;
-      setAccountCreated(true);
       await updateProfile(credential.user, { displayName: form.name.trim() });
       await establishServerSession(credential.user);
       setServerSessionReady(true);
@@ -74,9 +73,10 @@ export function SignupForm() {
         handleCodeInApp: false,
       });
 
-      router.push("/profile");
+      router.replace("/profile");
       router.refresh();
     } catch (error) {
+      if (created) setAccountCreated(true);
       setFormError(
         created
           ? "Your account was created, but setup did not finish. Continue to your profile to retry setup or resend verification."
