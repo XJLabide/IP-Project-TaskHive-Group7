@@ -12,7 +12,7 @@ Give the team one agreed description of the production marketplace and its core 
 
 ## Locked product direction
 - Production-ready, nationwide Philippines marketplace for adults.
-- Guests browse publicly; account actions require a basic profile and verified email/phone plus 18+ attestation.
+- Guests browse publicly; account actions require a basic profile and verified email plus 18+ attestation.
 - One account supports Poster and Tasker roles; stronger Tasker identity verification is required before assignment.
 - Local and curated remote fulfillment are supported; fulfillment and hiring are separate choices.
 - Bidding and fixed-price requests both use manual Poster selection of exactly one Tasker.

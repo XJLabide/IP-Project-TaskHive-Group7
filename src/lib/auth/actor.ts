@@ -11,7 +11,6 @@ export async function loadActorById(userId: string): Promise<MarketplaceActor | 
       id: true,
       name: true,
       emailVerified: true,
-      phoneVerified: true,
       ageAttestedAt: true,
       isAdmin: true,
       taskerVerification: {
@@ -27,7 +26,6 @@ export async function loadActorById(userId: string): Promise<MarketplaceActor | 
     signedIn: true,
     name: user.name,
     emailVerified: user.emailVerified,
-    phoneVerified: user.phoneVerified,
     ageAttested: user.ageAttestedAt !== null,
     verification:
       toDomainStatus[user.taskerVerification?.status ?? "NOT_STARTED"] ?? "not_started",

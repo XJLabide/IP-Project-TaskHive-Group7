@@ -53,7 +53,7 @@ export default function PreviewPage() {
       <section className="mt-8">
         <h2 className="text-xl font-bold tracking-tight">Basic profile</h2>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          A signed-in account that has verified email but still needs phone and 18+ attestation.
+          A signed-in account that has verified email but still needs the 18+ attestation.
         </p>
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           <ProfileChecklist viewer={demoViewers.incomplete} />

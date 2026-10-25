@@ -8,7 +8,6 @@ function actor(overrides: Partial<MarketplaceActor> = {}): MarketplaceActor {
     signedIn: true,
     name: "Ana Reyes",
     emailVerified: true,
-    phoneVerified: true,
     ageAttested: true,
     verification: "pending",
     appealCount: 0,
@@ -31,7 +30,7 @@ describe("viewer snapshot", () => {
 
   it("marks a signed-in account with a partial profile as incomplete", () => {
     const viewer = viewerSnapshot(
-      actor({ name: null, phoneVerified: false, ageAttested: false }),
+      actor({ name: null, ageAttested: false }),
     );
 
     expect(viewer.kind).toBe("incomplete");

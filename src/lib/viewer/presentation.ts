@@ -13,7 +13,6 @@ export type ViewerSnapshot = {
   signedIn: boolean;
   isAdmin: boolean;
   emailVerified: boolean;
-  phoneVerified: boolean;
   displayName: string | null;
   missingProfileFields: string[];
   canPost: boolean;
@@ -50,7 +49,6 @@ export function viewerSnapshot(actor: MarketplaceActor | null): ViewerSnapshot {
     signedIn,
     isAdmin: actor?.isAdmin ?? false,
     emailVerified: actor?.emailVerified ?? false,
-    phoneVerified: actor?.phoneVerified ?? false,
     displayName: actor?.name?.trim() || null,
     missingProfileFields,
     canPost: denialCode(actor, "post_task") === null,
@@ -159,7 +157,7 @@ export function gateMessage(code: DenialCode): GateMessage {
     case "profile_incomplete":
       return {
         title: "Finish your basic profile",
-        body: "Before posting or applying, add your name, verify your email and phone, and confirm you are 18 or older.",
+        body: "Before posting or applying, add your name, verify your email, and confirm you are 18 or older.",
         action: { label: "Complete profile", href: "/profile" },
       };
     case "verification_required":

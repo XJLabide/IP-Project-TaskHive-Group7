@@ -11,7 +11,7 @@ A visitor who can browse public tasks and platform information but must sign in 
 An account holder who attests to being at least 18 and can post tasks, bid or request work, or accept an assignment.
 
 **Basic profile**:
-The minimum participant profile required before posting or applying: name, verified email and phone, and 18+ age attestation.
+The minimum participant profile required before posting or applying: name, verified email, and 18+ age attestation. A phone number is optional contact information and is not verified through TaskHive.
 
 **Poster**:
 A user who creates a task. The same account may also act as a Tasker.
