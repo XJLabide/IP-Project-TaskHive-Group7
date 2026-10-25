@@ -28,6 +28,7 @@ enum VerificationAppealStatus {
 }
 
 enum TaskStatus {
+  DRAFT
   OPEN
   PENDING_APPROVAL
   PENDING_PAYMENT
@@ -39,10 +40,14 @@ enum TaskStatus {
   DISPUTED
 }
 
-enum TaskMode {
+enum FulfillmentMode {
+  LOCAL
+  REMOTE
+}
+
+enum HiringMode {
   BIDDING
-  FIXED_PRICE_MANUAL
-  FIXED_PRICE_AUTO
+  FIXED_PRICE
 }
 
 enum BidStatus {
@@ -198,9 +203,11 @@ model Task {
   locationLabel String?
   latitude    Float?
   longitude   Float?
-  mode        TaskMode
-  status      TaskStatus @default(OPEN)
-  autoApprove Boolean    @default(false)
+  fulfillmentMode FulfillmentMode
+  hiringMode  HiringMode
+  status      TaskStatus @default(DRAFT)
+  publishedAt DateTime?
+  cancelledAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

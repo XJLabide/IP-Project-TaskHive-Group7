@@ -9,8 +9,25 @@ describe("TaskHive validation schemas", () => {
       category: "Delivery",
       budgetCents: 45000,
       locationLabel: "Community Market",
-      mode: "BIDDING",
-      autoApprove: false,
+      fulfillmentMode: "local",
+      hiringMode: "bidding",
+      deadline: "2026-11-01T17:00:00.000Z",
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.publish).toBe(true);
+  });
+
+  it("accepts a remote fixed-price task without a service location", () => {
+    const result = createTaskSchema.safeParse({
+      title: "Edit a product description",
+      description: "Rewrite the product description for clarity.",
+      category: "Writing",
+      budgetCents: 60000,
+      fulfillmentMode: "remote",
+      hiringMode: "fixed_price",
+      publish: false,
     });
 
     expect(result.success).toBe(true);
