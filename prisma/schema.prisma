@@ -55,6 +55,7 @@ enum BidStatus {
   ACCEPTED
   REJECTED
   WITHDRAWN
+  INVALIDATED
 }
 
 enum PaymentStatus {

@@ -35,6 +35,16 @@ export const materialFields = [
 
 export type MaterialField = (typeof materialFields)[number];
 
+export const materialFieldLabels: Record<MaterialField, string> = {
+  title: "the title",
+  description: "the scope",
+  budgetCents: "the price",
+  deadline: "the deadline",
+  locationLabel: "the service location",
+  fulfillmentMode: "the fulfillment mode",
+  hiringMode: "the hiring mode",
+};
+
 function normalizedText(value: string): string {
   return value.trim();
 }
@@ -91,7 +101,7 @@ export type TaskEffect =
 
 export type TaskEvent =
   | { type: "publish" }
-  | { type: "edit"; materialFields: MaterialField[]; openApplications: number }
+  | { type: "edit"; materialFields: MaterialField[] }
   | { type: "cancel" }
   | { type: "delete" };
 
@@ -137,8 +147,7 @@ export function transition(
       };
     }
 
-    const material =
-      event.materialFields.length > 0 && event.openApplications > 0;
+    const material = status === "open" && event.materialFields.length > 0;
     return {
       ok: true,
       status,

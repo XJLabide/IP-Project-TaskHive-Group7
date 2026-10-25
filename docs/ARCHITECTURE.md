@@ -62,6 +62,7 @@ TaskHive/
       integrations/
       mongo/
       queue/
+      tasks/
       prisma.ts
       validation.ts
     types/

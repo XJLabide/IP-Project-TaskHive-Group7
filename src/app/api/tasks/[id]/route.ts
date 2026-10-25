@@ -1,4 +1,4 @@
-import { ok, problem, requireCapability } from "@/lib/api/response";
+import { ok, problem, problemWithCode, requireCapability } from "@/lib/api/response";
 import { tasks } from "@/lib/sample-data";
 import { taskFailureResponse } from "@/lib/tasks/http";
 import { deleteTask, updateTask } from "@/lib/tasks/service";
@@ -26,7 +26,7 @@ export async function PATCH(
   if (gate.response) return gate.response;
 
   const parsed = updateTaskSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return problem("Invalid task payload", 422);
+  if (!parsed.success) return problemWithCode("Invalid task payload", 422, "invalid_payload");
 
   const { id } = await context.params;
   const { publish, ...patch } = parsed.data;

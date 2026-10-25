@@ -74,11 +74,11 @@ describe("task lifecycle", () => {
   });
 
   it("allows edits on drafts and open tasks only", () => {
-    expect(transition("draft", { type: "edit", materialFields: [], openApplications: 0 }))
+    expect(transition("draft", { type: "edit", materialFields: [] }))
       .toMatchObject({ ok: true, status: "draft" });
-    expect(transition("open", { type: "edit", materialFields: [], openApplications: 0 }))
+    expect(transition("open", { type: "edit", materialFields: [] }))
       .toMatchObject({ ok: true, status: "open" });
-    expect(transition("cancelled", { type: "edit", materialFields: [], openApplications: 0 }))
+    expect(transition("cancelled", { type: "edit", materialFields: [] }))
       .toMatchObject({ ok: false, code: "invalid_transition" });
   });
 
@@ -87,7 +87,6 @@ describe("task lifecycle", () => {
       transition("open", {
         type: "edit",
         materialFields: ["budgetCents"],
-        openApplications: 2,
       }),
     ).toEqual({
       ok: true,
@@ -96,14 +95,13 @@ describe("task lifecycle", () => {
     });
   });
 
-  it("does not notify when a material edit has no open applications", () => {
+  it("does not clear applications for a material edit on a draft", () => {
     expect(
-      transition("open", {
+      transition("draft", {
         type: "edit",
         materialFields: ["budgetCents"],
-        openApplications: 0,
       }),
-    ).toEqual({ ok: true, status: "open", effects: [] });
+    ).toEqual({ ok: true, status: "draft", effects: [] });
   });
 
   it("does not clear applications for a non-material edit", () => {
@@ -111,7 +109,6 @@ describe("task lifecycle", () => {
       transition("open", {
         type: "edit",
         materialFields: [],
-        openApplications: 3,
       }),
     ).toEqual({ ok: true, status: "open", effects: [] });
   });

@@ -1,3 +1,7 @@
+-- Backfill and separation for task authoring.
+-- Creates the separate fulfillment/hiring enums, keeps existing applications
+-- and history, and replaces the old combined mode plus auto-approval field.
+
 -- CreateEnum
 CREATE TYPE "FulfillmentMode" AS ENUM ('LOCAL', 'REMOTE');
 
@@ -33,3 +37,6 @@ ALTER TABLE "Task" ALTER COLUMN "status" SET DEFAULT 'DRAFT';
 -- The separated modes and the manual-selection rule replace these fields.
 ALTER TABLE "Task" DROP COLUMN "mode";
 ALTER TABLE "Task" DROP COLUMN "autoApprove";
+
+-- The old combined enum is no longer used.
+DROP TYPE "TaskMode";

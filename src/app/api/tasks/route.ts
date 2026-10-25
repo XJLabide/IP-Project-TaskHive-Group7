@@ -1,4 +1,4 @@
-import { created, ok, problem, requireCapability } from "@/lib/api/response";
+import { created, ok, problemWithCode, requireCapability } from "@/lib/api/response";
 import { tasks } from "@/lib/sample-data";
 import { taskFailureResponse } from "@/lib/tasks/http";
 import { createTask } from "@/lib/tasks/service";
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (gate.response) return gate.response;
 
   const parsed = createTaskSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return problem("Invalid task payload", 422);
+  if (!parsed.success) return problemWithCode("Invalid task payload", 422, "invalid_payload");
 
   const fields: TaskFields = {
     title: parsed.data.title,

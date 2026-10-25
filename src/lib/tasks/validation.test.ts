@@ -40,26 +40,53 @@ describe("task validation", () => {
     ).toEqual({});
   });
 
-  it("requires title, description, and a positive budget", () => {
-    const errors = validateTaskDraft({
-      ...localTask,
-      title: "A",
-      description: "too short",
-      budgetCents: 0,
-    });
+  it("saves an incomplete draft without requiring any field yet", () => {
+    expect(
+      validateTaskDraft({
+        ...localTask,
+        title: "",
+        description: "",
+        category: "",
+        budgetCents: 0,
+        locationLabel: null,
+      }),
+    ).toEqual({});
+  });
+
+  it("requires title, description, and a positive budget to publish", () => {
+    const errors = validateTaskForPublish(
+      {
+        ...localTask,
+        title: "A",
+        description: "too short",
+        budgetCents: 0,
+      },
+      now,
+    );
 
     expect(errors.title).toBeDefined();
     expect(errors.description).toBeDefined();
     expect(errors.budgetCents).toBeDefined();
   });
 
-  it("requires a service location for local tasks", () => {
-    expect(validateTaskDraft({ ...localTask, locationLabel: null }).locationLabel).toBeDefined();
+  it("allows a local draft without a location but requires one to publish", () => {
+    expect(validateTaskDraft({ ...localTask, locationLabel: null })).toEqual({});
+    expect(validateTaskForPublish({ ...localTask, locationLabel: null }, now).locationLabel)
+      .toBeDefined();
   });
 
-  it("rejects a service location on remote tasks", () => {
-    expect(validateTaskDraft({ ...remoteTask, locationLabel: "Some address" }).locationLabel)
-      .toBeDefined();
+  it("ignores a service location on remote tasks", () => {
+    expect(validateTaskDraft({ ...remoteTask, locationLabel: "Some address" })).toEqual({});
+    expect(
+      validateTaskForPublish(
+        {
+          ...remoteTask,
+          deadline: new Date("2026-11-01T17:00:00.000Z"),
+          locationLabel: "Some address",
+        },
+        now,
+      ),
+    ).toEqual({});
   });
 
   it("rejects an excluded or unapproved category", () => {

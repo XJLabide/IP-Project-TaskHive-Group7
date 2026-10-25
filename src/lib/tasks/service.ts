@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { publishJob } from "@/lib/queue/qstash";
 import {
   changedMaterialFields,
+  materialFieldLabels,
   transition,
   type TaskLifecycleStatus,
 } from "./lifecycle";
@@ -61,7 +62,7 @@ function toFields(task: TaskRecord): TaskFields {
   };
 }
 
-function toData(fields: TaskFields, categoryId: string) {
+function toData(fields: TaskFields, categoryId: string | null) {
   return {
     title: fields.title.trim(),
     description: fields.description.trim(),
@@ -75,9 +76,15 @@ function toData(fields: TaskFields, categoryId: string) {
   };
 }
 
-/** Resolves the allow-listed category row, or null when policy rejects it. */
+/**
+ * Resolves the allow-listed category row. An empty category is allowed while a
+ * task is a draft; a non-empty category that policy rejects returns null.
+ */
 async function categoryRow(fields: TaskFields): Promise<{ id: string } | null> {
-  const decision = categoryForFulfillment(fields.category, fields.fulfillmentMode);
+  const name = fields.category.trim();
+  if (!name) return null;
+
+  const decision = categoryForFulfillment(name, fields.fulfillmentMode);
   if (!decision.allowed) return null;
 
   return prisma.category.upsert({
@@ -136,17 +143,27 @@ export async function createTask(
   }
 
   const category = await categoryRow(fields);
-  if (!category) return invalidCategory();
+  if (fields.category.trim() && !category) return invalidCategory();
 
   const task = await prisma.task.create({
     data: {
       posterId,
-      ...toData(fields, category.id),
+      ...toData(fields, category?.id ?? null),
       status: publish ? toDbTaskStatus.open : toDbTaskStatus.draft,
       publishedAt: publish ? now : null,
     },
     select: { id: true, status: true },
   });
+
+  try {
+    await publishJob("notify.task.created", {
+      taskId: task.id,
+      title: fields.title,
+      userId: posterId,
+    });
+  } catch {
+    // The task is already saved; the notification job can be retried.
+  }
 
   return {
     ok: true,
@@ -170,16 +187,21 @@ export async function updateTask(
 
   const current = toFields(owned.task);
   const status = toDomainTaskStatus[owned.task.status];
+  const fulfillmentMode = patch.fulfillmentMode ?? current.fulfillmentMode;
   const next: TaskFields = {
     title: patch.title ?? current.title,
     description: patch.description ?? current.description,
     category: patch.category ?? current.category,
     budgetCents: patch.budgetCents ?? current.budgetCents,
     deadline: patch.deadline !== undefined ? patch.deadline : current.deadline,
-    fulfillmentMode: patch.fulfillmentMode ?? current.fulfillmentMode,
+    fulfillmentMode,
     hiringMode: patch.hiringMode ?? current.hiringMode,
     locationLabel:
-      patch.locationLabel !== undefined ? patch.locationLabel : current.locationLabel,
+      fulfillmentMode === "remote"
+        ? null
+        : patch.locationLabel !== undefined
+          ? patch.locationLabel
+          : current.locationLabel,
   };
 
   const now = new Date();
@@ -204,72 +226,105 @@ export async function updateTask(
   }
 
   const category = await categoryRow(next);
-  if (!category) return invalidCategory();
+  if (next.category.trim() && !category) return invalidCategory();
 
   const materialFields = changedMaterialFields(current, next);
-  const materialEdit = !publishing && status === "open" && materialFields.length > 0;
 
-  const edit = transition(status, {
-    type: "edit",
-    materialFields,
-    openApplications: materialEdit ? 1 : 0,
-  });
+  const edit = transition(status, { type: "edit", materialFields });
   if (!edit.ok) return edit;
 
-  const taskerIds = await prisma.$transaction(async (tx) => {
-    let affected: string[] = [];
+  const clears = edit.effects.some((effect) => effect.type === "clear_applications");
 
-    if (materialEdit) {
-      // Read and withdraw inside the transaction so an application that lands
-      // during the edit is cleared and notified too.
-      const [bids, requests] = await Promise.all([
-        tx.bid.findMany({
-          where: { taskId, status: "SUBMITTED" },
-          select: { taskerId: true },
-        }),
-        tx.taskRequest.findMany({
-          where: { taskId, status: "SUBMITTED" },
-          select: { taskerId: true },
-        }),
-      ]);
-      affected = [...new Set([...bids, ...requests].map((row) => row.taskerId))];
+  const outcome = await prisma.$transaction(
+    async (tx) => {
+      let affected: string[] = [];
 
-      await tx.bid.updateMany({
-        where: { taskId, status: "SUBMITTED" },
-        data: { status: "WITHDRAWN" },
+      // Re-check the status we read, so a concurrent publish/cancel cannot be
+      // overwritten by a stale edit.
+      const updated = await tx.task.updateMany({
+        where: { id: taskId, posterId, status: toDbTaskStatus[status] },
+        data: {
+          ...toData(next, category?.id ?? null),
+          ...(publishing
+            ? { status: toDbTaskStatus.open, publishedAt: now }
+            : {}),
+        },
       });
-      await tx.taskRequest.updateMany({
-        where: { taskId, status: "SUBMITTED" },
-        data: { status: "WITHDRAWN" },
+
+      if (updated.count === 0) return { raced: true as const, affected };
+
+      if (clears) {
+        const [bids, requests] = await Promise.all([
+          tx.bid.findMany({
+            where: { taskId, status: "SUBMITTED" },
+            select: { id: true, taskerId: true },
+          }),
+          tx.taskRequest.findMany({
+            where: { taskId, status: "SUBMITTED" },
+            select: { id: true, taskerId: true },
+          }),
+        ]);
+        affected = [
+          ...new Set([...bids, ...requests].map((row) => row.taskerId)),
+        ];
+
+        await tx.bid.updateMany({
+          where: { id: { in: bids.map((row) => row.id) }, status: "SUBMITTED" },
+          data: { status: "INVALIDATED" },
+        });
+        await tx.taskRequest.updateMany({
+          where: {
+            id: { in: requests.map((row) => row.id) },
+            status: "SUBMITTED",
+          },
+          data: { status: "INVALIDATED" },
+        });
+
+        if (affected.length > 0) {
+          const summary = materialFields
+            .map((field) => materialFieldLabels[field])
+            .join(", ");
+          await tx.notification.createMany({
+            data: affected.map((userId) => ({
+              userId,
+              type: "task.material_edit",
+              title: "A task you applied to changed",
+              body: `The Poster changed ${summary}. Your application was withdrawn.`,
+            })),
+          });
+        }
+      }
+
+      return { raced: false as const, affected };
+    },
+    { isolationLevel: "Serializable" },
+  );
+
+  if (outcome.raced) {
+    return {
+      ok: false,
+      code: "invalid_transition",
+      reason: "The task changed while you were editing it. Reload and try again.",
+    };
+  }
+
+  if (clears && outcome.affected.length > 0) {
+    try {
+      await publishJob("notify.task.material_edit", {
+        taskId,
+        taskerIds: outcome.affected,
+        fields: materialFields,
       });
+    } catch {
+      // The in-app notification is already committed; email delivery can retry.
     }
-
-    await tx.task.update({
-      where: { id: taskId },
-      data: {
-        ...toData(next, category.id),
-        ...(publishing
-          ? { status: toDbTaskStatus.open, publishedAt: now }
-          : {}),
-      },
-    });
-
-    return affected;
-  });
-
-  if (materialEdit && taskerIds.length > 0) {
-    await publishJob("notify.task.material_edit", {
-      taskId,
-      taskerIds,
-      fields: materialFields,
-    });
   }
 
   return {
     ok: true,
     taskId,
     status: publishing ? "open" : status,
-    clearedApplications: materialEdit ? taskerIds.length : 0,
+    clearedApplications: clears ? outcome.affected.length : 0,
   };
 }
 
@@ -285,13 +340,25 @@ export async function cancelTask(
   const cancelled = transition(status, { type: "cancel" });
   if (!cancelled.ok) return cancelled;
 
-  await prisma.task.update({
-    where: { id: taskId },
+  const updated = await prisma.task.updateMany({
+    where: {
+      id: taskId,
+      posterId,
+      status: toDbTaskStatus.open,
+    },
     data: {
       status: toDbTaskStatus.cancelled,
       cancelledAt: new Date(),
     },
   });
+
+  if (updated.count === 0) {
+    return {
+      ok: false,
+      code: "invalid_transition",
+      reason: "The task is no longer open, so it cannot be cancelled.",
+    };
+  }
 
   return { ok: true, taskId, status: "cancelled" };
 }
@@ -305,10 +372,24 @@ export async function deleteTask(
   if (!owned.ok) return owned;
 
   const status = toDomainTaskStatus[owned.task.status];
-  const deleted = transition(status, { type: "delete" });
-  if (!deleted.ok) return deleted;
+  const decision = transition(status, { type: "delete" });
+  if (!decision.ok) return decision;
 
-  await prisma.task.delete({ where: { id: taskId } });
+  const deleted = await prisma.task.deleteMany({
+    where: {
+      id: taskId,
+      posterId,
+      status: toDbTaskStatus.draft,
+    },
+  });
+
+  if (deleted.count === 0) {
+    return {
+      ok: false,
+      code: "invalid_transition",
+      reason: "Only a draft can be deleted.",
+    };
+  }
 
   return { ok: true, taskId, status: null };
 }

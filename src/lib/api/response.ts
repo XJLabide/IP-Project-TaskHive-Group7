@@ -23,7 +23,7 @@ export function statusForDenial(code: DenialCode): number {
   return denialStatus[code];
 }
 
-export function problemWithCode(message: string, status: number, code: DenialCode) {
+export function problemWithCode(message: string, status: number, code: string) {
   return NextResponse.json({ error: message, code }, { status });
 }
 

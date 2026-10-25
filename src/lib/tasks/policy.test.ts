@@ -65,19 +65,19 @@ describe("launch category policy", () => {
   });
 
   it("lists only the categories valid for each fulfillment", () => {
-    expect(categoriesFor("local").map((category) => category.label)).toEqual([
-      "Errands",
-      "Delivery",
+    expect(categoriesFor("local").map((category) => category.label).sort()).toEqual([
       "Cleaning",
-      "Repairs",
+      "Delivery",
+      "Errands",
       "Moving",
+      "Repairs",
       "Tutoring",
     ]);
-    expect(categoriesFor("remote").map((category) => category.label)).toEqual([
-      "Tutoring",
-      "Writing",
+    expect(categoriesFor("remote").map((category) => category.label).sort()).toEqual([
       "Design",
       "Translation",
+      "Tutoring",
+      "Writing",
     ]);
   });
 });

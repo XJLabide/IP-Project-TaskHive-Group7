@@ -30,11 +30,62 @@ function readDeadline(value: Date | string | null): Deadline {
 }
 
 /**
- * Checks the fields every task needs, plus the fields its fulfillment mode
- * requires. A draft may leave its deadline open; publishing is stricter.
+ * Checks the fields that are present. A draft may be incomplete: an empty
+ * title, description, price, category, or local location is allowed until the
+ * Poster publishes. Values that are present must still be valid.
  */
 export function validateTaskDraft(input: TaskFields): TaskFieldErrors {
   const errors: TaskFieldErrors = {};
+
+  const title = input.title.trim();
+  if (title.length > 0 && title.length < 3) {
+    errors.title = "Enter a title with at least 3 characters.";
+  }
+
+  const description = input.description.trim();
+  if (description.length > 0 && description.length < 10) {
+    errors.description = "Add a description with at least 10 characters.";
+  }
+
+  if (!Number.isInteger(input.budgetCents) || input.budgetCents < 0) {
+    errors.budgetCents = "Enter a price of zero or more.";
+  }
+
+  if (!fulfillmentModes.includes(input.fulfillmentMode)) {
+    errors.fulfillmentMode = "Choose local or remote fulfillment.";
+  }
+
+  if (!hiringModes.includes(input.hiringMode)) {
+    errors.hiringMode = "Choose bidding or fixed-price hiring.";
+  }
+
+  if (fulfillmentModes.includes(input.fulfillmentMode)) {
+    const category = input.category.trim();
+    if (category.length > 0) {
+      const decision = categoryForFulfillment(category, input.fulfillmentMode);
+      if (!decision.allowed) errors.category = decision.reason;
+    }
+
+    const location = input.locationLabel?.trim() ?? "";
+    if (
+      input.fulfillmentMode === "local" &&
+      location.length > 0 &&
+      location.length < 2
+    ) {
+      errors.locationLabel = "Enter a service location.";
+    }
+  }
+
+  if (readDeadline(input.deadline) === "invalid") {
+    errors.deadline = "Enter a valid deadline.";
+  }
+
+  return errors;
+}
+
+/** Publishing adds the completeness and future-deadline requirements. */
+export function validateTaskForPublish(input: TaskFields, now: Date): TaskFieldErrors {
+  const errors = validateTaskDraft(input);
 
   if (input.title.trim().length < 3) {
     errors.title = "Enter a title with at least 3 characters.";
@@ -48,37 +99,16 @@ export function validateTaskDraft(input: TaskFields): TaskFieldErrors {
     errors.budgetCents = "Enter a price greater than zero.";
   }
 
-  if (!fulfillmentModes.includes(input.fulfillmentMode)) {
-    errors.fulfillmentMode = "Choose local or remote fulfillment.";
+  if (input.category.trim().length === 0) {
+    errors.category = "Choose a launch-approved category.";
   }
 
-  if (!hiringModes.includes(input.hiringMode)) {
-    errors.hiringMode = "Choose bidding or fixed-price hiring.";
+  if (
+    input.fulfillmentMode === "local" &&
+    (input.locationLabel?.trim() ?? "").length < 2
+  ) {
+    errors.locationLabel = "Local tasks need a service location.";
   }
-
-  if (fulfillmentModes.includes(input.fulfillmentMode)) {
-    const category = categoryForFulfillment(input.category, input.fulfillmentMode);
-    if (!category.allowed) errors.category = category.reason;
-
-    const location = input.locationLabel?.trim() ?? "";
-    if (input.fulfillmentMode === "local" && location.length < 2) {
-      errors.locationLabel = "Local tasks need a service location.";
-    }
-    if (input.fulfillmentMode === "remote" && location.length > 0) {
-      errors.locationLabel = "Remote tasks do not use a service location.";
-    }
-  }
-
-  if (readDeadline(input.deadline) === "invalid") {
-    errors.deadline = "Enter a valid deadline.";
-  }
-
-  return errors;
-}
-
-/** Publishing adds the deadline requirement on top of the draft checks. */
-export function validateTaskForPublish(input: TaskFields, now: Date): TaskFieldErrors {
-  const errors = validateTaskDraft(input);
 
   if (!errors.deadline) {
     const deadline = readDeadline(input.deadline);
