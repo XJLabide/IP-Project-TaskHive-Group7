@@ -2,36 +2,31 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { tasks as sampleTasks } from "@/lib/sample-data";
+import type { TaskSummary, TaskWriteResult } from "@/lib/tasks/types";
+import {
+  applyCancelTask,
+  applyCreateTask,
+  applyDeleteTask,
+  applyUpdateTask,
+} from "@/lib/tasks/ui-store";
+import type { TaskFields } from "@/lib/tasks/validation";
 
-export type Task = {
-  id: string;
-  title: string;
-  category: string;
-  mode: string;
-  status: string;
-  budget: number;
-  distance: string;
-  location: string;
-  deadline: string;
-  poster: string;
-  description: string;
-  bids: number;
-};
-
-export type NewTask = Pick<
-  Task,
-  "title" | "category" | "mode" | "budget" | "location" | "deadline" | "description"
->;
+export type Task = TaskSummary;
 
 type TaskStore = {
   tasks: Task[];
   ready: boolean;
-  createTask: (input: NewTask) => string;
-  updateTask: (id: string, input: NewTask) => void;
-  deleteTask: (id: string) => void;
+  createTask: (fields: TaskFields, publish: boolean) => TaskWriteResult;
+  updateTask: (
+    id: string,
+    fields: TaskFields,
+    options?: { publish?: boolean },
+  ) => TaskWriteResult;
+  cancelTask: (id: string) => TaskWriteResult;
+  deleteTask: (id: string) => TaskWriteResult;
 };
 
-const storageKey = "taskhive.mock-tasks.v1";
+const storageKey = "taskhive.mock-tasks.v2";
 let tasksSnapshot: Task[] = sampleTasks;
 let initialized = false;
 const listeners = new Set<() => void>();
@@ -88,35 +83,52 @@ function notify() {
   listeners.forEach((listener) => listener());
 }
 
-function createTask(input: NewTask) {
+function createTask(fields: TaskFields, publish: boolean): TaskWriteResult {
   const id = `task_${crypto.randomUUID()}`;
-  tasksSnapshot = [
-    {
-      ...input,
-      id,
-      status: "Open",
-      distance: "Not set",
-      poster: "Ana Reyes",
-      bids: 0,
-    },
-    ...tasksSnapshot,
-  ];
+  const outcome = applyCreateTask(tasksSnapshot, fields, publish, { id });
+
+  if (!outcome.result.ok) return outcome.result;
+  tasksSnapshot = outcome.tasks;
   notify();
-  return id;
+  return outcome.result;
 }
 
-function updateTask(id: string, input: NewTask) {
-  tasksSnapshot = tasksSnapshot.map((task) => (task.id === id ? { ...task, ...input } : task));
+function updateTask(
+  id: string,
+  fields: TaskFields,
+  options: { publish?: boolean } = {},
+): TaskWriteResult {
+  const outcome = applyUpdateTask(tasksSnapshot, id, fields, options);
+
+  if (!outcome.result.ok) return outcome.result;
+  tasksSnapshot = outcome.tasks;
   notify();
+  return outcome.result;
 }
 
-function deleteTask(id: string) {
-  tasksSnapshot = tasksSnapshot.filter((task) => task.id !== id);
+function cancelTask(id: string): TaskWriteResult {
+  const outcome = applyCancelTask(tasksSnapshot, id);
+
+  if (!outcome.result.ok) return outcome.result;
+  tasksSnapshot = outcome.tasks;
   notify();
+  return outcome.result;
+}
+
+function deleteTask(id: string): TaskWriteResult {
+  const outcome = applyDeleteTask(tasksSnapshot, id);
+
+  if (!outcome.result.ok) return outcome.result;
+  tasksSnapshot = outcome.tasks;
+  notify();
+  return outcome.result;
 }
 
 export function useMockTasks(): TaskStore {
   const tasks = useSyncExternalStore(subscribe, getTasksSnapshot, getServerTasksSnapshot);
   const ready = useSyncExternalStore(subscribe, getReadySnapshot, getServerReadySnapshot);
-  return useMemo(() => ({ tasks, ready, createTask, updateTask, deleteTask }), [tasks, ready]);
+  return useMemo(
+    () => ({ tasks, ready, createTask, updateTask, cancelTask, deleteTask }),
+    [tasks, ready],
+  );
 }

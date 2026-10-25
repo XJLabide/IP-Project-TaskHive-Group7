@@ -13,9 +13,10 @@ const categories = ["All tasks", "Delivery", "Cleaning", "Tutoring"];
 export default function DashboardPage() {
   const { tasks, ready } = useMockTasks();
   const [selectedCategory, setSelectedCategory] = useState("All tasks");
+  const openTasks = tasks.filter((task) => task.status === "open");
   const visibleTasks = selectedCategory === "All tasks"
-    ? tasks
-    : tasks.filter((task) => task.category === selectedCategory);
+    ? openTasks
+    : openTasks.filter((task) => task.category === selectedCategory);
 
   return <AppShell title="Dashboard" description="Tasks and local work in your area.">
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-8 sm:px-9 sm:py-10 dark:border-zinc-800 dark:bg-zinc-950">

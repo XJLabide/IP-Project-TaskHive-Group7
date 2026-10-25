@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks } from "@/lib/mock-task-store";
 import { useViewer } from "@/components/viewer/viewer-provider";
+import { launchCategories } from "@/lib/tasks/policy";
 
-const quickFilters = ["All", "Open", "Bidding", "Fixed price", "Within 3 km"] as const;
+const quickFilters = ["All", "Local", "Remote", "Bidding", "Fixed price", "Within 3 km"] as const;
 type QuickFilter = (typeof quickFilters)[number];
 type SortOrder = "recommended" | "nearest" | "budget-asc" | "budget-desc";
 const selectClass = "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:focus:border-[#FFD50D]";
@@ -31,26 +32,33 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
   const [distance, setDistance] = useState("Any distance");
   const [sortOrder, setSortOrder] = useState<SortOrder>("recommended");
 
+  const publicTasks = useMemo(() => tasks.filter((task) => task.status === "open"), [tasks]);
+  const managedTasks = useMemo(
+    () => tasks.filter((task) => task.status !== "open"),
+    [tasks],
+  );
+
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matches = tasks.filter((task) => {
+    const matches = publicTasks.filter((task) => {
       const taskDistance = Number.parseFloat(task.distance);
-      const matchesSearch = !query || [task.title, task.description, task.category, task.location]
+      const matchesSearch = !query || [task.title, task.description, task.category, task.location ?? "remote"]
         .some((value) => value.toLowerCase().includes(query));
       const matchesQuick = quickFilter === "All" ||
-        (quickFilter === "Open" && task.status === "Open") ||
-        (quickFilter === "Bidding" && task.mode.toLowerCase().includes("bidding")) ||
-        (quickFilter === "Fixed price" && task.mode.toLowerCase().includes("fixed price")) ||
-        (quickFilter === "Within 3 km" && Number.isFinite(taskDistance) && taskDistance <= 3);
+        (quickFilter === "Local" && task.fulfillmentMode === "local") ||
+        (quickFilter === "Remote" && task.fulfillmentMode === "remote") ||
+        (quickFilter === "Bidding" && task.hiringMode === "bidding") ||
+        (quickFilter === "Fixed price" && task.hiringMode === "fixed_price") ||
+        (quickFilter === "Within 3 km" && task.fulfillmentMode === "local" && Number.isFinite(taskDistance) && taskDistance <= 3);
       const matchesCategory = category === "All categories" || category === "All tasks" || task.category === category;
       const matchesBudget = budget === "Any budget" ||
         (budget === "Under PHP 500" && task.budget < 500) ||
         (budget === "PHP 500 to 1,000" && task.budget >= 500 && task.budget <= 1000) ||
         (budget === "PHP 1,000+" && task.budget > 1000);
       const matchesDistance = distance === "Any distance" ||
-        (distance === "Within 3 km" && Number.isFinite(taskDistance) && taskDistance <= 3) ||
-        (distance === "Within 5 km" && Number.isFinite(taskDistance) && taskDistance <= 5) ||
-        (distance === "Within 10 km" && Number.isFinite(taskDistance) && taskDistance <= 10);
+        (task.fulfillmentMode === "local" && distance === "Within 3 km" && Number.isFinite(taskDistance) && taskDistance <= 3) ||
+        (task.fulfillmentMode === "local" && distance === "Within 5 km" && Number.isFinite(taskDistance) && taskDistance <= 5) ||
+        (task.fulfillmentMode === "local" && distance === "Within 10 km" && Number.isFinite(taskDistance) && taskDistance <= 10);
 
       return matchesSearch && matchesQuick && matchesCategory && matchesBudget && matchesDistance;
     });
@@ -64,7 +72,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
     if (sortOrder === "budget-asc") return matches.sort((a, b) => a.budget - b.budget);
     if (sortOrder === "budget-desc") return matches.sort((a, b) => b.budget - a.budget);
     return matches;
-  }, [budget, category, distance, quickFilter, search, sortOrder, tasks]);
+  }, [budget, category, distance, publicTasks, quickFilter, search, sortOrder]);
 
   const activeFilterCount = [
     search.trim().length > 0,
@@ -83,7 +91,11 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
     if (initialSearch || initialCategory) router.replace("/tasks");
   }
 
-  const allCategories = [...new Set([initialCategory, ...tasks.map((task) => task.category)].filter(Boolean))].sort();
+  const allCategories = [...new Set([
+    initialCategory,
+    ...launchCategories.map((category) => category.label),
+    ...tasks.map((task) => task.category),
+  ].filter(Boolean))].sort();
 
   return (
     <Shell title="Browse Tasks" description="Find nearby errands by category, budget, status, and distance.">
@@ -157,9 +169,9 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
         <section>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Local opportunities</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Public opportunities</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight">Available tasks</h2>
-              <p aria-live="polite" className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{ready ? `Showing ${filteredTasks.length} of ${tasks.length} tasks` : "Loading this browser session’s tasks…"}</p>
+              <p aria-live="polite" className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{ready ? `Showing ${filteredTasks.length} of ${publicTasks.length} public tasks` : "Loading this browser session’s tasks…"}</p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="grid gap-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Sort by
@@ -189,6 +201,26 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
           </div>
         </CardContent></Card></aside>
       </div>
+
+      {ready && viewer.signedIn && managedTasks.length > 0 ? (
+        <section className="mt-10">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Your workspace</p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight">Drafts and cancelled tasks</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Saved in this browser session. Drafts are never shown in public browsing.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/tasks/new">Create task</Link>
+            </Button>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {managedTasks.map((task) => <TaskCard key={task.id} task={task} />)}
+          </div>
+        </section>
+      ) : null}
     </Shell>
   );
 }
