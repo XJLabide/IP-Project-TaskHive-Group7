@@ -27,7 +27,7 @@ The first production release must complete the core marketplace loop—discover,
 ### 2.1 In scope for the first production release
 
 - Public browsing of tasks and marketplace information.
-- Account creation, sign-in, verified email and phone, 18+ attestation, and a basic profile.
+- Account creation, sign-in, verified email, 18+ attestation, and a basic profile.
 - A single account that can post and task, with Tasker identity verification before assignment.
 - Local tasks across the Philippines and curated remote tasks.
 - Separate fulfillment mode (local or remote) and hiring mode (bidding or fixed-price).
@@ -55,7 +55,7 @@ Native mobile apps, multiple Taskers per task, advanced analytics, category mana
 | User | Capabilities and restrictions |
 | --- | --- |
 | Guest | Browse public tasks and platform information; may register or sign in. Cannot chat, apply, post, or access private account pages. |
-| Registered participant | One account may be Poster and Tasker. Before posting or applying: name, verified email, verified phone, and 18+ attestation. |
+| Registered participant | One account may be Poster and Tasker. Before posting or applying: name, verified email, and 18+ attestation. A phone number is optional contact information and is not verified through TaskHive. |
 | Poster | Create and manage own tasks, review applications, manually select one Tasker, pay at hire, confirm completion, request cancellation, report, dispute, and review. |
 | Tasker (pending verification) | Browse and submit bids or fixed-price requests. Applications are marked pending verification and cannot be approved. |
 | Identity-verified Tasker | May be assigned, perform work, submit completion evidence, request cancellation, report, dispute, and review. Multiple active assignments are allowed; there is no platform hard limit. |
@@ -108,7 +108,7 @@ Either party may request cancellation after hire. Work and payout pause while Ad
 - **FR-001** The system shall allow a guest to browse public task listings and public task details.
 - **FR-002** The system shall support account creation and sign-in.
 - **FR-003** One account shall be able to act as Poster and Tasker.
-- **FR-004** Before posting or applying, a participant shall have a name, verified email, verified phone, and 18+ attestation.
+- **FR-004** Before posting or applying, a participant shall have a name, verified email, and 18+ attestation. Phone verification is not required because TaskHive does not send SMS.
 - **FR-005** The system shall require Tasker identity verification before assignment, while permitting pending Taskers to browse, bid, and request tasks.
 - **FR-006** The system shall store verification status/reference, not identity-document images, as the platform’s verification record.
 - **FR-007** The system shall allow one Admin appeal after verification rejection and support exception review.

@@ -11,7 +11,6 @@ export type MarketplaceActor = {
   signedIn: boolean;
   name: string | null;
   emailVerified: boolean;
-  phoneVerified: boolean;
   ageAttested: boolean;
   verification: TaskerVerificationStatus;
   appealCount: number;

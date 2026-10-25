@@ -17,7 +17,7 @@ Before posting or applying:
 ```text
 Create account / Sign in
   -> Enter name and contact details
-  -> Verify email and phone
+  -> Verify email
   -> Attest age 18+
   -> Basic profile complete
   -> Enter marketplace dashboard

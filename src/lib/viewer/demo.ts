@@ -16,7 +16,6 @@ export type PreviewKind = (typeof previewKinds)[number];
 const complete = {
   name: "Ana Reyes",
   emailVerified: true,
-  phoneVerified: true,
   ageAttested: true,
 } as const;
 
@@ -26,7 +25,6 @@ function actor(overrides: Partial<MarketplaceActor>): MarketplaceActor {
     signedIn: true,
     name: complete.name,
     emailVerified: complete.emailVerified,
-    phoneVerified: complete.phoneVerified,
     ageAttested: complete.ageAttested,
     verification: "pending",
     appealCount: 0,
@@ -40,7 +38,6 @@ const demoActors: Record<PreviewKind, MarketplaceActor | null> = {
   incomplete: actor({
     name: "Ana Reyes",
     emailVerified: true,
-    phoneVerified: false,
     ageAttested: false,
     verification: "not_started",
   }),

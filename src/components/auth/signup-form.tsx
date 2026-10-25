@@ -62,7 +62,10 @@ export function SignupForm() {
       const profileResponse = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone: form.phone.trim(), ageAttested: true }),
+        body: JSON.stringify({
+          ageAttested: true,
+          ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+        }),
       });
       if (!profileResponse.ok) {
         throw new Error("Your account was created, but profile setup did not finish. Complete it on your profile page.");
@@ -100,7 +103,10 @@ export function SignupForm() {
       const profileResponse = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone: form.phone.trim(), ageAttested: true }),
+        body: JSON.stringify({
+          ageAttested: true,
+          ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+        }),
       });
       if (!profileResponse.ok) throw new Error("Profile setup did not finish.");
       router.push("/profile");

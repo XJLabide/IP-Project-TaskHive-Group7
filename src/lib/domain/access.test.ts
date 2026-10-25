@@ -9,7 +9,6 @@ function denial(decision: AccessDecision) {
 const completeProfile = {
   name: "Ana Reyes",
   emailVerified: true,
-  phoneVerified: true,
   ageAttested: true,
 };
 
@@ -129,7 +128,6 @@ describe("marketplace access gates", () => {
     const incomplete = actor({
       name: null,
       emailVerified: false,
-      phoneVerified: false,
       ageAttested: false,
       verification: "not_started",
     });
