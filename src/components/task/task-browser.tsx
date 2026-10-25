@@ -187,7 +187,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
                   <option value="budget-desc">Highest budget</option>
                 </select>
               </label>
-              <Button asChild className="shrink-0" size="sm">{viewer.canPost ? <Link href="/tasks/new">Create task</Link> : <Link href="/login">Sign in to post</Link>}</Button>
+              <Button asChild className="shrink-0" size="sm">{viewer.canPost ? <Link href="/tasks/new">Create task</Link> : viewer.signedIn ? <Link href="/profile">Complete profile to post</Link> : <Link href="/login">Sign in to post</Link>}</Button>
             </div>
           </div>
           <div className="mt-5 grid gap-4">
