@@ -5,7 +5,7 @@ const taskFieldsSchema = z.object({
   description: z.string(),
   category: z.string(),
   budgetCents: z.number(),
-  deadline: z.coerce.date().nullable().optional(),
+  deadline: z.union([z.string(), z.date()]).nullable().optional(),
   fulfillmentMode: z.enum(["local", "remote"]),
   hiringMode: z.enum(["bidding", "fixed_price"]),
   locationLabel: z.string().nullable().optional(),
