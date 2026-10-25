@@ -62,6 +62,7 @@ TaskHive/
       integrations/
       mongo/
       queue/
+      tasks/
       prisma.ts
       validation.ts
     types/
@@ -76,6 +77,8 @@ Route Handlers expose the custom API:
 - `/api/profiles/:id`
 - `/api/tasks`
 - `/api/tasks/:id`
+- `/api/tasks/:id/publish`
+- `/api/tasks/:id/cancel`
 - `/api/tasks/:id/bids`
 - `/api/tasks/:id/requests`
 - `/api/tasks/:id/hire`

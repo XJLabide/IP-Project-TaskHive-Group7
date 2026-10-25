@@ -1,6 +1,8 @@
-import { created, ok, problem, requireCapability } from "@/lib/api/response";
+import { created, ok, problemWithCode, requireCapability } from "@/lib/api/response";
 import { tasks } from "@/lib/sample-data";
-import { publishJob } from "@/lib/queue/qstash";
+import { taskFailureResponse } from "@/lib/tasks/http";
+import { createTask } from "@/lib/tasks/service";
+import type { TaskFields } from "@/lib/tasks/validation";
 import { createTaskSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -20,20 +22,23 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const gate = await requireCapability(request, "post_task");
   if (gate.response) return gate.response;
-  const actor = gate.actor;
 
-  const parsed = createTaskSchema.safeParse(await request.json());
-  if (!parsed.success) return problem("Invalid task payload", 422);
+  const parsed = createTaskSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return problemWithCode("Invalid task payload", 422, "invalid_payload");
 
-  await publishJob("notify.task.created", {
+  const fields: TaskFields = {
     title: parsed.data.title,
-    userId: actor.id,
-  });
+    description: parsed.data.description,
+    category: parsed.data.category,
+    budgetCents: parsed.data.budgetCents,
+    deadline: parsed.data.deadline ?? null,
+    fulfillmentMode: parsed.data.fulfillmentMode,
+    hiringMode: parsed.data.hiringMode,
+    locationLabel: parsed.data.locationLabel ?? null,
+  };
 
-  return created({
-    id: "task_created_demo",
-    ...parsed.data,
-    status: "OPEN",
-    posterId: actor.id,
-  });
+  const result = await createTask(gate.actor.id, fields, parsed.data.publish);
+  if (!result.ok) return taskFailureResponse(result);
+
+  return created({ id: result.taskId, status: result.status });
 }

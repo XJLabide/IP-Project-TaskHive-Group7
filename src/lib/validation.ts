@@ -1,14 +1,23 @@
 import { z } from "zod";
 
-export const createTaskSchema = z.object({
-  title: z.string().min(3),
-  description: z.string().min(10),
-  category: z.string().min(2),
-  budgetCents: z.number().int().positive(),
-  deadline: z.string().optional(),
-  locationLabel: z.string().min(2),
-  mode: z.enum(["BIDDING", "FIXED_PRICE_MANUAL", "FIXED_PRICE_AUTO"]),
-  autoApprove: z.boolean().default(false),
+const taskFieldsSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  category: z.string(),
+  budgetCents: z.number(),
+  deadline: z.union([z.string(), z.date()]).nullable().optional(),
+  fulfillmentMode: z.enum(["local", "remote"]),
+  hiringMode: z.enum(["bidding", "fixed_price"]),
+  locationLabel: z.string().nullable().optional(),
+});
+
+/** A normal create request publishes; `publish: false` saves a draft. */
+export const createTaskSchema = taskFieldsSchema.extend({
+  publish: z.boolean().default(true),
+});
+
+export const updateTaskSchema = taskFieldsSchema.partial().extend({
+  publish: z.boolean().optional(),
 });
 
 export const bidSchema = z.object({
