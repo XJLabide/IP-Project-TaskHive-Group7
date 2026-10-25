@@ -3,17 +3,7 @@ import { ArrowRight, Clock, Globe2, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Task } from "@/lib/mock-task-store";
-import { formatTaskDeadline, taskStatusLabel } from "@/lib/tasks/ui";
-
-const statusClass = (status: Task["status"]) => {
-  if (status === "open") {
-    return "border-[#75D333]/40 bg-[#75D333]/15 text-[#2f6b12] dark:text-[#75D333]";
-  }
-  if (status === "draft") {
-    return "border-[#FFC800]/40 bg-[#FFD50D]/25 text-zinc-800 dark:bg-[#FFC800]/15 dark:text-zinc-100";
-  }
-  return "border-[#F04452]/40 bg-[#F04452]/10 text-[#a01a26] dark:text-[#F04452]";
-};
+import { formatTaskDeadline, taskStatusClass, taskStatusLabel } from "@/lib/tasks/ui";
 
 export function TaskCard({ task }: { task: Task }) {
   return (
@@ -26,7 +16,7 @@ export function TaskCard({ task }: { task: Task }) {
           <Badge>{task.fulfillmentMode === "local" ? "Local" : "Remote"}</Badge>
           <Badge>{task.hiringMode === "bidding" ? "Bidding" : "Fixed price"}</Badge>
         </div>
-        <Badge className={statusClass(task.status)}>{taskStatusLabel(task.status)}</Badge>
+        <Badge className={taskStatusClass(task.status)}>{taskStatusLabel(task.status)}</Badge>
       </div>
 
       <Link
@@ -47,7 +37,7 @@ export function TaskCard({ task }: { task: Task }) {
             <Globe2 className="h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />
           )}
           {task.fulfillmentMode === "local"
-            ? `${task.location ?? "Service area not set"}${task.distance !== "Not set" ? ` · ${task.distance}` : ""}`
+            ? `Approx. ${task.location ?? "service area not set"}${task.distance !== "Not set" ? ` · ${task.distance}` : ""}`
             : "Completed online"}
         </span>
         <span className="flex items-center gap-1.5">

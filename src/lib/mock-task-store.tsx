@@ -16,7 +16,11 @@ export type Task = TaskSummary;
 type TaskStore = {
   tasks: Task[];
   ready: boolean;
-  createTask: (fields: TaskFields, publish: boolean) => TaskWriteResult;
+  createTask: (
+    fields: TaskFields,
+    publish: boolean,
+    options?: { poster?: string },
+  ) => TaskWriteResult;
   updateTask: (
     id: string,
     fields: TaskFields,
@@ -83,9 +87,16 @@ function notify() {
   listeners.forEach((listener) => listener());
 }
 
-function createTask(fields: TaskFields, publish: boolean): TaskWriteResult {
+function createTask(
+  fields: TaskFields,
+  publish: boolean,
+  options: { poster?: string } = {},
+): TaskWriteResult {
   const id = `task_${crypto.randomUUID()}`;
-  const outcome = applyCreateTask(tasksSnapshot, fields, publish, { id });
+  const outcome = applyCreateTask(tasksSnapshot, fields, publish, {
+    id,
+    poster: options.poster,
+  });
 
   if (!outcome.result.ok) return outcome.result;
   tasksSnapshot = outcome.tasks;

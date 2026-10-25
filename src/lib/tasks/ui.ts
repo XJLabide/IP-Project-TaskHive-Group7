@@ -16,6 +16,7 @@ import {
   type TaskFields,
 } from "./validation";
 import type { TaskFormSource, UiTaskStatus } from "./types";
+import type { TaskField } from "./validation";
 
 export type TaskFormValues = {
   title: string;
@@ -27,6 +28,27 @@ export type TaskFormValues = {
   location: string;
   deadline: string;
 };
+
+export const taskFieldLabels: Record<TaskField, string> = {
+  title: "Title",
+  description: "Description",
+  category: "Category",
+  budgetCents: "Price",
+  deadline: "Deadline",
+  fulfillmentMode: "Fulfillment",
+  hiringMode: "Hiring",
+  locationLabel: "Approximate area",
+};
+
+export function taskStatusClass(status: UiTaskStatus): string {
+  if (status === "open") {
+    return "border-[#75D333]/40 bg-[#75D333]/15 text-[#2f6b12] dark:text-[#75D333]";
+  }
+  if (status === "draft") {
+    return "border-[#FFC800]/40 bg-[#FFD50D]/25 text-zinc-800 dark:bg-[#FFC800]/15 dark:text-zinc-100";
+  }
+  return "border-[#F04452]/40 bg-[#F04452]/10 text-[#a01a26] dark:text-[#F04452]";
+}
 
 const manilaOffsetMs = 8 * 60 * 60 * 1000;
 

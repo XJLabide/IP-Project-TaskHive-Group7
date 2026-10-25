@@ -15,11 +15,13 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks, type Task } from "@/lib/mock-task-store";
+import { useViewer } from "@/components/viewer/viewer-provider";
 import type { FulfillmentMode, HiringMode } from "@/lib/tasks/policy";
 import {
   categoryOptions,
   emptyTaskForm,
   materialEditNotice,
+  taskFieldLabels,
   taskFormErrors,
   toTaskFields,
   toTaskFormValues,
@@ -65,17 +67,6 @@ const hiringOptions: Array<{
     detail: "Taskers request the price you set.",
   },
 ];
-
-const fieldLabels: Record<keyof TaskFieldErrors, string> = {
-  title: "Title",
-  description: "Description",
-  category: "Category",
-  budgetCents: "Price",
-  deadline: "Deadline",
-  fulfillmentMode: "Fulfillment",
-  hiringMode: "Hiring",
-  locationLabel: "Service location",
-};
 
 export function TaskForm({ mode, taskId }: { mode: "create" | "edit"; taskId?: string }) {
   const { tasks, ready } = useMockTasks();
@@ -140,6 +131,7 @@ function TaskFormFields({
   taskId?: string;
 }) {
   const router = useRouter();
+  const { viewer } = useViewer();
   const { createTask, updateTask } = useMockTasks();
   const [form, setForm] = useState<TaskFormValues>(() =>
     task ? toTaskFormValues(task) : emptyTaskForm(),
@@ -201,7 +193,9 @@ function TaskFormFields({
     const result =
       mode === "edit" && taskId
         ? updateTask(taskId, toTaskFields(form), { publish })
-        : createTask(toTaskFields(form), publish);
+        : createTask(toTaskFields(form), publish, {
+            poster: viewer.displayName ?? "You",
+          });
 
     if (!result.ok) {
       setSaving(false);
@@ -285,7 +279,7 @@ function TaskFormFields({
                     const selected = form.fulfillmentMode === option.value;
                     return (
                       <label
-                        className={`cursor-pointer rounded-xl border p-4 transition-colors ${selected ? "border-[#FFC800] bg-[#FFD50D]/15 dark:bg-[#FFC800]/10" : "border-zinc-200 hover:border-[#D19300] dark:border-zinc-700 dark:hover:border-[#FFD50D]"}`}
+                        className={`cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-[#FFD50D] ${selected ? "border-[#FFC800] bg-[#FFD50D]/15 dark:bg-[#FFC800]/10" : "border-zinc-200 hover:border-[#D19300] dark:border-zinc-700 dark:hover:border-[#FFD50D]"}`}
                         key={option.value}
                       >
                         <input
@@ -316,7 +310,7 @@ function TaskFormFields({
                     const selected = form.hiringMode === option.value;
                     return (
                       <label
-                        className={`cursor-pointer rounded-xl border p-4 transition-colors ${selected ? "border-[#FFC800] bg-[#FFD50D]/15 dark:bg-[#FFC800]/10" : "border-zinc-200 hover:border-[#D19300] dark:border-zinc-700 dark:hover:border-[#FFD50D]"}`}
+                        className={`cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-[#FFD50D] ${selected ? "border-[#FFC800] bg-[#FFD50D]/15 dark:bg-[#FFC800]/10" : "border-zinc-200 hover:border-[#D19300] dark:border-zinc-700 dark:hover:border-[#FFD50D]"}`}
                         key={option.value}
                       >
                         <input
@@ -343,6 +337,7 @@ function TaskFormFields({
                   <label className="grid gap-2 text-sm font-semibold">
                     Task title
                     <input
+                      aria-describedby={errors.title ? "task-title-error" : undefined}
                       aria-invalid={errors.title ? true : undefined}
                       autoComplete="off"
                       className={inputClass}
@@ -351,11 +346,12 @@ function TaskFormFields({
                       placeholder="Pick up groceries"
                       value={form.title}
                     />
-                    {errors.title ? <FieldError message={errors.title} /> : null}
+                    {errors.title ? <FieldError id="task-title-error" message={errors.title} /> : null}
                   </label>
                   <label className="grid gap-2 text-sm font-semibold">
                     Category
                     <select
+                      aria-describedby={errors.category ? "task-category-error" : undefined}
                       aria-invalid={errors.category ? true : undefined}
                       className={inputClass}
                       onChange={(event) => updateField("category", event.target.value)}
@@ -366,11 +362,12 @@ function TaskFormFields({
                         <option key={category.label}>{category.label}</option>
                       ))}
                     </select>
-                    {errors.category ? <FieldError message={errors.category} /> : null}
+                    {errors.category ? <FieldError id="task-category-error" message={errors.category} /> : null}
                   </label>
                   <label className="grid gap-2 text-sm font-semibold">
                     {form.hiringMode === "bidding" ? "Budget (PHP)" : "Price (PHP)"}
                     <input
+                      aria-describedby={errors.budgetCents ? "task-budget-error" : undefined}
                       aria-invalid={errors.budgetCents ? true : undefined}
                       className={inputClass}
                       inputMode="decimal"
@@ -381,27 +378,31 @@ function TaskFormFields({
                       type="number"
                       value={form.budget}
                     />
-                    {errors.budgetCents ? <FieldError message={errors.budgetCents} /> : null}
+                    {errors.budgetCents ? <FieldError id="task-budget-error" message={errors.budgetCents} /> : null}
                   </label>
                   <label className="grid gap-2 text-sm font-semibold">
                     Deadline {isDraft ? "(required to publish, Philippines time)" : "(Philippines time)"}
                     <input
+                      aria-describedby={errors.deadline ? "task-deadline-error" : undefined}
                       aria-invalid={errors.deadline ? true : undefined}
                       className={inputClass}
                       onChange={(event) => updateField("deadline", event.target.value)}
                       type="datetime-local"
                       value={form.deadline}
                     />
-                    {errors.deadline ? <FieldError message={errors.deadline} /> : null}
+                    {errors.deadline ? <FieldError id="task-deadline-error" message={errors.deadline} /> : null}
                   </label>
                 </div>
 
                 {form.fulfillmentMode === "local" ? (
                   <label className="grid gap-2 text-sm font-semibold">
-                    Service location
+                    Approximate area
                     <span className={`${inputClass} flex items-center gap-2 text-zinc-400`}>
                       <MapPin className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" />
                       <input
+                        aria-describedby={
+                          errors.locationLabel ? "task-location-error" : "task-location-help"
+                        }
                         aria-invalid={errors.locationLabel ? true : undefined}
                         className="min-w-0 flex-1 bg-transparent text-zinc-950 outline-none dark:text-zinc-100"
                         onChange={(event) => updateField("location", event.target.value)}
@@ -409,7 +410,16 @@ function TaskFormFields({
                         value={form.location}
                       />
                     </span>
-                    {errors.locationLabel ? <FieldError message={errors.locationLabel} /> : null}
+                    {errors.locationLabel ? (
+                      <FieldError id="task-location-error" message={errors.locationLabel} />
+                    ) : (
+                      <span
+                        className="text-xs font-normal text-zinc-500 dark:text-zinc-400"
+                        id="task-location-help"
+                      >
+                        Taskers see this before hire. Share the exact address after hiring.
+                      </span>
+                    )}
                   </label>
                 ) : (
                   <p className="flex gap-3 rounded-xl bg-zinc-50 p-3 text-sm leading-6 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
@@ -422,6 +432,9 @@ function TaskFormFields({
               <label className="grid gap-2 text-sm font-semibold">
                 Description
                 <textarea
+                  aria-describedby={
+                    errors.description ? "task-description-error" : undefined
+                  }
                   aria-invalid={errors.description ? true : undefined}
                   className="min-h-36 rounded-xl border border-zinc-200 bg-white p-3 text-sm font-normal outline-none placeholder:text-zinc-400 focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-[#FFD50D]"
                   maxLength={2000}
@@ -429,7 +442,9 @@ function TaskFormFields({
                   placeholder="Describe the task, deliverables, and anything the Tasker should know."
                   value={form.description}
                 />
-                {errors.description ? <FieldError message={errors.description} /> : null}
+                {errors.description ? (
+                  <FieldError id="task-description-error" message={errors.description} />
+                ) : null}
               </label>
 
               {materialNotice ? (
@@ -454,7 +469,7 @@ function TaskFormFields({
                   <ul className="mt-1 list-inside list-disc">
                     {errorList.map(([field, message]) => (
                       <li key={field}>
-                        {fieldLabels[field]}: {message}
+                        {taskFieldLabels[field]}: {message}
                       </li>
                     ))}
                   </ul>
@@ -538,9 +553,12 @@ function TaskFormFields({
   );
 }
 
-function FieldError({ message }: { message: string }) {
+function FieldError({ id, message }: { id: string; message: string }) {
   return (
-    <span className="text-xs font-medium text-[#a01a26] dark:text-[#F04452]">
+    <span
+      className="text-xs font-medium text-[#a01a26] dark:text-[#F04452]"
+      id={id}
+    >
       {message}
     </span>
   );

@@ -33,10 +33,15 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
   const [sortOrder, setSortOrder] = useState<SortOrder>("recommended");
 
   const publicTasks = useMemo(() => tasks.filter((task) => task.status === "open"), [tasks]);
-  const managedTasks = useMemo(
-    () => tasks.filter((task) => task.status !== "open"),
-    [tasks],
-  );
+  const managedTasks = useMemo(() => {
+    const viewerName = viewer.signedIn ? (viewer.displayName ?? "You") : null;
+    return tasks.filter(
+      (task) =>
+        task.status !== "open" &&
+        viewerName !== null &&
+        task.poster === viewerName,
+    );
+  }, [tasks, viewer.displayName, viewer.signedIn]);
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();

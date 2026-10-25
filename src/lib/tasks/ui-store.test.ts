@@ -93,6 +93,34 @@ describe("mock task mutations", () => {
     expect(tasks[0].applications).toBe(4);
   });
 
+  it("updates distance when a remote task becomes local", () => {
+    const remote: TaskSummary = {
+      ...openTask,
+      category: "Writing",
+      fulfillmentMode: "remote",
+      location: null,
+      distance: "Remote",
+    };
+
+    const { tasks } = applyUpdateTask(
+      tasksOf(remote),
+      "task_1",
+      toTaskFields({
+        ...toTaskFormValues(remote),
+        fulfillmentMode: "local",
+        category: "Delivery",
+        location: "Community Market",
+      }),
+      { now },
+    );
+
+    expect(tasks[0]).toMatchObject({
+      fulfillmentMode: "local",
+      location: "Community Market",
+      distance: "Not set",
+    });
+  });
+
   it("cancels an open task and retains its applications", () => {
     const { tasks, result } = applyCancelTask(tasksOf(openTask), "task_1");
 

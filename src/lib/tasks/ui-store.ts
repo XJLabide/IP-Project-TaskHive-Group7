@@ -12,6 +12,11 @@ import {
   type TaskFields,
 } from "./validation";
 
+/**
+ * Browser-session mirror of the server task service. It reuses the same policy,
+ * validation, and lifecycle modules; only persistence and notification delivery
+ * are replaced by session storage and the returned counts.
+ */
 export type TaskMutation = {
   tasks: TaskSummary[];
   result: TaskWriteResult;
@@ -104,6 +109,12 @@ export function applyUpdateTask(
             ...summaryFields(fields),
             status: publish ? "open" : item.status,
             applications: clears ? 0 : item.applications,
+            distance:
+              fields.fulfillmentMode === "remote"
+                ? "Remote"
+                : item.distance === "Remote" || item.distance === "Not set"
+                  ? "Not set"
+                  : item.distance,
           }
         : item,
     ),

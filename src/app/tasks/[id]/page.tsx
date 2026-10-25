@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, type ComponentType, type ReactNode } from "react";
+import {
+  Suspense,
+  useEffect,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import {
   CheckCircle2,
   Clock,
@@ -22,21 +28,29 @@ import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMockTasks } from "@/lib/mock-task-store";
 import {
   formatTaskDeadline,
+  taskFieldLabels,
+  taskFormErrors,
+  taskStatusClass,
   taskStatusLabel,
   taskToFields,
+  toTaskFormValues,
 } from "@/lib/tasks/ui";
 
-const statusClass = (status: "draft" | "open" | "cancelled") => {
-  if (status === "open") {
-    return "border-[#75D333]/40 bg-[#75D333]/15 text-[#2f6b12] dark:text-[#75D333]";
-  }
-  if (status === "draft") {
-    return "border-[#FFC800]/40 bg-[#FFD50D]/25 text-zinc-800 dark:bg-[#FFC800]/15 dark:text-zinc-100";
-  }
-  return "border-[#F04452]/40 bg-[#F04452]/10 text-[#a01a26] dark:text-[#F04452]";
-};
-
 export default function TaskDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center p-8 text-sm text-zinc-500">
+          Loading task…
+        </main>
+      }
+    >
+      <TaskDetailContent />
+    </Suspense>
+  );
+}
+
+function TaskDetailContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,15 +58,49 @@ export default function TaskDetailPage() {
   const { tasks, ready, updateTask, cancelTask, deleteTask } = useMockTasks();
   const [actionMessage, setActionMessage] = useState("");
 
+  const requestedNotice = searchParams.get("notice") ?? "";
+  const [notice] = useState(() => {
+    const allowed = ["Task published.", "Task changes saved.", "Draft saved."];
+    return allowed.includes(requestedNotice) ? requestedNotice : "";
+  });
+  const [cleared] = useState(() => {
+    const raw = Number.parseInt(searchParams.get("cleared") ?? "", 10);
+    return Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 999) : 0;
+  });
+
+  // Strip the one-shot notice after it renders so a refresh or shared link
+  // cannot replay a success message.
+  useEffect(() => {
+    if (!searchParams.has("notice") && !searchParams.has("cleared")) return;
+
+    const remaining = new URLSearchParams(searchParams.toString());
+    remaining.delete("notice");
+    remaining.delete("cleared");
+    const query = remaining.toString();
+    router.replace(`/tasks/${id}${query ? `?${query}` : ""}`, { scroll: false });
+  }, [id, router, searchParams]);
+
   // Guests keep the public site chrome; signed-in accounts get the workspace shell.
   const Shell: ComponentType<{ title: string; description: string; children: ReactNode }> =
     viewer.signedIn ? AppShell : PublicShell;
   const task = tasks.find((item) => item.id === id);
-  const notice = searchParams.get("notice");
-  const cleared = Number(searchParams.get("cleared") ?? 0);
+  const viewerName = viewer.signedIn ? (viewer.displayName ?? "You") : null;
+  const isOwner = Boolean(task && viewerName && task.poster === viewerName);
 
   function handlePublish() {
-    if (!task) return;
+    if (!task || !isOwner) return;
+
+    const errors = taskFormErrors(toTaskFormValues(task), { publish: true });
+    const missing = Object.keys(errors).map(
+      (field) => taskFieldLabels[field as keyof typeof taskFieldLabels],
+    );
+    if (missing.length > 0) {
+      setActionMessage(
+        `Complete these details before publishing: ${missing.join(", ")}.`,
+      );
+      return;
+    }
+
     const result = updateTask(task.id, taskToFields(task), { publish: true });
     if (!result.ok) {
       setActionMessage(
@@ -66,7 +114,7 @@ export default function TaskDetailPage() {
   }
 
   function handleCancel() {
-    if (!task) return;
+    if (!task || !isOwner) return;
     if (
       !window.confirm(
         `Cancel “${task.title}”? It will leave public browsing, and its applications and history will be kept.`,
@@ -83,7 +131,7 @@ export default function TaskDetailPage() {
   }
 
   function handleDelete() {
-    if (!task) return;
+    if (!task || !isOwner) return;
     if (
       !window.confirm(
         `Delete draft “${task.title}”? This permanently removes the draft and cannot be undone.`,
@@ -107,7 +155,7 @@ export default function TaskDetailPage() {
     );
   }
 
-  if (!task || (!viewer.signedIn && task.status !== "open")) {
+  if (!task || (task.status !== "open" && !isOwner)) {
     return (
       <Shell title="Task not found" description="This task is not available in this browser session.">
         <Card>
@@ -134,7 +182,7 @@ export default function TaskDetailPage() {
       description={
         task.fulfillmentMode === "remote"
           ? `${task.category || "Task"} · Remote`
-          : `${task.category || "Task"} task in ${task.location ?? "a local area"}`
+          : `${task.category || "Task"} task · ${task.location ?? "area not set"} (approx.)`
       }
     >
       {notice ? (
@@ -167,7 +215,7 @@ export default function TaskDetailPage() {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="text-xl font-bold">{task.title || "Untitled draft"}</CardTitle>
-              <Badge className={statusClass(task.status)}>{taskStatusLabel(task.status)}</Badge>
+              <Badge className={taskStatusClass(task.status)}>{taskStatusLabel(task.status)}</Badge>
             </div>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -215,12 +263,12 @@ export default function TaskDetailPage() {
               {task.fulfillmentMode === "local" ? (
                 <>
                   <MapPin className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" />
-                  {task.location ?? "Service location not set"}
+                  Approximate area: {task.location ?? "not set"}
                 </>
               ) : (
                 <>
                   <Globe2 className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" />
-                  Completed online — no service location
+                  Completed online — no approximate area
                 </>
               )}
             </div>
@@ -296,7 +344,7 @@ export default function TaskDetailPage() {
             </Card>
           )}
 
-          {viewer.signedIn ? (
+          {isOwner ? (
             <Card>
               <CardContent className="grid gap-3 p-5">
                 <h2 className="font-bold">Manage task</h2>
@@ -354,7 +402,7 @@ export default function TaskDetailPage() {
         </aside>
       </div>
 
-      {isOpen && viewer.canPost ? (
+      {isOpen && isOwner ? (
         <section className="mt-6 max-w-2xl">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
             Sample applicants · applications are not connected yet
@@ -363,7 +411,7 @@ export default function TaskDetailPage() {
         </section>
       ) : null}
 
-      {isCancelled ? (
+      {isCancelled && isOwner ? (
         <section className="mt-6 max-w-2xl">
           <Card>
             <CardContent className="p-5">
@@ -373,6 +421,9 @@ export default function TaskDetailPage() {
                 with this cancelled task for support and history. They are no longer accepting
                 new work.
               </p>
+              <div className="mt-5">
+                <ApplicantList />
+              </div>
             </CardContent>
           </Card>
         </section>
