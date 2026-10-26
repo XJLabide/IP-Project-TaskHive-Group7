@@ -67,6 +67,14 @@ enum PaymentStatus {
   DISPUTED
 }
 
+/// The 24-hour payment retry hold after a Poster selects one Tasker.
+enum AssignmentStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 enum ModerationStatus {
   OPEN
   REVIEWING
@@ -266,22 +274,53 @@ model Assignment {
   id        String   @id @default(cuid())
   taskId    String   @unique
   taskerId  String
+  status    AssignmentStatus @default(PENDING_PAYMENT)
+  /// The 24-hour window; a successful payment activates the assignment.
+  holdExpiresAt DateTime?
+  activatedAt DateTime?
+  expiredAt   DateTime?
   createdAt DateTime @default(now())
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   tasker    User     @relation("AssignedTasker", fields: [taskerId], references: [id], onDelete: Cascade)
+
+  @@index([status, holdExpiresAt])
 }
 
 model Payment {
   id                    String        @id @default(cuid())
-  taskId                String
+  taskId                String        @unique
   posterId              String
-  stripeCheckoutSession String?
+  /// Provider name and the safe reference/id for its checkout session.
+  provider              String        @default("unconfigured")
+  providerCheckoutId    String?
+  checkoutUrl           String?
+  attemptCount          Int           @default(0)
   amountCents           Int
   platformFeeCents      Int
+  currency              String        @default("PHP")
   status                PaymentStatus @default(UNPAID)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   task                  Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  events                PaymentEvent[]
+
+  @@index([provider, providerCheckoutId])
+}
+
+/// Idempotency log for provider callbacks; safe metadata only, never card data.
+model PaymentEvent {
+  id                String   @id @default(cuid())
+  provider          String
+  eventId           String
+  type              String
+  providerReference String?
+  paymentId         String?
+  receivedAt        DateTime @default(now())
+  processedAt       DateTime?
+  payment           Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, eventId])
+  @@index([paymentId])
 }
 
 model Payout {
@@ -290,6 +329,8 @@ model Payout {
   taskerId         String
   amountCents      Int
   platformFeeCents Int
+  /// Provider transfer reference once the payout is actually sent.
+  providerReference String?
   releasedAt       DateTime?
   createdAt        DateTime @default(now())
 }
