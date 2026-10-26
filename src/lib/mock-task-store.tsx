@@ -16,6 +16,7 @@ export type Task = TaskSummary;
 type TaskStore = {
   tasks: Task[];
   ready: boolean;
+  error: boolean;
   createTask: (
     fields: TaskFields,
     publish: boolean,
@@ -28,11 +29,13 @@ type TaskStore = {
   ) => TaskWriteResult;
   cancelTask: (id: string) => TaskWriteResult;
   deleteTask: (id: string) => TaskWriteResult;
+  resetDemo: () => void;
 };
 
 const storageKey = "taskhive.mock-tasks.v2";
 let tasksSnapshot: Task[] = sampleTasks;
 let initialized = false;
+let storageError = false;
 const listeners = new Set<() => void>();
 
 function persist() {
@@ -41,6 +44,7 @@ function persist() {
     sessionStorage.setItem(storageKey, JSON.stringify(tasksSnapshot));
   } catch {
     // Keep the in-memory store usable when browser storage is unavailable.
+    storageError = true;
   }
 }
 
@@ -57,8 +61,9 @@ function subscribe(listener: () => void) {
       try {
         sessionStorage.removeItem(storageKey);
       } catch {
-        // The session can still use the in-memory sample data.
+        storageError = true;
       }
+      tasksSnapshot = sampleTasks;
     }
     initialized = true;
     listeners.forEach((notify) => notify());
@@ -80,6 +85,27 @@ function getReadySnapshot() {
 
 function getServerReadySnapshot() {
   return false;
+}
+
+function getErrorSnapshot() {
+  return storageError;
+}
+
+function getServerErrorSnapshot() {
+  return false;
+}
+
+function resetDemo() {
+  tasksSnapshot = sampleTasks;
+  storageError = false;
+  initialized = true;
+  try {
+    sessionStorage.removeItem(storageKey);
+  } catch {
+    // The in-memory sample data still works for this session.
+  }
+  // Do not persist here: a broken storage backend must not re-raise the error.
+  listeners.forEach((listener) => listener());
 }
 
 function notify() {
@@ -138,8 +164,9 @@ function deleteTask(id: string): TaskWriteResult {
 export function useMockTasks(): TaskStore {
   const tasks = useSyncExternalStore(subscribe, getTasksSnapshot, getServerTasksSnapshot);
   const ready = useSyncExternalStore(subscribe, getReadySnapshot, getServerReadySnapshot);
+  const error = useSyncExternalStore(subscribe, getErrorSnapshot, getServerErrorSnapshot);
   return useMemo(
-    () => ({ tasks, ready, createTask, updateTask, cancelTask, deleteTask }),
-    [tasks, ready],
+    () => ({ tasks, ready, error, createTask, updateTask, cancelTask, deleteTask, resetDemo }),
+    [tasks, ready, error],
   );
 }

@@ -34,6 +34,9 @@ function summaryFields(fields: TaskFields): TaskFormSource {
     budget: Number.isFinite(budget) ? Math.max(0, budget) : 0,
     location:
       fields.fulfillmentMode === "local" ? fields.locationLabel?.trim() || null : null,
+    ...(typeof fields.latitude === "number" && typeof fields.longitude === "number"
+      ? { latitude: fields.latitude, longitude: fields.longitude }
+      : {}),
     addressLine:
       fields.fulfillmentMode === "local" ? fields.addressLine?.trim() || null : null,
     deadline: fields.deadline ? new Date(fields.deadline).toISOString() : "",
@@ -59,7 +62,6 @@ export function applyCreateTask(
     ...summaryFields(fields),
     id: options.id,
     status: publish ? "open" : "draft",
-    distance: fields.fulfillmentMode === "remote" ? "Remote" : "Not set",
     poster: options.poster ?? "Ana Reyes",
     applications: 0,
   };
@@ -111,12 +113,6 @@ export function applyUpdateTask(
             ...summaryFields(fields),
             status: publish ? "open" : item.status,
             applications: clears ? 0 : item.applications,
-            distance:
-              fields.fulfillmentMode === "remote"
-                ? "Remote"
-                : item.distance === "Remote" || item.distance === "Not set"
-                  ? "Not set"
-                  : item.distance,
           }
         : item,
     ),

@@ -279,7 +279,8 @@ function TaskDetailContent() {
                   <MapPin className="mx-auto h-7 w-7 text-[#D19300] dark:text-[#FFD50D]" />
                   <p className="mt-3 text-sm font-semibold">Approximate area</p>
                   <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    The exact service address is shared only after hire and payment.
+                    The exact service address is revealed to the assigned Tasker only after
+                    payment succeeds and the assignment is active.
                   </p>
                 </div>
               </div>

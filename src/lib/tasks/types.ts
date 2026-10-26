@@ -13,6 +13,9 @@ export type TaskFormSource = {
   hiringMode: HiringMode;
   budget: number;
   location: string | null;
+  /** Approximate coordinates for local discovery; never shown on a card. */
+  latitude?: number | null;
+  longitude?: number | null;
   /** Exact service address; private until payment succeeds on an active assignment. */
   addressLine?: string | null;
   deadline: string;
@@ -21,7 +24,6 @@ export type TaskFormSource = {
 export type TaskSummary = TaskFormSource & {
   id: string;
   status: UiTaskStatus;
-  distance: string;
   poster: string;
   applications: number;
 };
