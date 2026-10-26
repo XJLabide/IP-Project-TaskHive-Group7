@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOutFromTaskHive } from "@/lib/auth/client";
 import { useViewer } from "@/components/viewer/viewer-provider";
-import { verificationSummary } from "@/lib/viewer/presentation";
 
 type NavItem = {
   href: string;
@@ -59,7 +58,9 @@ export function AppShell({ title, description, children, showHeader = true, cont
 
   const identity = viewer.signedIn ? viewer.displayName ?? "Signed in" : "Guest";
   const identityDetail = viewer.signedIn
-    ? verificationSummary({ status: viewer.verification, appealCount: viewer.appealCount }).label
+    ? viewer.canPost
+      ? "Profile complete"
+      : "Profile setup needed"
     : "Browsing only";
   const initials = viewer.signedIn ? (viewer.displayName ?? "TH").split(" ").map((part) => part[0]).join("").slice(0, 2) : "?";
 

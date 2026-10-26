@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { createUserWithEmailAndPassword, GoogleAuthProvider, sendEmailVerification, signInWithPopup, updateProfile } from "firebase/auth";
 import { establishServerSession } from "@/lib/auth/client";
 import { getFirebaseClientAuth } from "@/lib/auth/firebase-client";
@@ -135,8 +135,7 @@ export function SignupForm() {
   return (
     <form className="grid gap-6" method="post" onSubmit={handleSubmit}>
       <p className="rounded-lg bg-zinc-100 p-3 text-xs leading-5 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
-        Create an account with your email. Phone verification and the 18+ attestation unlock
-        posting and applying; identity verification comes later.
+        Create an account with your email. Confirm you’re 18 or older to unlock posting and applying.
       </p>
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
@@ -237,10 +236,10 @@ export function SignupForm() {
             type="checkbox"
           />
           <span className="text-zinc-700 dark:text-zinc-300">
-            I confirm that I am 18 years of age or older.
+            I confirm that I am at least 18 years old.
             <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
-              TaskHive is an adults-only marketplace. This attestation gates posting and applying
-              for every account.
+              This self-attestation is required to post tasks or apply for work. We don’t ask for
+              your birth date or an ID here.
             </span>
           </span>
         </label>
@@ -272,14 +271,6 @@ export function SignupForm() {
             {errors.acceptedTerms}
           </p>
         ) : null}
-        <div className="flex gap-3 rounded-lg bg-[#FFD50D]/15 p-4 text-sm leading-6 text-zinc-700 dark:bg-[#FFC800]/10 dark:text-zinc-300">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFC800]" />
-          <p>
-            TaskHive never asks for identity documents. When you want to be assigned work, a
-            verification provider checks your identity and keeps the documents; TaskHive stores only
-            the result and a provider reference.
-          </p>
-        </div>
       </fieldset>
 
       {formError ? (
