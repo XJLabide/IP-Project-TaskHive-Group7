@@ -33,7 +33,7 @@ Next.js App on Vercel
 | Auth | Firebase Authentication | Email/password identity, email actions, optional Google sign-in; server verifies Firebase session cookies. |
 | Main database | Supabase PostgreSQL | Relational marketplace data. |
 | ORM | Prisma | Schema, migrations, and typed database client. |
-| NoSQL | MongoDB Atlas | Chat messages and log-style data. |
+| NoSQL | MongoDB Atlas | Reserved for log-style data; task chat, reports, and marketplace records use PostgreSQL. |
 | Queue | Upstash QStash | Serverless-friendly async jobs. |
 | Payments | Not selected | Evaluate PayMongo first; confirm platform eligibility and marketplace payout, refund, and dispute capabilities before implementation. |
 | Maps | Mapbox | Location search, picker, and nearby task support. |
@@ -82,6 +82,8 @@ Route Handlers expose the custom API:
 - `/api/tasks/:id/bids`
 - `/api/tasks/:id/requests`
 - `/api/tasks/:id/hire`
+- `/api/applications`
+- `/api/applications/:id`
 - `/api/tasks/:id/complete`
 - `/api/tasks/:id/confirm`
 - `/api/payments/checkout`
@@ -91,6 +93,7 @@ Route Handlers expose the custom API:
 - `/api/reports`
 - `/api/disputes`
 - `/api/admin/dashboard`
+- `/api/admin/reports`
 - `/api/uploads/signature`
 - `/api/locations/search`
 - `/api/jobs`
