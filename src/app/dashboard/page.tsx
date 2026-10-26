@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
+import { isLiveApplicationStatus } from "@/lib/applications/rules";
 import Link from "next/link";
 import { ArrowRight, ClipboardList, Search, UserRound } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
@@ -13,12 +15,18 @@ const categories = ["All tasks", "Delivery", "Cleaning", "Tutoring"];
 
 export default function DashboardPage() {
   const { tasks, ready } = useMockTasks();
+  const { applications } = useMarketplace();
   const { viewer } = useViewer();
   const [selectedCategory, setSelectedCategory] = useState("All tasks");
   const openTasks = tasks.filter((task) => task.status === "open");
   const visibleTasks = selectedCategory === "All tasks"
     ? openTasks
     : openTasks.filter((task) => task.category === selectedCategory);
+  const countFor = (taskId: string) =>
+    applications.filter(
+      (application) =>
+        application.taskId === taskId && isLiveApplicationStatus(application.status),
+    ).length;
 
   return <AppShell title="Dashboard" description="Tasks and local work in your area.">
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-8 sm:px-9 sm:py-10 dark:border-zinc-800 dark:bg-zinc-950">
@@ -30,6 +38,6 @@ export default function DashboardPage() {
       const selected = selectedCategory === category;
       return <button aria-pressed={selected} className={selected ? "shrink-0 rounded-full bg-[#FFC800] px-4 py-2 text-sm font-semibold text-zinc-950" : "shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-600 hover:border-[#D19300] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"} key={category} onClick={() => setSelectedCategory(category)} type="button">{category}</button>;
     })}</nav>
-    <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Discover</p><h2 className="mt-1 text-2xl font-bold tracking-tight">Tasks near you</h2><p aria-live="polite" className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{ready ? `Showing ${visibleTasks.length} tasks in this browser session` : "Loading tasks…"}</p></div><Link className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-600 hover:text-[#D19300] dark:text-zinc-300 dark:hover:text-[#FFD50D]" href="/tasks">Browse all <ArrowRight className="h-4 w-4" /></Link></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{ready && visibleTasks.slice(0, 3).map((task) => <TaskCard key={task.id} task={task} />)}</div>{ready && visibleTasks.length === 0 && <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">No {selectedCategory.toLowerCase()} tasks are available yet.</p>}</section>
+    <section className="mt-10"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Discover</p><h2 className="mt-1 text-2xl font-bold tracking-tight">Tasks near you</h2><p aria-live="polite" className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{ready ? `Showing ${visibleTasks.length} tasks in this browser session` : "Loading tasks…"}</p></div><Link className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-600 hover:text-[#D19300] dark:text-zinc-300 dark:hover:text-[#FFD50D]" href="/tasks">Browse all <ArrowRight className="h-4 w-4" /></Link></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{ready && visibleTasks.slice(0, 3).map((task) => <TaskCard applicationCount={countFor(task.id)} key={task.id} task={task} />)}</div>{ready && visibleTasks.length === 0 && <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">No {selectedCategory.toLowerCase()} tasks are available yet.</p>}</section>
   </AppShell>;
 }

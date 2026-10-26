@@ -10,6 +10,8 @@ import { TaskCard } from "@/components/task/task-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks } from "@/lib/mock-task-store";
+import { useMarketplace } from "@/lib/mock-marketplace-store";
+import { isLiveApplicationStatus } from "@/lib/applications/rules";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { launchCategories } from "@/lib/tasks/policy";
 import {
@@ -81,6 +83,7 @@ function LoadingCard() {
 export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch: string; initialCategory: string }) {
   const router = useRouter();
   const { tasks, ready, error, resetDemo } = useMockTasks();
+  const { applications } = useMarketplace();
   const { viewer } = useViewer();
   // Guests keep the public site chrome; signed-in accounts get the workspace shell.
   const Shell: ComponentType<{ title: string; description: string; children: ReactNode }> =
@@ -107,6 +110,13 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
         task.poster === viewerName,
     );
   }, [tasks, viewer.displayName, viewer.signedIn]);
+
+  const countFor = (taskId: string) =>
+    applications.filter(
+      (application) =>
+        application.taskId === taskId &&
+        isLiveApplicationStatus(application.status),
+    ).length;
 
   const origin = useMemo(
     () =>
@@ -333,7 +343,12 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
               </>
             ) : results.tasks.length ? (
               results.tasks.map(({ task, distanceKm }) => (
-                <TaskCard distanceKm={distanceKm} key={task.id} task={task} />
+                <TaskCard
+                  applicationCount={countFor(task.id)}
+                  distanceKm={distanceKm}
+                  key={task.id}
+                  task={task}
+                />
               ))
             ) : (
               <Card><CardContent className="grid min-h-48 place-items-center p-6 text-center">
@@ -395,7 +410,9 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
             </Button>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {managedTasks.map((task) => <TaskCard key={task.id} task={task} />)}
+            {managedTasks.map((task) => (
+              <TaskCard applicationCount={countFor(task.id)} key={task.id} task={task} />
+            ))}
           </div>
         </section>
       ) : null}

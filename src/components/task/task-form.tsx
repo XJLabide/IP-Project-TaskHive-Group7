@@ -15,6 +15,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks, type Task } from "@/lib/mock-task-store";
+import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import type { FulfillmentMode, HiringMode } from "@/lib/tasks/policy";
 import {
@@ -133,6 +134,7 @@ function TaskFormFields({
   const router = useRouter();
   const { viewer } = useViewer();
   const { createTask, updateTask } = useMockTasks();
+  const { invalidateForTask } = useMarketplace();
   const [form, setForm] = useState<TaskFormValues>(() =>
     task ? toTaskFormValues(task) : emptyTaskForm(),
   );
@@ -208,6 +210,9 @@ function TaskFormFields({
     }
 
     const cleared = result.clearedApplications ?? 0;
+    if (mode === "edit" && taskId && cleared > 0) {
+      invalidateForTask(taskId);
+    }
     const notice = publish
       ? "Task published."
       : mode === "edit"
