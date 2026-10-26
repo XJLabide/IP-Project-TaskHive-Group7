@@ -15,7 +15,7 @@ export const tasks: TaskSummary[] = [
     longitude: 120.994,
     poster: "Maria Santos",
     description: "Buy groceries from the community market and deliver nearby.",
-    applications: 4,
+    applications: 1,
   },
   {
     id: "task_storage",
@@ -31,7 +31,7 @@ export const tasks: TaskSummary[] = [
     longitude: 121.005,
     poster: "Jose Reyes",
     description: "Clean and organize a small storage room.",
-    applications: 8,
+    applications: 0,
   },
   {
     id: "task_tutoring",
@@ -45,7 +45,7 @@ export const tasks: TaskSummary[] = [
     deadline: "2026-10-30T15:00:00+08:00",
     poster: "Ana Cruz",
     description: "One-hour algebra tutoring session for a high school student.",
-    applications: 3,
+    applications: 0,
   },
   {
     id: "task_writing",
@@ -59,7 +59,7 @@ export const tasks: TaskSummary[] = [
     deadline: "2026-11-02T18:00:00+08:00",
     poster: "Lia Ramos",
     description: "Rewrite a product description for clarity and tone.",
-    applications: 1,
+    applications: 0,
   },
   {
     id: "task_plants",
@@ -75,7 +75,7 @@ export const tasks: TaskSummary[] = [
     longitude: 120.984,
     poster: "Ana Reyes",
     description: "Water the balcony plants twice while the owner is away.",
-    applications: 1,
+    applications: 2,
   },
   {
     id: "task_draft",
@@ -107,7 +107,7 @@ export const tasks: TaskSummary[] = [
     longitude: 120.99,
     poster: "Ana Reyes",
     description: "Clear and deep clean a two-car garage.",
-    applications: 2,
+    applications: 0,
   },
 ];
 

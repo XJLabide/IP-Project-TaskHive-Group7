@@ -9,10 +9,13 @@ import { formatTaskDeadline, taskStatusClass, taskStatusLabel } from "@/lib/task
 export function TaskCard({
   task,
   distanceKm,
+  applicationCount,
 }: {
   task: Task;
   /** Computed from the chosen search origin; omit for workspace cards. */
   distanceKm?: number | null;
+  /** Live applications from the session store; falls back to the demo count. */
+  applicationCount?: number;
 }) {
   const distanceLabel =
     distanceKm === undefined ? null : formatBrowseDistance(distanceKm);
@@ -57,7 +60,8 @@ export function TaskCard({
         </span>
         <span className="flex items-center gap-1.5">
           <Users className="h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />
-          {task.applications} {task.applications === 1 ? "application" : "applications"}
+          {applicationCount ?? task.applications}{" "}
+          {(applicationCount ?? task.applications) === 1 ? "application" : "applications"}
         </span>
       </div>
 

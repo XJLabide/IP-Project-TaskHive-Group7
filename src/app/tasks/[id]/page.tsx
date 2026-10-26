@@ -22,19 +22,14 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApplicantList } from "@/components/viewer/applicant-list";
-import { GateNotice } from "@/components/viewer/gate-notice";
+import { TaskApplicationPanel } from "@/components/task/task-application-panel";
+import { TaskApplications } from "@/components/task/task-applications";
+import { TaskChat } from "@/components/task/task-chat";
 import { useViewer } from "@/components/viewer/viewer-provider";
+import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
-import {
-  formatTaskDeadline,
-  taskFieldLabels,
-  taskFormErrors,
-  taskStatusClass,
-  taskStatusLabel,
-  taskToFields,
-  toTaskFormValues,
-} from "@/lib/tasks/ui";
+import { formatTaskDeadline, taskFieldLabels, taskFormErrors, taskStatusClass, taskStatusLabel, taskToFields, toTaskFormValues } from "@/lib/tasks/ui";
+import { isLiveApplicationStatus } from "@/lib/applications/rules";
 
 export default function TaskDetailPage() {
   return (
@@ -56,6 +51,7 @@ function TaskDetailContent() {
   const searchParams = useSearchParams();
   const { viewer } = useViewer();
   const { tasks, ready, updateTask, cancelTask, deleteTask } = useMockTasks();
+  const { applicationsForTask } = useMarketplace();
   const [actionMessage, setActionMessage] = useState("");
 
   const requestedNotice = searchParams.get("notice") ?? "";
@@ -173,6 +169,9 @@ function TaskDetailContent() {
   const isDraft = task.status === "draft";
   const isOpen = task.status === "open";
   const isCancelled = task.status === "cancelled";
+  const applicationCount = applicationsForTask(task.id).filter((application) =>
+    isLiveApplicationStatus(application.status),
+  ).length;
   const draftGuidance =
     "Only you can see this draft. Publish it when the details are complete.";
 
@@ -241,8 +240,8 @@ function TaskDetailContent() {
               <div>
                 <span className="text-zinc-500 dark:text-zinc-400">Applications</span>
                 <strong className="mt-1 block">
-                  {task.applications}
-                  {isCancelled && task.applications > 0 ? " retained" : ""}
+                  {applicationCount}
+                  {isCancelled && applicationCount > 0 ? " retained" : ""}
                 </strong>
               </div>
               <div>
@@ -310,40 +309,7 @@ function TaskDetailContent() {
             </Card>
           ) : null}
 
-          {isOpen ? (
-            viewer.canApply || viewer.canChat ? (
-              <Card>
-                <CardContent className="grid gap-3 p-5">
-                  <h2 className="font-bold">Work on this task</h2>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {viewer.canApply
-                      ? "Apply while the task is open. The Poster chooses one Tasker."
-                      : "Messaging the Poster is open to signed-in accounts."}
-                  </p>
-                  {viewer.canApply ? (
-                    <Button type="button">Apply to this task</Button>
-                  ) : viewer.denials.apply ? (
-                    <GateNotice code={viewer.denials.apply} />
-                  ) : null}
-                  {viewer.canChat ? (
-                    <Button type="button" variant="outline">
-                      Message Poster
-                    </Button>
-                  ) : viewer.denials.chat ? (
-                    <GateNotice code={viewer.denials.chat} />
-                  ) : null}
-                </CardContent>
-              </Card>
-            ) : viewer.denials.apply ? (
-              <GateNotice code={viewer.denials.apply} />
-            ) : null
-          ) : (
-            <Card>
-              <CardContent className="p-5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                This task is not accepting applications.
-              </CardContent>
-            </Card>
-          )}
+          {!isDraft ? <TaskApplicationPanel task={task} /> : null}
 
           {isOwner ? (
             <Card>
@@ -403,30 +369,25 @@ function TaskDetailContent() {
         </aside>
       </div>
 
-      {isOpen && isOwner ? (
-        <section className="mt-6 max-w-2xl">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
-            Sample applicants · applications are not connected yet
+      {isOwner && (isOpen || isCancelled) ? (
+        <section className="mt-6 max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+            {isCancelled ? "Retained applications" : "Applications"}
           </p>
-          <ApplicantList />
+          <h2 className="mt-1 text-xl font-bold">
+            {isCancelled ? "Kept for history" : "Compare applicants"}
+          </h2>
+          <p className="mb-4 mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Pending-verification Taskers are visible here, but cannot be selected until their
+            identity check is complete.
+          </p>
+          <TaskApplications readOnly={isCancelled} task={task} />
         </section>
       ) : null}
 
-      {isCancelled && isOwner ? (
-        <section className="mt-6 max-w-2xl">
-          <Card>
-            <CardContent className="p-5">
-              <h2 className="font-bold">Retained history</h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                {task.applications} {task.applications === 1 ? "application was" : "applications were"} kept
-                with this cancelled task for support and history. They are no longer accepting
-                new work.
-              </p>
-              <div className="mt-5">
-                <ApplicantList />
-              </div>
-            </CardContent>
-          </Card>
+      {!isDraft ? (
+        <section className="mt-6 max-w-3xl">
+          <TaskChat task={task} />
         </section>
       ) : null}
     </Shell>

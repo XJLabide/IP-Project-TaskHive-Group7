@@ -44,6 +44,11 @@ export function kindForHiringMode(mode: HiringMode): ApplicationKind {
 
 const liveStatuses: readonly ApplicationStatus[] = ["submitted", "accepted"];
 
+/** Whether an application still counts as live (visible and withdrawable). */
+export function isLiveApplicationStatus(status: ApplicationStatus): boolean {
+  return liveStatuses.includes(status);
+}
+
 /** Decides whether a Tasker may submit this bid or request to this task. */
 export function canApply(input: {
   taskerId: string;
