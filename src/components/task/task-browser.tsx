@@ -3,7 +3,7 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { Globe2, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PublicShell } from "@/components/layout/public-shell";
 import { TaskCard } from "@/components/task/task-card";
@@ -12,25 +12,90 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks } from "@/lib/mock-task-store";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { launchCategories } from "@/lib/tasks/policy";
+import {
+  DEFAULT_BROWSE_RADIUS_KM,
+  browsePublicTasks,
+  browseRadii,
+  browseSearchArea,
+  defaultOrigin,
+  searchOrigins,
+  type BrowseAreaMode,
+  type BrowseBudget,
+  type BrowseDeadline,
+  type BrowseQuick,
+  type BrowseSort,
+} from "@/lib/tasks/browse";
 
-const quickFilters = ["All", "Local", "Remote", "Bidding", "Fixed price", "Within 3 km"] as const;
-type QuickFilter = (typeof quickFilters)[number];
-type SortOrder = "recommended" | "nearest" | "budget-asc" | "budget-desc";
-const selectClass = "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:focus:border-[#FFD50D]";
+const quickFilters: ReadonlyArray<{ id: BrowseQuick; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "local", label: "Local" },
+  { id: "remote", label: "Remote" },
+  { id: "bidding", label: "Bidding" },
+  { id: "fixed-price", label: "Fixed price" },
+];
+
+const sortOptions: ReadonlyArray<{ id: BrowseSort; label: string }> = [
+  { id: "recommended", label: "Recommended" },
+  { id: "nearest", label: "Nearest first" },
+  { id: "budget_asc", label: "Lowest budget" },
+  { id: "budget_desc", label: "Highest budget" },
+  { id: "deadline", label: "Deadline soonest" },
+];
+
+const budgetOptions: ReadonlyArray<{ id: BrowseBudget; label: string }> = [
+  { id: "any", label: "Any budget" },
+  { id: "under-500", label: "Under PHP 500" },
+  { id: "500-1000", label: "PHP 500 to 1,000" },
+  { id: "over-1000", label: "PHP 1,000+" },
+];
+
+const deadlineOptions: ReadonlyArray<{ id: BrowseDeadline; label: string }> = [
+  { id: "any", label: "Any deadline" },
+  { id: "3-days", label: "Within 3 days" },
+  { id: "7-days", label: "Within 7 days" },
+  { id: "30-days", label: "Within 30 days" },
+];
+
+const ANYWHERE = "anywhere";
+const selectClass =
+  "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-700 outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:focus:border-[#FFD50D]";
+
+function LoadingCard() {
+  return (
+    <div
+      aria-hidden="true"
+      className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6"
+    >
+      <div className="flex gap-2">
+        <span className="h-5 w-20 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+        <span className="h-5 w-16 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+      <div className="mt-4 h-6 w-2/3 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+      <div className="mt-2 h-4 w-full animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/60" />
+      <div className="mt-2 h-4 w-4/5 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/60" />
+      <div className="mt-6 h-10 w-full animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800/60" />
+    </div>
+  );
+}
 
 export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch: string; initialCategory: string }) {
   const router = useRouter();
-  const { tasks, ready } = useMockTasks();
+  const { tasks, ready, error, resetDemo } = useMockTasks();
   const { viewer } = useViewer();
   // Guests keep the public site chrome; signed-in accounts get the workspace shell.
   const Shell: ComponentType<{ title: string; description: string; children: ReactNode }> =
     viewer.signedIn ? AppShell : PublicShell;
+
   const [search, setSearch] = useState(initialSearch);
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>("All");
+  const [quickFilter, setQuickFilter] = useState<BrowseQuick>("all");
   const [category, setCategory] = useState(initialCategory || "All categories");
-  const [budget, setBudget] = useState("Any budget");
-  const [distance, setDistance] = useState("Any distance");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("recommended");
+  const [budget, setBudget] = useState<BrowseBudget>("any");
+  const [deadline, setDeadline] = useState<BrowseDeadline>("any");
+  const [originId, setOriginId] = useState<string>(
+    viewer.signedIn ? defaultOrigin.id : ANYWHERE,
+  );
+  const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_BROWSE_RADIUS_KM);
+  const [sortOrder, setSortOrder] = useState<BrowseSort>("recommended");
 
   const publicTasks = useMemo(() => tasks.filter((task) => task.status === "open"), [tasks]);
   const managedTasks = useMemo(() => {
@@ -43,56 +108,62 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
     );
   }, [tasks, viewer.displayName, viewer.signedIn]);
 
-  const filteredTasks = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const matches = publicTasks.filter((task) => {
-      const taskDistance = Number.parseFloat(task.distance);
-      const matchesSearch = !query || [task.title, task.description, task.category, task.location ?? "remote"]
-        .some((value) => value.toLowerCase().includes(query));
-      const matchesQuick = quickFilter === "All" ||
-        (quickFilter === "Local" && task.fulfillmentMode === "local") ||
-        (quickFilter === "Remote" && task.fulfillmentMode === "remote") ||
-        (quickFilter === "Bidding" && task.hiringMode === "bidding") ||
-        (quickFilter === "Fixed price" && task.hiringMode === "fixed_price") ||
-        (quickFilter === "Within 3 km" && task.fulfillmentMode === "local" && Number.isFinite(taskDistance) && taskDistance <= 3);
-      const matchesCategory = category === "All categories" || category === "All tasks" || task.category === category;
-      const matchesBudget = budget === "Any budget" ||
-        (budget === "Under PHP 500" && task.budget < 500) ||
-        (budget === "PHP 500 to 1,000" && task.budget >= 500 && task.budget <= 1000) ||
-        (budget === "PHP 1,000+" && task.budget > 1000);
-      const matchesDistance = distance === "Any distance" ||
-        (task.fulfillmentMode === "local" && distance === "Within 3 km" && Number.isFinite(taskDistance) && taskDistance <= 3) ||
-        (task.fulfillmentMode === "local" && distance === "Within 5 km" && Number.isFinite(taskDistance) && taskDistance <= 5) ||
-        (task.fulfillmentMode === "local" && distance === "Within 10 km" && Number.isFinite(taskDistance) && taskDistance <= 10);
+  const origin = useMemo(
+    () =>
+      originId === ANYWHERE
+        ? null
+        : searchOrigins.find((item) => item.id === originId) ?? defaultOrigin,
+    [originId],
+  );
+  const originChoices = viewer.signedIn
+    ? searchOrigins
+    : searchOrigins.filter((item) => item.id !== defaultOrigin.id);
+  const areaMode: BrowseAreaMode =
+    originId === ANYWHERE
+      ? "anywhere"
+      : viewer.signedIn && originId === defaultOrigin.id
+        ? "saved"
+        : "chosen";
+  const searchArea = useMemo(
+    () =>
+      browseSearchArea({
+        mode: areaMode,
+        origin,
+        saved: viewer.signedIn ? defaultOrigin : null,
+        radiusKm,
+      }),
+    [areaMode, origin, radiusKm, viewer.signedIn],
+  );
 
-      return matchesSearch && matchesQuick && matchesCategory && matchesBudget && matchesDistance;
-    });
-    if (sortOrder === "nearest") {
-      return matches.sort((a, b) => {
-        const distanceA = Number.parseFloat(a.distance);
-        const distanceB = Number.parseFloat(b.distance);
-        return (Number.isFinite(distanceA) ? distanceA : Infinity) - (Number.isFinite(distanceB) ? distanceB : Infinity);
-      });
-    }
-    if (sortOrder === "budget-asc") return matches.sort((a, b) => a.budget - b.budget);
-    if (sortOrder === "budget-desc") return matches.sort((a, b) => b.budget - a.budget);
-    return matches;
-  }, [budget, category, distance, publicTasks, quickFilter, search, sortOrder]);
+  const results = useMemo(
+    () =>
+      browsePublicTasks(
+        publicTasks,
+        { search, category, budget, deadline, quick: quickFilter, sort: sortOrder },
+        searchArea,
+      ),
+    [budget, category, deadline, publicTasks, quickFilter, search, searchArea, sortOrder],
+  );
 
   const activeFilterCount = [
     search.trim().length > 0,
-    quickFilter !== "All",
+    quickFilter !== "all",
     category !== "All categories" && category !== "All tasks",
-    budget !== "Any budget",
-    distance !== "Any distance",
+    budget !== "any",
+    deadline !== "any",
+    originId !== (viewer.signedIn ? defaultOrigin.id : ANYWHERE),
+    origin !== null && radiusKm !== DEFAULT_BROWSE_RADIUS_KM,
   ].filter(Boolean).length;
 
   function resetFilters() {
     setSearch("");
-    setQuickFilter("All");
+    setQuickFilter("all");
     setCategory("All categories");
-    setBudget("Any budget");
-    setDistance("Any distance");
+    setBudget("any");
+    setDeadline("any");
+    setOriginId(viewer.signedIn ? defaultOrigin.id : ANYWHERE);
+    setRadiusKm(DEFAULT_BROWSE_RADIUS_KM);
+    setSortOrder("recommended");
     if (initialSearch || initialCategory) router.replace("/tasks");
   }
 
@@ -103,7 +174,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
   ].filter(Boolean))].sort();
 
   return (
-    <Shell title="Browse Tasks" description="Find nearby errands by category, budget, status, and distance.">
+    <Shell title="Browse Tasks" description="Find nearby errands by category, budget, deadline, and search area.">
       <Card>
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row">
@@ -125,14 +196,14 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
             <div aria-label="Quick task filters" className="flex gap-2 overflow-x-auto pb-1">
               {quickFilters.map((filter) => (
                 <Button
-                  aria-pressed={quickFilter === filter}
+                  aria-pressed={quickFilter === filter.id}
                   className="shrink-0"
-                  key={filter}
-                  onClick={() => setQuickFilter(filter)}
+                  key={filter.id}
+                  onClick={() => setQuickFilter(filter.id)}
                   size="sm"
                   type="button"
-                  variant={quickFilter === filter ? "default" : "outline"}
-                >{filter}</Button>
+                  variant={quickFilter === filter.id ? "default" : "outline"}
+                >{filter.label}</Button>
               ))}
             </div>
           </div>
@@ -147,9 +218,65 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
         </p>
       ) : null}
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)_280px]">
+      {error ? (
+        <Card className="mt-4 border-[#F04452]/40">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+            <div>
+              <p className="font-bold">This browser could not load the demo tasks.</p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Session storage is unavailable or full. You can reset the demo data and try again.
+              </p>
+            </div>
+            <Button onClick={resetDemo} type="button" variant="outline">Reset demo data</Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
         <aside className="h-fit rounded-2xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(24,24,27,0.04)] dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" /><h2 className="font-bold">Refine results</h2></div>
+
+          <fieldset className="mt-5 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <legend className="px-1 text-sm font-bold">Search area</legend>
+            <div className="mt-2 grid gap-3">
+              <label className="grid gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                Origin
+                <select
+                  aria-label="Search origin"
+                  className={selectClass}
+                  onChange={(event) => setOriginId(event.target.value)}
+                  value={originId}
+                >
+                  {originChoices.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                  <option value={ANYWHERE}>Anywhere in the Philippines</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                Radius
+                <select
+                  aria-label="Search radius"
+                  className={selectClass}
+                  disabled={originId === ANYWHERE}
+                  onChange={(event) => setRadiusKm(Number(event.target.value))}
+                  value={radiusKm}
+                >
+                  {browseRadii.map((radius) => (
+                    <option key={radius} value={radius}>
+                      {radius} km{radius === DEFAULT_BROWSE_RADIUS_KM ? " (default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                {originId === ANYWHERE
+                  ? "Local and remote tasks are shown nationwide."
+                  : `Local tasks within ${radiusKm} km of ${origin?.label ?? "your origin"}. Remote tasks need no location.`}
+              </p>
+            </div>
+          </fieldset>
+
           <div className="mt-5 grid gap-4">
             <label className="grid gap-2 text-sm font-semibold">Category
               <select className={selectClass} onChange={(event) => setCategory(event.target.value)} value={category}>
@@ -158,13 +285,17 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
               </select>
             </label>
             <label className="grid gap-2 text-sm font-semibold">Budget
-              <select className={selectClass} onChange={(event) => setBudget(event.target.value)} value={budget}>
-                <option>Any budget</option><option>Under PHP 500</option><option>PHP 500 to 1,000</option><option>PHP 1,000+</option>
+              <select className={selectClass} onChange={(event) => setBudget(event.target.value as BrowseBudget)} value={budget}>
+                {budgetOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm font-semibold">Distance
-              <select className={selectClass} onChange={(event) => setDistance(event.target.value)} value={distance}>
-                <option>Any distance</option><option>Within 3 km</option><option>Within 5 km</option><option>Within 10 km</option>
+            <label className="grid gap-2 text-sm font-semibold">Deadline
+              <select className={selectClass} onChange={(event) => setDeadline(event.target.value as BrowseDeadline)} value={deadline}>
+                {deadlineOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
               </select>
             </label>
             <Button onClick={resetFilters} type="button" variant="ghost">Clear filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</Button>
@@ -176,34 +307,76 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Public opportunities</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight">Available tasks</h2>
-              <p aria-live="polite" className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{ready ? `Showing ${filteredTasks.length} of ${publicTasks.length} public tasks` : "Loading this browser session’s tasks…"}</p>
+              <p aria-live="polite" className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                {!ready
+                  ? "Loading this browser session’s tasks…"
+                  : `Showing ${results.tasks.length} of ${publicTasks.length} public tasks`}
+              </p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="grid gap-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Sort by
-                <select aria-label="Sort tasks" className={`${selectClass} min-w-40`} onChange={(event) => setSortOrder(event.target.value as SortOrder)} value={sortOrder}>
-                  <option value="recommended">Recommended</option>
-                  <option value="nearest">Nearest first</option>
-                  <option value="budget-asc">Lowest budget</option>
-                  <option value="budget-desc">Highest budget</option>
+                <select aria-label="Sort tasks" className={`${selectClass} min-w-44`} onChange={(event) => setSortOrder(event.target.value as BrowseSort)} value={sortOrder}>
+                  {sortOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
                 </select>
               </label>
               <Button asChild className="shrink-0" size="sm">{viewer.canPost ? <Link href="/tasks/new">Create task</Link> : viewer.signedIn ? <Link href="/profile">Complete profile to post</Link> : <Link href="/login">Sign in to post</Link>}</Button>
             </div>
           </div>
           <div className="mt-5 grid gap-4">
-            {!ready ? null : filteredTasks.length ? filteredTasks.map((task) => <TaskCard key={task.id} task={task} />) : (
+            {!ready ? (
+              <>
+                <LoadingCard />
+                <LoadingCard />
+                <LoadingCard />
+              </>
+            ) : results.tasks.length ? (
+              results.tasks.map(({ task, distanceKm }) => (
+                <TaskCard distanceKm={distanceKm} key={task.id} task={task} />
+              ))
+            ) : (
               <Card><CardContent className="grid min-h-48 place-items-center p-6 text-center">
-                <div><p className="font-semibold">No tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try a different search or reset the filters.</p><Button className="mt-4" onClick={resetFilters} type="button" variant="outline">Reset filters</Button></div>
+                <div>
+                  <p className="font-semibold">No tasks match these filters.</p>
+                  <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    {origin ? `Try a wider radius than ${radiusKm} km, another origin, or fewer filters.` : "Try a different search or fewer filters."}
+                  </p>
+                  <Button className="mt-4" onClick={resetFilters} type="button" variant="outline">Reset filters</Button>
+                </div>
               </CardContent></Card>
             )}
           </div>
         </section>
 
-        <aside className="hidden h-fit xl:block"><Card><CardContent className="p-5">
-          <p className="text-sm font-bold">Browse by location</p>
-          <div className="mt-4 grid min-h-72 place-items-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center dark:border-zinc-700 dark:bg-zinc-800/40">
-            <div><span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[#FFD50D]/30 text-[#D19300] dark:bg-[#FFC800]/15 dark:text-[#FFD50D]"><MapPin className="h-5 w-5" /></span><p className="mt-4 text-sm font-semibold">Map preview</p><p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">Backend map data is not connected. Distance filters use demo values only.</p></div>
+        <aside className="hidden h-fit gap-5 xl:grid"><Card><CardContent className="p-5">
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <MapPin className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" />
+            {origin ? "Searching around" : "Searching nationwide"}
+          </p>
+          <p className="mt-2 text-lg font-bold">
+            {origin ? origin.label : "Anywhere in the Philippines"}
+          </p>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            {origin ? `Within ${radiusKm} km · 10 km is the default` : "No radius applied"}
+          </p>
+          <div className="mt-4 grid gap-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/40">
+            <p className="flex items-center justify-between gap-3">
+              <span className="text-zinc-500 dark:text-zinc-400">Local shown</span>
+              <span className="font-bold">{results.tasks.filter(({ task }) => task.fulfillmentMode === "local").length}</span>
+            </p>
+            <p className="flex items-center justify-between gap-3">
+              <span className="text-zinc-500 dark:text-zinc-400">Remote</span>
+              <span className="font-bold">{results.tasks.filter(({ task }) => task.fulfillmentMode === "remote").length}</span>
+            </p>
           </div>
+          <p className="mt-4 flex gap-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            <Globe2 className="mt-0.5 h-4 w-4 shrink-0" />
+            Remote tasks have no physical pin. Local cards show only the approximate area until payment and assignment.
+          </p>
+          <p className="mt-3 text-xs leading-5 text-zinc-400">
+            Map preview is not connected; distances use demo coordinates.
+          </p>
         </CardContent></Card></aside>
       </div>
 

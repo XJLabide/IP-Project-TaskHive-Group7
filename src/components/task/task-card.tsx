@@ -3,9 +3,20 @@ import { ArrowRight, Clock, Globe2, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Task } from "@/lib/mock-task-store";
+import { formatBrowseDistance } from "@/lib/tasks/browse";
 import { formatTaskDeadline, taskStatusClass, taskStatusLabel } from "@/lib/tasks/ui";
 
-export function TaskCard({ task }: { task: Task }) {
+export function TaskCard({
+  task,
+  distanceKm,
+}: {
+  task: Task;
+  /** Computed from the chosen search origin; omit for workspace cards. */
+  distanceKm?: number | null;
+}) {
+  const distanceLabel =
+    distanceKm === undefined ? null : formatBrowseDistance(distanceKm);
+
   return (
     <article className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(24,24,27,0.04)] transition-colors hover:border-[#D19300] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-[#FFD50D] sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -37,8 +48,8 @@ export function TaskCard({ task }: { task: Task }) {
             <Globe2 className="h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />
           )}
           {task.fulfillmentMode === "local"
-            ? `Approx. ${task.location ?? "service area not set"}${task.distance !== "Not set" ? ` · ${task.distance}` : ""}`
-            : "Completed online"}
+            ? `Approx. ${task.location ?? "service area not set"}${distanceLabel ? ` · ${distanceLabel}` : ""}`
+            : "Completed online · no location needed"}
         </span>
         <span className="flex items-center gap-1.5">
           <Clock className="h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />

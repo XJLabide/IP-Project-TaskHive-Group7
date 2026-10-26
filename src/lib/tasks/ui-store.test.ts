@@ -19,7 +19,6 @@ const openTask: TaskSummary = {
   hiringMode: "bidding",
   status: "open",
   budget: 450,
-  distance: "1.2 km",
   location: "Community Market",
   addressLine: "1234 Rizal Street, Sampaloc, Manila",
   deadline: "2026-11-01T09:00:00.000Z",
@@ -94,13 +93,12 @@ describe("mock task mutations", () => {
     expect(tasks[0].applications).toBe(4);
   });
 
-  it("updates distance when a remote task becomes local", () => {
+  it("restores the service area when a remote task becomes local", () => {
     const remote: TaskSummary = {
       ...openTask,
       category: "Writing",
       fulfillmentMode: "remote",
       location: null,
-      distance: "Remote",
     };
 
     const { tasks } = applyUpdateTask(
@@ -118,7 +116,6 @@ describe("mock task mutations", () => {
     expect(tasks[0]).toMatchObject({
       fulfillmentMode: "local",
       location: "Community Market",
-      distance: "Not set",
     });
   });
 
