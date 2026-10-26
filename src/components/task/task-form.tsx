@@ -12,12 +12,18 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { AddressAutocomplete } from "@/components/task/address-autocomplete";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  LeafletLocationPicker,
+  PHILIPPINES_MAP_CENTER,
+} from "@/components/task/leaflet-location-picker";
 import { useMockTasks, type Task } from "@/lib/mock-task-store";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import type { FulfillmentMode, HiringMode } from "@/lib/tasks/policy";
+import type { Coordinates } from "@/lib/tasks/location";
 import {
   categoryOptions,
   emptyTaskForm,
@@ -170,11 +176,22 @@ function TaskFormFields({
         if (fulfillment === "remote") {
           next.location = "";
           next.address = "";
+          next.latitude = null;
+          next.longitude = null;
         }
       }
 
       return next;
     });
+  }
+
+  function selectTaskLocation(coordinates: Coordinates) {
+    setForm((current) => ({
+      ...current,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+    }));
+    setErrors((current) => ({ ...current, latitude: undefined, longitude: undefined }));
   }
 
   function save(publish: boolean) {
@@ -430,16 +447,40 @@ function TaskFormFields({
                         </span>
                       )}
                     </label>
-                    <label className="grid gap-2 text-sm font-semibold">
-                      Exact address
-                      <input
-                        aria-describedby={
+                    <div className="grid gap-2">
+                      <p className="text-sm font-semibold" id="task-map-label">
+                        Approximate service point
+                      </p>
+                      <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                        Pin the general area. Do not place the exact address on this public map.
+                      </p>
+                      <LeafletLocationPicker
+                        center={
+                          form.latitude !== null && form.longitude !== null
+                            ? { latitude: form.latitude, longitude: form.longitude }
+                            : PHILIPPINES_MAP_CENTER
+                        }
+                        label="Choose the approximate task service point"
+                        onSelect={selectTaskLocation}
+                        selected={
+                          form.latitude !== null && form.longitude !== null
+                            ? { latitude: form.latitude, longitude: form.longitude }
+                            : null
+                        }
+                        zoom={form.latitude !== null && form.longitude !== null ? 14 : 6}
+                      />
+                      {errors.latitude ? (
+                        <FieldError id="task-map-error" message={errors.latitude} />
+                      ) : null}
+                    </div>
+                    <div className="grid gap-2 text-sm font-semibold">
+                      <label htmlFor="task-exact-address">Exact address</label>
+                      <AddressAutocomplete
+                        describedBy={
                           errors.addressLine ? "task-address-error" : "task-address-help"
                         }
-                        aria-invalid={errors.addressLine ? true : undefined}
-                        className={inputClass}
-                        onChange={(event) => updateField("address", event.target.value)}
-                        placeholder="House number, street, barangay"
+                        invalid={Boolean(errors.addressLine)}
+                        onChange={(value) => updateField("address", value)}
                         value={form.address}
                       />
                       {errors.addressLine ? (
@@ -449,10 +490,10 @@ function TaskFormFields({
                           className="text-xs font-normal text-zinc-500 dark:text-zinc-400"
                           id="task-address-help"
                         >
-                          Hidden from everyone until payment succeeds and the assignment is active.
+                          Hidden from other users until payment succeeds and the assignment is active. Address searches go to Photon, which uses OpenStreetMap data.
                         </span>
                       )}
-                    </label>
+                    </div>
                   </>
                 ) : (
                   <p className="flex gap-3 rounded-xl bg-zinc-50 p-3 text-sm leading-6 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
@@ -552,7 +593,7 @@ function TaskFormFields({
                 </p>
                 <p className="flex gap-3">
                   <ReceiptText className="h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />
-                  Backend payment is not connected; these tasks are demo data only.
+                  Payments and payouts are not connected yet; tasks on this page are saved only in this browser session.
                 </p>
               </div>
             </CardContent>

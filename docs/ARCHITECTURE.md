@@ -6,6 +6,7 @@ The repository is a **single full-stack Next.js app** with a REST API exposed th
 ## High-Level Architecture
 ```text
 User Browser
+    +--> OpenStreetMap tiles (Leaflet)
     |
     v
 Next.js App on Vercel
@@ -19,7 +20,6 @@ Next.js App on Vercel
           +--> MongoDB Atlas
           +--> Upstash QStash
           +--> Payment provider (selection pending; evaluate PayMongo first)
-          +--> Mapbox API
           +--> Resend API
           +--> Cloudinary API
 ```
@@ -36,7 +36,7 @@ Next.js App on Vercel
 | NoSQL | MongoDB Atlas | Reserved for log-style data; task chat, reports, and marketplace records use PostgreSQL. |
 | Queue | Upstash QStash | Serverless-friendly async jobs. |
 | Payments | Not selected | Evaluate PayMongo first; confirm platform eligibility and marketplace payout, refund, and dispute capabilities before implementation. |
-| Maps | Mapbox | Location search, picker, and nearby task support. |
+| Maps and address search | Leaflet + OpenStreetMap tiles; Photon geocoder | Map pin selection for approximate task areas and Tasker search origins; server-side, Philippines-filtered address suggestions for the private service address. |
 | Email | Firebase Authentication + Resend | Firebase-managed verification/reset email; Resend for other transactional notifications. |
 | Uploads | Cloudinary | Profile, portfolio, attachment, and proof uploads. |
 | CI | GitHub Actions | Lint, typecheck, tests, Prisma validation, build. |
@@ -96,7 +96,6 @@ Route Handlers expose the custom API:
 - `/api/admin/dashboard`
 - `/api/admin/reports`
 - `/api/uploads/signature`
-- `/api/locations/search`
 - `/api/jobs`
 
 ## Architecture Decision
@@ -111,5 +110,8 @@ Use Next.js full-stack instead of Vite + NestJS + Render. This reduces deploymen
 - Exact local service addresses are private until payment succeeds and assignment activates.
 - The architecture must support payment retry, refunds, disputes, completion auto-release, in-app/email notifications, and auditable Admin decisions.
 
-## Prototype boundary
-The marketplace UI still uses static/local data and must not be presented as connected identity verification, marketplace persistence, payment, payout, or notification infrastructure. Firebase Authentication is configured for Production; the Firebase-auth application build still needs deployment and live-flow verification. Update the stack table as other vendors are actually selected and implemented.
+## Current implementation boundaries
+The marketplace UI still uses static/local task data and is not connected to production marketplace persistence, payment, payout, or notification infrastructure. Firebase Authentication is configured for Production; the Firebase-auth application build still needs deployment and live-flow verification. Update the stack table as other vendors are selected and implemented.
+
+## Map usage boundary
+Interactive Leaflet maps use OpenStreetMap's public raster tile service. TaskHive sends debounced address queries from its server route to Photon for suggestions. Keep exact service addresses separate from the public approximate-area pin and disclose that address search text is sent to Photon. Show OpenStreetMap attribution, honor browser tile caching, and do not prefetch or offer offline tile downloads. Photon describes its public server as a demo with reasonable-use expectations and no availability guarantees; configure `PHOTON_URL` to use another compatible Photon instance when production traffic requires service guarantees.

@@ -19,6 +19,8 @@ export type MaterialTaskFields = {
   budgetCents: number;
   deadline: Date | string | null;
   locationLabel: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   fulfillmentMode: FulfillmentMode;
   hiringMode: HiringMode;
 };
@@ -79,7 +81,11 @@ export function changedMaterialFields(
   if (normalizedDeadline(before.deadline) !== normalizedDeadline(after.deadline)) {
     changed.push("deadline");
   }
-  if (normalizedLocation(before.locationLabel) !== normalizedLocation(after.locationLabel)) {
+  if (
+    normalizedLocation(before.locationLabel) !== normalizedLocation(after.locationLabel) ||
+    (before.latitude ?? null) !== (after.latitude ?? null) ||
+    (before.longitude ?? null) !== (after.longitude ?? null)
+  ) {
     changed.push("locationLabel");
   }
   if (before.fulfillmentMode !== after.fulfillmentMode) changed.push("fulfillmentMode");

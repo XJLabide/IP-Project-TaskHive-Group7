@@ -13,6 +13,8 @@ const localTask: TaskFields = {
   hiringMode: "bidding",
   locationLabel: "Community Market",
   addressLine: "1234 Rizal Street, Sampaloc, Manila",
+  latitude: 14.603,
+  longitude: 120.994,
 };
 
 const remoteTask: TaskFields = {
@@ -24,6 +26,8 @@ const remoteTask: TaskFields = {
   hiringMode: "fixed_price",
   fulfillmentMode: "remote",
   locationLabel: null,
+  latitude: null,
+  longitude: null,
 };
 
 describe("task validation", () => {
@@ -74,6 +78,13 @@ describe("task validation", () => {
     expect(validateTaskDraft({ ...localTask, locationLabel: null })).toEqual({});
     expect(validateTaskForPublish({ ...localTask, locationLabel: null }, now).locationLabel)
       .toBeDefined();
+  });
+
+  it("requires a map point before publishing a local task", () => {
+    expect(
+      validateTaskForPublish({ ...localTask, latitude: null, longitude: null }, now).latitude,
+    ).toBe("Choose the approximate service area on the map.");
+    expect(validateTaskDraft({ ...localTask, latitude: null, longitude: null })).toEqual({});
   });
 
   it("ignores a service location on remote tasks", () => {

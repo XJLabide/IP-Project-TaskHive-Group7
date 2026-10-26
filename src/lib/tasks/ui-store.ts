@@ -34,9 +34,14 @@ function summaryFields(fields: TaskFields): TaskFormSource {
     budget: Number.isFinite(budget) ? Math.max(0, budget) : 0,
     location:
       fields.fulfillmentMode === "local" ? fields.locationLabel?.trim() || null : null,
-    ...(typeof fields.latitude === "number" && typeof fields.longitude === "number"
-      ? { latitude: fields.latitude, longitude: fields.longitude }
-      : {}),
+    latitude:
+      fields.fulfillmentMode === "local" && typeof fields.latitude === "number"
+        ? fields.latitude
+        : null,
+    longitude:
+      fields.fulfillmentMode === "local" && typeof fields.longitude === "number"
+        ? fields.longitude
+        : null,
     addressLine:
       fields.fulfillmentMode === "local" ? fields.addressLine?.trim() || null : null,
     deadline: fields.deadline ? new Date(fields.deadline).toISOString() : "",

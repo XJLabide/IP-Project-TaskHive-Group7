@@ -137,6 +137,14 @@ export function validateTaskForPublish(input: TaskFields, now: Date): TaskFieldE
     errors.locationLabel = "Local tasks need a service location.";
   }
 
+  if (
+    input.fulfillmentMode === "local" &&
+    (input.latitude === null || input.latitude === undefined ||
+      input.longitude === null || input.longitude === undefined)
+  ) {
+    errors.latitude = "Choose the approximate service area on the map.";
+  }
+
   if (input.fulfillmentMode === "local" && (input.addressLine?.trim() ?? "").length < 5) {
     errors.addressLine = "Local tasks need an exact service address.";
   }
