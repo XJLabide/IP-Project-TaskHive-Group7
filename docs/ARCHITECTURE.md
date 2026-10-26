@@ -87,6 +87,7 @@ Route Handlers expose the custom API:
 - `/api/tasks/:id/complete`
 - `/api/tasks/:id/confirm`
 - `/api/payments/checkout`
+- `/api/payments/webhook`
 - `/api/reviews`
 - `/api/chats`
 - `/api/chats/:id/messages`
@@ -103,6 +104,8 @@ Use Next.js full-stack instead of Vite + NestJS + Render. This reduces deploymen
 
 ## Marketplace integration constraints
 - Payment must be provider-managed: Poster checkout at hire, then provider-routed Tasker payout after completion. This is not legal escrow.
+- Selection opens a 24-hour payment hold; the assignment activates only on a verified provider callback. Expiry reopens the task with the other applications retained.
+- Provider callbacks are idempotent through `PaymentEvent`; the unsigned fake provider is disabled in production unless `ALLOW_FAKE_PAYMENTS=1`.
 - The provider is unresolved. PayMongo is the first candidate to evaluate, not an approved selection. Keep the payment integration replaceable and avoid provider-specific assumptions in marketplace rules.
 - Tasker identity documents remain with the verification provider; TaskHive stores only status and provider reference.
 - Exact local service addresses are private until payment succeeds and assignment activates.

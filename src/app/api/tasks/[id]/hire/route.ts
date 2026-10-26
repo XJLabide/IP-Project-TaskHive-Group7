@@ -1,12 +1,13 @@
-import { created, problem, problemWithCode, requireUser, statusForDenial } from "@/lib/api/response";
-import { applicationFailureResponse } from "@/lib/applications/http";
-import { approveApplication } from "@/lib/applications/service";
-import { loadActorById } from "@/lib/auth/actor";
-import { can } from "@/lib/domain/access";
-import { publishJob } from "@/lib/queue/qstash";
+import { created, problem, requireUser } from "@/lib/api/response";
+import { paymentFailureResponse } from "@/lib/payments/http";
+import { selectTasker } from "@/lib/payments/service";
 
 export const runtime = "nodejs";
 
+/**
+ * The Poster selects one eligible Tasker. The task and Tasker enter the
+ * 24-hour payment hold; other applications stay pending.
+ */
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -20,36 +21,18 @@ export async function POST(
 
   if (!taskerId) return problem("A taskerId is required to hire", 422);
 
-  const tasker = await loadActorById(taskerId);
-  if (!tasker) return problem("Tasker not found", 404);
-
-  const decision = can(tasker, "be_assigned");
-  if (!decision.allowed) {
-    return problemWithCode(
-      decision.reason,
-      statusForDenial(decision.code),
-      decision.code,
-    );
-  }
-
-  const eligibility = await approveApplication(
-    { id: authResult.session.user.id },
-    id,
-    taskerId,
-  );
-  if (!eligibility.ok) return applicationFailureResponse(eligibility);
-
-  await publishJob("notify.hiring.approved", {
+  const result = await selectTasker({
+    posterId: authResult.session.user.id,
     taskId: id,
     taskerId,
   });
+  if (!result.ok) return paymentFailureResponse(result);
 
   return created({
-    id: "assignment_created_demo",
-    taskId: id,
-    posterId: authResult.session.user.id,
-    taskerId,
-    applicationId: eligibility.application.id,
-    nextStatus: "PENDING_PAYMENT",
+    assignmentId: result.assignment.id,
+    taskId: result.assignment.taskId,
+    taskerId: result.assignment.taskerId,
+    taskStatus: result.taskStatus,
+    holdExpiresAt: result.assignment.holdExpiresAt,
   });
 }

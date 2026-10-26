@@ -24,7 +24,6 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 vi.mock("@/lib/queue/qstash", () => ({ publishJob: publishJobMock }));
 
 import {
-  approveApplication,
   createBid,
   createRequest,
   listApplicationsForTask,
@@ -294,43 +293,6 @@ describe("listing applications for a Poster", () => {
         where: expect.objectContaining({ taskId: "task_1", taskerId: "tasker_1" }),
       }),
     );
-  });
-});
-
-describe("hiring gate", () => {
-  it("approves a verified, submitted applicant for the owning Poster", async () => {
-    prismaMock.bid.findUnique.mockResolvedValue({
-      id: "bid_1",
-      status: "SUBMITTED",
-      tasker: { taskerVerification: { status: "VERIFIED" } },
-    });
-
-    const result = await approveApplication({ id: "poster_1" }, "task_1", "tasker_1");
-
-    expect(result).toEqual({ ok: true, application: { id: "bid_1", kind: "bid" } });
-  });
-
-  it("refuses pending verification, missing applications, and other Posters", async () => {
-    prismaMock.bid.findUnique.mockResolvedValue({
-      id: "bid_1",
-      status: "SUBMITTED",
-      tasker: { taskerVerification: { status: "PENDING" } },
-    });
-    expect(await approveApplication({ id: "poster_1" }, "task_1", "tasker_1")).toMatchObject({
-      ok: false,
-      code: "pending_verification",
-    });
-
-    prismaMock.bid.findUnique.mockResolvedValue(null);
-    expect(await approveApplication({ id: "poster_1" }, "task_1", "tasker_1")).toMatchObject({
-      ok: false,
-      code: "not_found",
-    });
-
-    expect(await approveApplication({ id: "tasker_1" }, "task_1", "tasker_1")).toMatchObject({
-      ok: false,
-      code: "forbidden",
-    });
   });
 });
 
