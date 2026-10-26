@@ -13,6 +13,8 @@ export type TaskFormSource = {
   hiringMode: HiringMode;
   budget: number;
   location: string | null;
+  /** Exact service address; private until payment succeeds on an active assignment. */
+  addressLine?: string | null;
   deadline: string;
 };
 

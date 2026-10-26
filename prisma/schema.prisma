@@ -155,6 +155,8 @@ model Profile {
   community          String?
   contactNumber      String?
   locationLabel      String?
+  latitude           Float?
+  longitude          Float?
   isPosterEnabled    Boolean  @default(true)
   isTaskerEnabled    Boolean  @default(true)
   skills             String[]
@@ -201,7 +203,11 @@ model Task {
   budgetCents Int
   currency    String     @default("PHP")
   deadline    DateTime?
+  /// Public approximate area shown to everyone before hire.
   locationLabel String?
+  /// Exact service address. Never exposed before a successful payment on an
+  /// active assignment; only the Poster and the assigned Tasker may read it.
+  addressLine String?
   latitude    Float?
   longitude   Float?
   fulfillmentMode FulfillmentMode

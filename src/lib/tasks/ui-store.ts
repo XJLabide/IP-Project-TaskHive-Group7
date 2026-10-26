@@ -34,6 +34,8 @@ function summaryFields(fields: TaskFields): TaskFormSource {
     budget: Number.isFinite(budget) ? Math.max(0, budget) : 0,
     location:
       fields.fulfillmentMode === "local" ? fields.locationLabel?.trim() || null : null,
+    addressLine:
+      fields.fulfillmentMode === "local" ? fields.addressLine?.trim() || null : null,
     deadline: fields.deadline ? new Date(fields.deadline).toISOString() : "",
   };
 }

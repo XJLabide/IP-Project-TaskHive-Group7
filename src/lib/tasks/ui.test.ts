@@ -19,6 +19,7 @@ const taskSource = {
   hiringMode: "bidding" as const,
   budget: 450,
   location: "Community Market",
+  addressLine: "1234 Rizal Street, Sampaloc, Manila",
   deadline: "2026-11-01T09:00:00.000Z",
 };
 
@@ -51,6 +52,7 @@ describe("task UI helpers", () => {
 
     expect(fields.budgetCents).toBe(45000);
     expect(fields.locationLabel).toBeNull();
+    expect(fields.addressLine).toBeNull();
     expect(fields.deadline).toBe("2026-11-01T09:00:00.000Z");
   });
 
@@ -92,5 +94,6 @@ describe("task UI helpers", () => {
 
     expect(fields.budgetCents).toBe(45000);
     expect(fields.locationLabel).toBe("Community Market");
+    expect(fields.addressLine).toBe("1234 Rizal Street, Sampaloc, Manila");
   });
 });
