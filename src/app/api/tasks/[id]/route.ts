@@ -1,21 +1,24 @@
 import { ok, problem, problemWithCode, requireCapability } from "@/lib/api/response";
-import { tasks } from "@/lib/sample-data";
+import { loadActorFromHeaders } from "@/lib/auth/actor";
+import { getPublicTaskDetail } from "@/lib/tasks/discovery-service";
 import { taskFailureResponse } from "@/lib/tasks/http";
 import { deleteTask, updateTask } from "@/lib/tasks/service";
 import { updateTaskSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
+/** Public task detail; the exact address follows the payment/assignment gate. */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  const task = tasks.find((item) => item.id === id);
+  const actor = await loadActorFromHeaders(request.headers);
+  const detail = await getPublicTaskDetail(id, actor?.id ?? null);
 
-  if (!task) return problem("Task not found", 404);
+  if (!detail) return problem("Task not found", 404);
 
-  return ok(task);
+  return ok(detail);
 }
 
 export async function PATCH(

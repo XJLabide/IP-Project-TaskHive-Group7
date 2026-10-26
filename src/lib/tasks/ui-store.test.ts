@@ -21,6 +21,7 @@ const openTask: TaskSummary = {
   budget: 450,
   distance: "1.2 km",
   location: "Community Market",
+  addressLine: "1234 Rizal Street, Sampaloc, Manila",
   deadline: "2026-11-01T09:00:00.000Z",
   poster: "Ana Reyes",
   applications: 4,

@@ -1,22 +1,29 @@
 import { created, ok, problemWithCode, requireCapability } from "@/lib/api/response";
-import { tasks } from "@/lib/sample-data";
+import { loadActorFromHeaders } from "@/lib/auth/actor";
 import { taskFailureResponse } from "@/lib/tasks/http";
+import { parsePublicTaskQuery } from "@/lib/tasks/discovery-query";
+import { listPublicTasks } from "@/lib/tasks/discovery-service";
 import { createTask } from "@/lib/tasks/service";
 import type { TaskFields } from "@/lib/tasks/validation";
 import { createTaskSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
+/** Public discovery. Guests browse nationwide; accounts default to home + 10 km. */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const category = searchParams.get("category");
-  const status = searchParams.get("status");
+  const parsed = parsePublicTaskQuery(searchParams);
 
-  const filteredTasks = tasks.filter((task) => {
-    return (!category || task.category === category) && (!status || task.status === status);
-  });
+  if (!parsed.ok) {
+    return problemWithCode("Check the discovery filters.", 422, "invalid_query", {
+      issues: parsed.issues,
+    });
+  }
 
-  return ok(filteredTasks);
+  const actor = await loadActorFromHeaders(request.headers);
+  const result = await listPublicTasks(parsed.query, actor?.id ?? null);
+
+  return ok(result);
 }
 
 export async function POST(request: Request) {
@@ -35,6 +42,7 @@ export async function POST(request: Request) {
     fulfillmentMode: parsed.data.fulfillmentMode,
     hiringMode: parsed.data.hiringMode,
     locationLabel: parsed.data.locationLabel ?? null,
+    addressLine: parsed.data.addressLine ?? null,
   };
 
   const result = await createTask(gate.actor.id, fields, parsed.data.publish);

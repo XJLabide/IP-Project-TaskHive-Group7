@@ -25,8 +25,7 @@ const { prismaMock, txMock, publishJobMock } = vi.hoisted(() => {
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 vi.mock("@/lib/queue/qstash", () => ({ publishJob: publishJobMock }));
 
-import { deleteTask, updateTask } from "./service";
-
+import { createTask, deleteTask, updateTask } from "./service";
 const openTask = {
   id: "task_1",
   posterId: "poster_1",
@@ -63,6 +62,66 @@ beforeEach(() => {
 });
 
 describe("task authoring service", () => {
+  it("stores the exact address privately when a local task is created", async () => {
+    prismaMock.task.create.mockResolvedValue({ id: "task_1", status: "OPEN" });
+
+    const result = await createTask(
+      "poster_1",
+      {
+        title: "Pick up groceries",
+        description: "Buy groceries and deliver them nearby.",
+        category: "Delivery",
+        budgetCents: 45000,
+        deadline: new Date("2026-11-01T17:00:00.000Z"),
+        fulfillmentMode: "local",
+        hiringMode: "bidding",
+        locationLabel: "Sampaloc, Manila",
+        addressLine: "1234 Rizal Street, Sampaloc, Manila",
+        latitude: 14.6,
+        longitude: 121.0,
+      },
+      true,
+    );
+
+    expect(result).toMatchObject({ ok: true, status: "open" });
+    expect(prismaMock.task.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locationLabel: "Sampaloc, Manila",
+          addressLine: "1234 Rizal Street, Sampaloc, Manila",
+          latitude: 14.6,
+          longitude: 121,
+        }),
+      }),
+    );
+  });
+
+  it("drops the exact address when a task becomes remote", async () => {
+    prismaMock.task.create.mockResolvedValue({ id: "task_2", status: "OPEN" });
+
+    await createTask(
+      "poster_1",
+      {
+        title: "Edit a product description",
+        description: "Rewrite the product description for clarity.",
+        category: "Writing",
+        budgetCents: 45000,
+        deadline: new Date("2026-11-01T17:00:00.000Z"),
+        fulfillmentMode: "remote",
+        hiringMode: "fixed_price",
+        locationLabel: "Sampaloc, Manila",
+        addressLine: "1234 Rizal Street, Sampaloc, Manila",
+      },
+      true,
+    );
+
+    expect(prismaMock.task.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locationLabel: null, addressLine: null }),
+      }),
+    );
+  });
+
   it("withdraws applications and writes in-app notifications after a material edit", async () => {
     txMock.bid.findMany.mockResolvedValue([{ id: "bid_1", taskerId: "tasker_1" }]);
 

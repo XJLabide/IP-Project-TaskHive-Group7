@@ -1,4 +1,5 @@
 import { categoryForFulfillment, type FulfillmentMode, type HiringMode } from "./policy";
+import { isCoordinates } from "./location";
 
 export type TaskFields = {
   title: string;
@@ -9,6 +10,10 @@ export type TaskFields = {
   fulfillmentMode: FulfillmentMode;
   hiringMode: HiringMode;
   locationLabel: string | null;
+  /** Exact service address; private until payment succeeds on an active assignment. */
+  addressLine?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type TaskField = keyof TaskFields;
@@ -74,6 +79,28 @@ export function validateTaskDraft(input: TaskFields): TaskFieldErrors {
     ) {
       errors.locationLabel = "Enter a service location.";
     }
+
+    const address = input.addressLine?.trim() ?? "";
+    if (input.fulfillmentMode === "local" && address.length > 0 && address.length < 5) {
+      errors.addressLine = "Enter the complete service address.";
+    }
+
+    if (input.fulfillmentMode === "local") {
+      const hasPoint =
+        input.latitude !== null &&
+        input.latitude !== undefined &&
+        input.longitude !== null &&
+        input.longitude !== undefined;
+      const hasHalf =
+        (input.latitude !== null && input.latitude !== undefined) !==
+        (input.longitude !== null && input.longitude !== undefined);
+
+      if (hasHalf) {
+        errors.latitude = "Send both a latitude and a longitude.";
+      } else if (hasPoint && !isCoordinates({ latitude: input.latitude, longitude: input.longitude })) {
+        errors.latitude = "Enter coordinates within the valid range.";
+      }
+    }
   }
 
   if (readDeadline(input.deadline) === "invalid") {
@@ -108,6 +135,10 @@ export function validateTaskForPublish(input: TaskFields, now: Date): TaskFieldE
     (input.locationLabel?.trim() ?? "").length < 2
   ) {
     errors.locationLabel = "Local tasks need a service location.";
+  }
+
+  if (input.fulfillmentMode === "local" && (input.addressLine?.trim() ?? "").length < 5) {
+    errors.addressLine = "Local tasks need an exact service address.";
   }
 
   if (!errors.deadline) {

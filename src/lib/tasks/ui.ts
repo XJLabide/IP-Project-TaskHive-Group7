@@ -26,6 +26,7 @@ export type TaskFormValues = {
   hiringMode: HiringMode;
   budget: string;
   location: string;
+  address: string;
   deadline: string;
 };
 
@@ -38,6 +39,9 @@ export const taskFieldLabels: Record<TaskField, string> = {
   fulfillmentMode: "Fulfillment",
   hiringMode: "Hiring",
   locationLabel: "Approximate area",
+  addressLine: "Exact address",
+  latitude: "Latitude",
+  longitude: "Longitude",
 };
 
 export function taskStatusClass(status: UiTaskStatus): string {
@@ -136,6 +140,7 @@ export function toTaskFormValues(task: TaskFormSource): TaskFormValues {
     hiringMode: task.hiringMode,
     budget: task.budget > 0 ? String(task.budget) : "",
     location: task.location ?? "",
+    address: task.addressLine ?? "",
     deadline: toDateTimeLocal(task.deadline),
   };
 }
@@ -149,6 +154,7 @@ export function emptyTaskForm(fulfillment: FulfillmentMode = "local"): TaskFormV
     hiringMode: "bidding",
     budget: "",
     location: "",
+    address: "",
     deadline: "",
   };
 }
@@ -164,6 +170,8 @@ export function toTaskFields(values: TaskFormValues): TaskFields {
     hiringMode: values.hiringMode,
     locationLabel:
       values.fulfillmentMode === "local" ? values.location.trim() || null : null,
+    addressLine:
+      values.fulfillmentMode === "local" ? values.address.trim() || null : null,
   };
 }
 
@@ -177,6 +185,7 @@ export function taskToFields(task: TaskFormSource): TaskFields {
     fulfillmentMode: task.fulfillmentMode,
     hiringMode: task.hiringMode,
     locationLabel: task.location,
+    addressLine: task.addressLine ?? null,
   };
 }
 

@@ -59,6 +59,9 @@ function toFields(task: TaskRecord): TaskFields {
     fulfillmentMode: toDomainFulfillment[task.fulfillmentMode],
     hiringMode: toDomainHiring[task.hiringMode],
     locationLabel: task.locationLabel,
+    addressLine: task.addressLine,
+    latitude: task.latitude,
+    longitude: task.longitude,
   };
 }
 
@@ -71,6 +74,10 @@ function toData(fields: TaskFields, categoryId: string | null) {
     deadline: fields.deadline ? new Date(fields.deadline) : null,
     locationLabel:
       fields.fulfillmentMode === "local" ? fields.locationLabel?.trim() || null : null,
+    addressLine:
+      fields.fulfillmentMode === "local" ? fields.addressLine?.trim() || null : null,
+    latitude: fields.fulfillmentMode === "local" ? fields.latitude ?? null : null,
+    longitude: fields.fulfillmentMode === "local" ? fields.longitude ?? null : null,
     fulfillmentMode: toDbFulfillment[fields.fulfillmentMode],
     hiringMode: toDbHiring[fields.hiringMode],
   };
@@ -202,6 +209,24 @@ export async function updateTask(
         : patch.locationLabel !== undefined
           ? patch.locationLabel
           : current.locationLabel,
+    addressLine:
+      fulfillmentMode === "remote"
+        ? null
+        : patch.addressLine !== undefined
+          ? patch.addressLine
+          : current.addressLine,
+    latitude:
+      fulfillmentMode === "remote"
+        ? null
+        : patch.latitude !== undefined
+          ? patch.latitude
+          : current.latitude,
+    longitude:
+      fulfillmentMode === "remote"
+        ? null
+        : patch.longitude !== undefined
+          ? patch.longitude
+          : current.longitude,
   };
 
   const now = new Date();

@@ -40,7 +40,7 @@ export async function PATCH(request: Request) {
   const parsed = profileUpdateSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return problem("Invalid profile update", 422);
 
-  const { name, phone, ageAttested } = parsed.data;
+  const { name, phone, ageAttested, location } = parsed.data;
   const userId = authResult.session.user.id;
 
   await prisma.user.update({
@@ -51,6 +51,23 @@ export async function PATCH(request: Request) {
       ...(ageAttested ? { ageAttestedAt: new Date() } : {}),
     },
   });
+
+  if (location) {
+    await prisma.profile.upsert({
+      where: { userId },
+      update: {
+        locationLabel: location.label,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      },
+      create: {
+        userId,
+        locationLabel: location.label,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      },
+    });
+  }
 
   const actor = await loadActorById(userId);
   if (!actor) return problem("Account not found", 404);

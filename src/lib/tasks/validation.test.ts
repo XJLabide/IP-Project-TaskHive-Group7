@@ -12,6 +12,7 @@ const localTask: TaskFields = {
   fulfillmentMode: "local",
   hiringMode: "bidding",
   locationLabel: "Community Market",
+  addressLine: "1234 Rizal Street, Sampaloc, Manila",
 };
 
 const remoteTask: TaskFields = {
@@ -110,6 +111,29 @@ describe("task validation", () => {
         now,
       ).deadline,
     ).toBeDefined();
+  });
+
+  it("requires an exact local address to publish but not to draft", () => {
+    expect(validateTaskDraft({ ...localTask, addressLine: null })).toEqual({});
+    expect(
+      validateTaskForPublish({ ...localTask, addressLine: null }, now).addressLine,
+    ).toBeDefined();
+    expect(
+      validateTaskForPublish({ ...localTask, addressLine: "Flat" }, now).addressLine,
+    ).toBeDefined();
+  });
+
+  it("does not ask a remote task for a service address", () => {
+    expect(
+      validateTaskForPublish(
+        {
+          ...remoteTask,
+          addressLine: "1234 Rizal Street",
+          deadline: new Date("2026-11-01T17:00:00.000Z"),
+        },
+        now,
+      ),
+    ).toEqual({});
   });
 
   it("rejects an invalid deadline value", () => {

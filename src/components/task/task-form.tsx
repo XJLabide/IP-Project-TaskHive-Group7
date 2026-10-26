@@ -165,7 +165,10 @@ function TaskFormFields({
         if (!available.some((category) => category.label === current.category)) {
           next.category = available[0]?.label ?? "";
         }
-        if (fulfillment === "remote") next.location = "";
+        if (fulfillment === "remote") {
+          next.location = "";
+          next.address = "";
+        }
       }
 
       return next;
@@ -395,32 +398,57 @@ function TaskFormFields({
                 </div>
 
                 {form.fulfillmentMode === "local" ? (
-                  <label className="grid gap-2 text-sm font-semibold">
-                    Approximate area
-                    <span className={`${inputClass} flex items-center gap-2 text-zinc-400`}>
-                      <MapPin className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" />
+                  <>
+                    <label className="grid gap-2 text-sm font-semibold">
+                      Approximate area
+                      <span className={`${inputClass} flex items-center gap-2 text-zinc-400`}>
+                        <MapPin className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" />
+                        <input
+                          aria-describedby={
+                            errors.locationLabel ? "task-location-error" : "task-location-help"
+                          }
+                          aria-invalid={errors.locationLabel ? true : undefined}
+                          className="min-w-0 flex-1 bg-transparent text-zinc-950 outline-none dark:text-zinc-100"
+                          onChange={(event) => updateField("location", event.target.value)}
+                          placeholder="Neighborhood or pickup area"
+                          value={form.location}
+                        />
+                      </span>
+                      {errors.locationLabel ? (
+                        <FieldError id="task-location-error" message={errors.locationLabel} />
+                      ) : (
+                        <span
+                          className="text-xs font-normal text-zinc-500 dark:text-zinc-400"
+                          id="task-location-help"
+                        >
+                          Taskers see this before hire. Share the exact address after hiring.
+                        </span>
+                      )}
+                    </label>
+                    <label className="grid gap-2 text-sm font-semibold">
+                      Exact address
                       <input
                         aria-describedby={
-                          errors.locationLabel ? "task-location-error" : "task-location-help"
+                          errors.addressLine ? "task-address-error" : "task-address-help"
                         }
-                        aria-invalid={errors.locationLabel ? true : undefined}
-                        className="min-w-0 flex-1 bg-transparent text-zinc-950 outline-none dark:text-zinc-100"
-                        onChange={(event) => updateField("location", event.target.value)}
-                        placeholder="Neighborhood or pickup area"
-                        value={form.location}
+                        aria-invalid={errors.addressLine ? true : undefined}
+                        className={inputClass}
+                        onChange={(event) => updateField("address", event.target.value)}
+                        placeholder="House number, street, barangay"
+                        value={form.address}
                       />
-                    </span>
-                    {errors.locationLabel ? (
-                      <FieldError id="task-location-error" message={errors.locationLabel} />
-                    ) : (
-                      <span
-                        className="text-xs font-normal text-zinc-500 dark:text-zinc-400"
-                        id="task-location-help"
-                      >
-                        Taskers see this before hire. Share the exact address after hiring.
-                      </span>
-                    )}
-                  </label>
+                      {errors.addressLine ? (
+                        <FieldError id="task-address-error" message={errors.addressLine} />
+                      ) : (
+                        <span
+                          className="text-xs font-normal text-zinc-500 dark:text-zinc-400"
+                          id="task-address-help"
+                        >
+                          Hidden from everyone until payment succeeds and the assignment is active.
+                        </span>
+                      )}
+                    </label>
+                  </>
                 ) : (
                   <p className="flex gap-3 rounded-xl bg-zinc-50 p-3 text-sm leading-6 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
                     <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />

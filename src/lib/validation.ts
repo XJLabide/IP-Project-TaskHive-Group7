@@ -9,6 +9,9 @@ const taskFieldsSchema = z.object({
   fulfillmentMode: z.enum(["local", "remote"]),
   hiringMode: z.enum(["bidding", "fixed_price"]),
   locationLabel: z.string().nullable().optional(),
+  addressLine: z.string().nullable().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 
 /** A normal create request publishes; `publish: false` saves a draft. */
@@ -74,4 +77,12 @@ export const profileUpdateSchema = z.object({
     .regex(/^\+?[\d\s()-]{10,}$/, "Enter a phone number we can text.")
     .optional(),
   ageAttested: z.boolean().optional(),
+  /** The saved location that becomes the default local-discovery origin. */
+  location: z
+    .object({
+      label: z.string().trim().min(2).max(120),
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+    })
+    .optional(),
 });
