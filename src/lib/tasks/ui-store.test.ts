@@ -21,6 +21,8 @@ const openTask: TaskSummary = {
   budget: 450,
   location: "Community Market",
   addressLine: "1234 Rizal Street, Sampaloc, Manila",
+  latitude: 14.603,
+  longitude: 120.994,
   deadline: "2026-11-01T09:00:00.000Z",
   poster: "Ana Reyes",
   applications: 4,
@@ -48,7 +50,13 @@ describe("mock task mutations", () => {
     );
 
     expect(result).toMatchObject({ ok: true, status: "draft" });
-    expect(tasks[0]).toMatchObject({ id: "task_new", status: "draft", applications: 0 });
+    expect(tasks[0]).toMatchObject({
+      id: "task_new",
+      status: "draft",
+      applications: 0,
+      latitude: 14.603,
+      longitude: 120.994,
+    });
   });
 
   it("blocks publishing an incomplete task", () => {
@@ -116,6 +124,33 @@ describe("mock task mutations", () => {
     expect(tasks[0]).toMatchObject({
       fulfillmentMode: "local",
       location: "Community Market",
+      latitude: 14.603,
+      longitude: 120.994,
+    });
+  });
+
+  it("clears saved coordinates when a local task becomes remote", () => {
+    const { tasks } = applyUpdateTask(
+      tasksOf(openTask),
+      "task_1",
+      toTaskFields({
+        ...toTaskFormValues(openTask),
+        fulfillmentMode: "remote",
+        category: "Writing",
+        location: "",
+        address: "",
+        latitude: null,
+        longitude: null,
+      }),
+      { now },
+    );
+
+    expect(tasks[0]).toMatchObject({
+      fulfillmentMode: "remote",
+      location: null,
+      latitude: null,
+      longitude: null,
+      addressLine: null,
     });
   });
 

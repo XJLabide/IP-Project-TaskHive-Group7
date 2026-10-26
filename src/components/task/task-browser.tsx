@@ -7,6 +7,10 @@ import { Globe2, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PublicShell } from "@/components/layout/public-shell";
 import { TaskCard } from "@/components/task/task-card";
+import {
+  LeafletLocationPicker,
+  PHILIPPINES_MAP_CENTER,
+} from "@/components/task/leaflet-location-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMockTasks } from "@/lib/mock-task-store";
@@ -97,6 +101,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
   const [originId, setOriginId] = useState<string>(
     viewer.signedIn ? defaultOrigin.id : ANYWHERE,
   );
+  const [pinnedOrigin, setPinnedOrigin] = useState<(typeof defaultOrigin) | null>(null);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_BROWSE_RADIUS_KM);
   const [sortOrder, setSortOrder] = useState<BrowseSort>("recommended");
 
@@ -119,11 +124,12 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
     ).length;
 
   const origin = useMemo(
-    () =>
-      originId === ANYWHERE
-        ? null
-        : searchOrigins.find((item) => item.id === originId) ?? defaultOrigin,
-    [originId],
+    () => {
+      if (originId === ANYWHERE) return null;
+      if (originId === "map-pin") return pinnedOrigin;
+      return searchOrigins.find((item) => item.id === originId) ?? defaultOrigin;
+    },
+    [originId, pinnedOrigin],
   );
   const originChoices = viewer.signedIn
     ? searchOrigins
@@ -172,9 +178,24 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
     setBudget("any");
     setDeadline("any");
     setOriginId(viewer.signedIn ? defaultOrigin.id : ANYWHERE);
+    setPinnedOrigin(null);
     setRadiusKm(DEFAULT_BROWSE_RADIUS_KM);
     setSortOrder("recommended");
     if (initialSearch || initialCategory) router.replace("/tasks");
+  }
+
+  function updateOrigin(value: string) {
+    setOriginId(value);
+    if (value !== "map-pin") setPinnedOrigin(null);
+  }
+
+  function selectMapOrigin(coordinates: { latitude: number; longitude: number }) {
+    setPinnedOrigin({
+      id: "map-pin",
+      label: "Pinned map location",
+      ...coordinates,
+    });
+    setOriginId("map-pin");
   }
 
   const allCategories = [...new Set([
@@ -254,12 +275,13 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
                 <select
                   aria-label="Search origin"
                   className={selectClass}
-                  onChange={(event) => setOriginId(event.target.value)}
+                  onChange={(event) => updateOrigin(event.target.value)}
                   value={originId}
                 >
                   {originChoices.map((item) => (
                     <option key={item.id} value={item.id}>{item.label}</option>
                   ))}
+                  {pinnedOrigin ? <option value="map-pin">Pinned map location</option> : null}
                   <option value={ANYWHERE}>Anywhere in the Philippines</option>
                 </select>
               </label>
@@ -281,9 +303,17 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
               </label>
               <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                 {originId === ANYWHERE
-                  ? "Local and remote tasks are shown nationwide."
+                  ? "Local and remote tasks are shown nationwide. Pin a point on the map to filter local tasks by distance."
                   : `Local tasks within ${radiusKm} km of ${origin?.label ?? "your origin"}. Remote tasks need no location.`}
               </p>
+              <LeafletLocationPicker
+                center={origin ?? PHILIPPINES_MAP_CENTER}
+                label="Choose a task search origin on the map"
+                onSelect={selectMapOrigin}
+                radiusKm={origin ? radiusKm : null}
+                selected={origin}
+                zoom={originId === "map-pin" ? 14 : origin ? 11 : 6}
+              />
             </div>
           </fieldset>
 
@@ -390,7 +420,7 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
             Remote tasks have no physical pin. Local cards show only the approximate area until payment and assignment.
           </p>
           <p className="mt-3 text-xs leading-5 text-zinc-400">
-            Map preview is not connected; distances use demo coordinates.
+            The map pin sets your origin; distances use the demo task coordinates.
           </p>
         </CardContent></Card></aside>
       </div>

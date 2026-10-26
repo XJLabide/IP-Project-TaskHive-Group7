@@ -53,18 +53,18 @@ If the team has three members:
 - Database: Chat and notification storage.
 - Integrations: Message broker jobs.
 
-### Phase 6: Payments, Completion, and Reviews
+### Phase 6: Maps and Location Features
+- Frontend/UI: Location picker, map display, nearby tasks.
+- Backend/API: Location fields and nearby task query.
+- Database: Task location data.
+- Maps: Leaflet with OpenStreetMap tiles; map clicks set task pins and search origins, and Photon provides private-address autocomplete through the server route.
+
+### Phase 7: Payments, Completion, and Reviews
 - Frontend/UI: Payment confirmation, completion, reviews, earnings.
 - Backend/API: Provider checkout/payout boundary, payment status, completion, reviews.
 - Database: Payments, payouts, reviews.
 - Integrations: Evaluate PayMongo marketplace eligibility and required capabilities; do not assume approval or implement until confirmed.
 - QA/Admin: Payment and review tests.
-
-### Phase 7: Maps and Location Features
-- Frontend/UI: Location picker, map display, nearby tasks.
-- Backend/API: Location fields and nearby task query.
-- Database: Task location data.
-- Integrations: Mapbox.
 
 ### Phase 8: Reports, Disputes, and Admin
 - Frontend/UI: Admin screens, reports, disputes.

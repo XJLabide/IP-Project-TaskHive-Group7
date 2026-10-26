@@ -81,6 +81,7 @@ const assignmentsKey = "taskhive.mock-assignments.v1";
 let applicationsSnapshot: DemoApplication[] = seedApplications;
 let chatsSnapshot: DemoChat[] = seedChats;
 let assignmentsSnapshot: DemoAssignment[] = [];
+const emptyAssignments: DemoAssignment[] = [];
 let initialized = false;
 const listeners = new Set<() => void>();
 
@@ -147,7 +148,7 @@ function getServerChats(): DemoChat[] {
 }
 
 function getServerAssignments(): DemoAssignment[] {
-  return [];
+  return emptyAssignments;
 }
 
 function submit(input: {

@@ -20,6 +20,8 @@ const taskSource = {
   budget: 450,
   location: "Community Market",
   addressLine: "1234 Rizal Street, Sampaloc, Manila",
+  latitude: 14.603,
+  longitude: 120.994,
   deadline: "2026-11-01T09:00:00.000Z",
 };
 
@@ -53,6 +55,8 @@ describe("task UI helpers", () => {
     expect(fields.budgetCents).toBe(45000);
     expect(fields.locationLabel).toBeNull();
     expect(fields.addressLine).toBeNull();
+    expect(fields.latitude).toBeNull();
+    expect(fields.longitude).toBeNull();
     expect(fields.deadline).toBe("2026-11-01T09:00:00.000Z");
   });
 
@@ -95,5 +99,7 @@ describe("task UI helpers", () => {
     expect(fields.budgetCents).toBe(45000);
     expect(fields.locationLabel).toBe("Community Market");
     expect(fields.addressLine).toBe("1234 Rizal Street, Sampaloc, Manila");
+    expect(fields.latitude).toBe(14.603);
+    expect(fields.longitude).toBe(120.994);
   });
 });

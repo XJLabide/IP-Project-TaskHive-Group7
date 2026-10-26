@@ -27,6 +27,8 @@ export type TaskFormValues = {
   budget: string;
   location: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   deadline: string;
 };
 
@@ -143,6 +145,8 @@ export function toTaskFormValues(task: TaskFormSource): TaskFormValues {
     budget: task.budget > 0 ? String(task.budget) : "",
     location: task.location ?? "",
     address: task.addressLine ?? "",
+    latitude: task.latitude ?? null,
+    longitude: task.longitude ?? null,
     deadline: toDateTimeLocal(task.deadline),
   };
 }
@@ -157,6 +161,8 @@ export function emptyTaskForm(fulfillment: FulfillmentMode = "local"): TaskFormV
     budget: "",
     location: "",
     address: "",
+    latitude: null,
+    longitude: null,
     deadline: "",
   };
 }
@@ -174,6 +180,8 @@ export function toTaskFields(values: TaskFormValues): TaskFields {
       values.fulfillmentMode === "local" ? values.location.trim() || null : null,
     addressLine:
       values.fulfillmentMode === "local" ? values.address.trim() || null : null,
+    latitude: values.fulfillmentMode === "local" ? values.latitude : null,
+    longitude: values.fulfillmentMode === "local" ? values.longitude : null,
   };
 }
 
@@ -188,6 +196,8 @@ export function taskToFields(task: TaskFormSource): TaskFields {
     hiringMode: task.hiringMode,
     locationLabel: task.location,
     addressLine: task.addressLine ?? null,
+    latitude: task.fulfillmentMode === "local" ? task.latitude ?? null : null,
+    longitude: task.fulfillmentMode === "local" ? task.longitude ?? null : null,
   };
 }
 

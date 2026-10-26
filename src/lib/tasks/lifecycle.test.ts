@@ -14,6 +14,8 @@ const before: MaterialTaskFields = {
   budgetCents: 45000,
   deadline: new Date("2026-11-01T17:00:00.000Z"),
   locationLabel: "Community Market",
+  latitude: 14.603,
+  longitude: 120.994,
   fulfillmentMode: "local",
   hiringMode: "bidding",
 };
@@ -140,6 +142,9 @@ describe("material task changes", () => {
       }),
     ).toEqual(["deadline"]);
     expect(changedMaterialFields(before, { ...before, locationLabel: "Another market" })).toEqual([
+      "locationLabel",
+    ]);
+    expect(changedMaterialFields(before, { ...before, latitude: 14.7 })).toEqual([
       "locationLabel",
     ]);
     expect(changedMaterialFields(before, { ...before, fulfillmentMode: "remote" })).toEqual([

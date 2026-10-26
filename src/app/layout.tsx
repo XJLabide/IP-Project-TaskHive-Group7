@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ViewerProvider } from "@/components/viewer/viewer-provider";
 import { loadActorFromHeaders } from "@/lib/auth/actor";
 import { viewerSnapshot } from "@/lib/viewer/presentation";
+import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 const themeScript = `
