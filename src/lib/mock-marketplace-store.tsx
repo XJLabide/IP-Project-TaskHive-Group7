@@ -24,11 +24,20 @@ import {
   type ReportMessageResult,
 } from "@/lib/chat/demo";
 import { seedApplications, seedChats } from "@/lib/applications/seed";
+import {
+  demoAssignmentForTask,
+  expireHoldIfDue,
+  recordPayment,
+  selectDemoTasker,
+  startDemoCheckout,
+  type DemoAssignment,
+} from "@/lib/payments/demo";
 import type { TaskSummary } from "@/lib/tasks/types";
 
 type MarketplaceStore = {
   applications: DemoApplication[];
   chats: DemoChat[];
+  assignments: DemoAssignment[];
   applicationsForTask: (taskId: string) => DemoApplication[];
   liveApplication: (taskId: string, tasker: string) => DemoApplication | null;
   submit: (input: {
@@ -52,13 +61,26 @@ type MarketplaceStore = {
     messageId: string;
     reporter: string;
   }) => ReportMessageResult;
+  assignmentForTask: (taskId: string) => DemoAssignment | null;
+  selectTasker: (input: {
+    task: TaskSummary;
+    application: DemoApplication;
+  }) => ReturnType<typeof selectDemoTasker>;
+  startCheckout: (taskId: string) => DemoAssignment | null;
+  pay: (taskId: string, outcome: "success" | "failure") => DemoAssignment | null;
+  expireHold: (
+    taskId: string,
+    now?: Date,
+  ) => { expired: boolean; assignment: DemoAssignment | null };
 };
 
 const applicationsKey = "taskhive.mock-applications.v1";
 const chatsKey = "taskhive.mock-chats.v1";
+const assignmentsKey = "taskhive.mock-assignments.v1";
 
 let applicationsSnapshot: DemoApplication[] = seedApplications;
 let chatsSnapshot: DemoChat[] = seedChats;
+let assignmentsSnapshot: DemoAssignment[] = [];
 let initialized = false;
 const listeners = new Set<() => void>();
 
@@ -81,6 +103,7 @@ function persist() {
   try {
     window.sessionStorage.setItem(applicationsKey, JSON.stringify(applicationsSnapshot));
     window.sessionStorage.setItem(chatsKey, JSON.stringify(chatsSnapshot));
+    window.sessionStorage.setItem(assignmentsKey, JSON.stringify(assignmentsSnapshot));
   } catch {
     // Keep the in-memory store usable when browser storage is unavailable.
   }
@@ -91,6 +114,7 @@ function subscribe(listener: () => void) {
   if (!initialized && typeof window !== "undefined") {
     applicationsSnapshot = readStored(applicationsKey, seedApplications);
     chatsSnapshot = readStored(chatsKey, seedChats);
+    assignmentsSnapshot = readStored(assignmentsKey, []);
     initialized = true;
     listeners.forEach((notify) => notify());
   }
@@ -110,12 +134,20 @@ function getChatsSnapshot() {
   return chatsSnapshot;
 }
 
+function getAssignmentsSnapshot() {
+  return assignmentsSnapshot;
+}
+
 function getServerApplications(): DemoApplication[] {
   return seedApplications;
 }
 
 function getServerChats(): DemoChat[] {
   return seedChats;
+}
+
+function getServerAssignments(): DemoAssignment[] {
+  return [];
 }
 
 function submit(input: {
@@ -220,6 +252,75 @@ function reportMessage(input: {
   return result;
 }
 
+function selectTasker(input: {
+  task: TaskSummary;
+  application: DemoApplication;
+}): ReturnType<typeof selectDemoTasker> {
+  const result = selectDemoTasker({
+    assignments: assignmentsSnapshot,
+    task: input.task,
+    application: input.application,
+    id: `assignment_${crypto.randomUUID()}`,
+  });
+
+  if (!result.ok) return result;
+
+  assignmentsSnapshot = result.assignments;
+  applicationsSnapshot = applicationsSnapshot.map((application) =>
+    application.id === input.application.id
+      ? { ...application, status: "accepted" }
+      : application,
+  );
+  notify();
+  return result;
+}
+
+function startCheckout(taskId: string): DemoAssignment | null {
+  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
+  if (!current) return null;
+
+  const next = startDemoCheckout(current);
+  assignmentsSnapshot = assignmentsSnapshot.map((assignment) =>
+    assignment.taskId === taskId ? next : assignment,
+  );
+  notify();
+  return next;
+}
+
+function pay(taskId: string, outcome: "success" | "failure"): DemoAssignment | null {
+  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
+  if (!current) return null;
+
+  const next = recordPayment(current, outcome);
+  assignmentsSnapshot = assignmentsSnapshot.map((assignment) =>
+    assignment.taskId === taskId ? next : assignment,
+  );
+  notify();
+  return next;
+}
+
+function expireHold(
+  taskId: string,
+  now: Date = new Date(),
+): { expired: boolean; assignment: DemoAssignment | null } {
+  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
+  if (!current) return { expired: false, assignment: null };
+
+  const result = expireHoldIfDue(current, now);
+  if (!result.expired) return { expired: false, assignment: current };
+
+  assignmentsSnapshot = assignmentsSnapshot.map((assignment) =>
+    assignment.taskId === taskId ? result.assignment : assignment,
+  );
+  applicationsSnapshot = applicationsSnapshot.map((application) =>
+    application.id === current.applicationId
+      ? { ...application, status: "submitted" }
+      : application,
+  );
+  notify();
+  return { expired: true, assignment: result.assignment };
+}
+
 export function useMarketplace(): MarketplaceStore {
   const applications = useSyncExternalStore(
     subscribe,
@@ -227,11 +328,17 @@ export function useMarketplace(): MarketplaceStore {
     getServerApplications,
   );
   const chats = useSyncExternalStore(subscribe, getChatsSnapshot, getServerChats);
+  const assignments = useSyncExternalStore(
+    subscribe,
+    getAssignmentsSnapshot,
+    getServerAssignments,
+  );
 
   return useMemo(
     () => ({
       applications,
       chats,
+      assignments,
       applicationsForTask: (taskId: string) => applicationsForTask(applications, taskId),
       liveApplication: (taskId: string, tasker: string) =>
         liveApplicationFor(applications, taskId, tasker),
@@ -243,7 +350,13 @@ export function useMarketplace(): MarketplaceStore {
       openChat,
       sendMessage,
       reportMessage,
+      assignmentForTask: (taskId: string) =>
+        demoAssignmentForTask(assignments, taskId),
+      selectTasker,
+      startCheckout,
+      pay,
+      expireHold,
     }),
-    [applications, chats],
+    [applications, chats, assignments],
   );
 }

@@ -2,7 +2,7 @@ import type { FulfillmentMode, HiringMode } from "./policy";
 import type { TaskFieldErrors } from "./validation";
 
 /** The authoring states the mock UI can show. */
-export type UiTaskStatus = "draft" | "open" | "cancelled";
+export type UiTaskStatus = "draft" | "open" | "pending_payment" | "assigned" | "cancelled";
 
 /** The fields shared by a task and the edit form. */
 export type TaskFormSource = {
