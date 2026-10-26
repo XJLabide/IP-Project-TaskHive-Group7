@@ -13,5 +13,11 @@ export async function guardPage(action: MarketplaceAction): Promise<void> {
 
   if (decision.allowed) return;
 
-  redirect(decision.code === "sign_in_required" ? "/login" : "/dashboard");
+  redirect(
+    decision.code === "sign_in_required"
+      ? "/login"
+      : decision.code === "profile_incomplete"
+        ? "/profile"
+        : "/dashboard",
+  );
 }
