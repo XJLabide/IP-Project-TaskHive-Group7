@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
+import { useMockTasks } from "@/lib/mock-task-store";
 import {
   applicationStatusLabel,
   approvalFor,
+  type DemoApplication,
 } from "@/lib/applications/demo";
 import {
   applicationStatusClass,
@@ -24,10 +26,35 @@ export function TaskApplications({
   task: TaskSummary;
   readOnly?: boolean;
 }) {
-  const { applicationsForTask } = useMarketplace();
+  const { applicationsForTask, assignmentForTask, selectTasker } = useMarketplace();
+  const { setStatus } = useMockTasks();
   const { viewer } = useViewer();
   const [feedback, setFeedback] = useState("");
   const applications = applicationsForTask(task.id);
+  const assignment = assignmentForTask(task.id);
+  const hasSelection =
+    assignment?.status === "pending_payment" || assignment?.status === "active";
+
+  function handleSelect(application: DemoApplication) {
+    if (
+      !window.confirm(
+        `Select ${application.tasker}? The task and Tasker are reserved for 24 hours while the Poster completes payment. Other applications stay pending.`,
+      )
+    ) {
+      return;
+    }
+
+    const result = selectTasker({ task, application });
+    if (!result.ok) {
+      setFeedback(result.reason);
+      return;
+    }
+
+    setStatus(task.id, "pending_payment");
+    setFeedback(
+      `Selected ${application.tasker}. Continue to payment below; the hold ends in 24 hours.`,
+    );
+  }
 
   if (applications.length === 0) {
     return (
@@ -62,7 +89,11 @@ export function TaskApplications({
           task,
           application.tasker === viewer.displayName ? viewer.verification : undefined,
         );
-        const selectable = approval.approvable && !readOnly && task.status === "open";
+        const selectable =
+          approval.approvable &&
+          !readOnly &&
+          !hasSelection &&
+          task.status === "open";
 
         return (
           <Card key={application.id}>
@@ -106,16 +137,16 @@ export function TaskApplications({
                 ) : (
                   <Button
                     disabled={!selectable}
-                    onClick={() =>
-                      setFeedback(
-                        "Demo: selecting a Tasker and starting the payment hold ship with the next milestone.",
-                      )
-                    }
+                    onClick={() => handleSelect(application)}
                     size="sm"
                     type="button"
                     variant="outline"
                   >
-                    {readOnly ? "Task closed" : "Select Tasker"}
+                    {readOnly
+                      ? "Task closed"
+                      : hasSelection
+                        ? "Tasker selected"
+                        : "Select Tasker"}
                   </Button>
                 )}
               </div>

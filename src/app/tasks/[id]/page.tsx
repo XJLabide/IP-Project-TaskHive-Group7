@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskApplicationPanel } from "@/components/task/task-application-panel";
 import { TaskApplications } from "@/components/task/task-applications";
 import { TaskChat } from "@/components/task/task-chat";
+import { TaskPaymentPanel } from "@/components/task/task-payment-panel";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
@@ -51,7 +52,7 @@ function TaskDetailContent() {
   const searchParams = useSearchParams();
   const { viewer } = useViewer();
   const { tasks, ready, updateTask, cancelTask, deleteTask } = useMockTasks();
-  const { applicationsForTask } = useMarketplace();
+  const { applicationsForTask, assignmentForTask } = useMarketplace();
   const [actionMessage, setActionMessage] = useState("");
 
   const requestedNotice = searchParams.get("notice") ?? "";
@@ -82,6 +83,10 @@ function TaskDetailContent() {
   const task = tasks.find((item) => item.id === id);
   const viewerName = viewer.signedIn ? (viewer.displayName ?? "You") : null;
   const isOwner = Boolean(task && viewerName && task.poster === viewerName);
+  const assignment = task ? assignmentForTask(task.id) : null;
+  const isSelectedTasker = Boolean(
+    viewerName && assignment?.tasker === viewerName,
+  );
 
   function handlePublish() {
     if (!task || !isOwner) return;
@@ -151,7 +156,7 @@ function TaskDetailContent() {
     );
   }
 
-  if (!task || (task.status !== "open" && !isOwner)) {
+  if (!task || (task.status !== "open" && !isOwner && !isSelectedTasker)) {
     return (
       <Shell title="Task not found" description="This task is not available in this browser session.">
         <Card>
@@ -168,6 +173,8 @@ function TaskDetailContent() {
 
   const isDraft = task.status === "draft";
   const isOpen = task.status === "open";
+  const isPendingPayment = task.status === "pending_payment";
+  const isAssigned = task.status === "assigned";
   const isCancelled = task.status === "cancelled";
   const applicationCount = applicationsForTask(task.id).filter((application) =>
     isLiveApplicationStatus(application.status),
@@ -309,7 +316,30 @@ function TaskDetailContent() {
             </Card>
           ) : null}
 
-          {!isDraft ? <TaskApplicationPanel task={task} /> : null}
+          {!isDraft && !isPendingPayment && !isAssigned ? (
+            <TaskApplicationPanel task={task} />
+          ) : null}
+          <TaskPaymentPanel task={task} />
+
+          {!isOwner && (isPendingPayment || isAssigned) ? (
+            <Card>
+              <CardContent className="grid gap-2 p-5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                <h2 className="font-bold text-zinc-950 dark:text-zinc-50">
+                  {isPendingPayment ? "Payment in progress" : "Assignment active"}
+                </h2>
+                <p>
+                  {isPendingPayment
+                    ? "The Poster is completing payment. New applications are closed and the selected Tasker stays reserved for 24 hours."
+                    : "The Poster has paid and the assignment is active. Completion tools arrive with the next milestone."}
+                </p>
+                {isSelectedTasker ? (
+                  <p className="font-medium text-zinc-600 dark:text-zinc-300">
+                    You are the selected Tasker.
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
 
           {isOwner ? (
             <Card>
@@ -340,6 +370,16 @@ function TaskDetailContent() {
                       Cancel task
                     </Button>
                   </>
+                ) : isPendingPayment ? (
+                  <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                    Payment is in progress. The task and selected Tasker stay reserved for 24
+                    hours; editing and cancellation are locked during the hold.
+                  </p>
+                ) : isAssigned ? (
+                  <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                    The assignment is active. Completion and cancellation tools arrive with the
+                    completion milestone.
+                  </p>
                 ) : (
                   <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
                     Cancelled tasks cannot be edited or deleted. Their applications and
@@ -369,7 +409,7 @@ function TaskDetailContent() {
         </aside>
       </div>
 
-      {isOwner && (isOpen || isCancelled) ? (
+      {isOwner && (isOpen || isPendingPayment || isAssigned || isCancelled) ? (
         <section className="mt-6 max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
             {isCancelled ? "Retained applications" : "Applications"}
@@ -381,7 +421,7 @@ function TaskDetailContent() {
             Pending-verification Taskers are visible here, but cannot be selected until their
             identity check is complete.
           </p>
-          <TaskApplications readOnly={isCancelled} task={task} />
+          <TaskApplications readOnly={isCancelled || !isOpen} task={task} />
         </section>
       ) : null}
 

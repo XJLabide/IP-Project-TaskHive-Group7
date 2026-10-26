@@ -45,10 +45,10 @@ export const taskFieldLabels: Record<TaskField, string> = {
 };
 
 export function taskStatusClass(status: UiTaskStatus): string {
-  if (status === "open") {
+  if (status === "open" || status === "assigned") {
     return "border-[#75D333]/40 bg-[#75D333]/15 text-[#2f6b12] dark:text-[#75D333]";
   }
-  if (status === "draft") {
+  if (status === "draft" || status === "pending_payment") {
     return "border-[#FFC800]/40 bg-[#FFD50D]/25 text-zinc-800 dark:bg-[#FFC800]/15 dark:text-zinc-100";
   }
   return "border-[#F04452]/40 bg-[#F04452]/10 text-[#a01a26] dark:text-[#F04452]";
@@ -83,6 +83,8 @@ export function categoryOptions(fulfillment: FulfillmentMode): LaunchCategory[] 
 export function taskStatusLabel(status: UiTaskStatus): string {
   if (status === "draft") return "Draft";
   if (status === "cancelled") return "Cancelled";
+  if (status === "pending_payment") return "Awaiting payment";
+  if (status === "assigned") return "Assigned";
   return "Open";
 }
 

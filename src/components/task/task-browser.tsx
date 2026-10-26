@@ -400,9 +400,9 @@ export function TaskBrowser({ initialSearch, initialCategory }: { initialSearch:
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Your workspace</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight">Drafts and cancelled tasks</h2>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight">Your tasks</h2>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Saved in this browser session. Drafts are never shown in public browsing.
+                Drafts, payment holds, active assignments, and cancellations stay private to you.
               </p>
             </div>
             <Button asChild size="sm" variant="outline">

@@ -29,6 +29,7 @@ type TaskStore = {
   ) => TaskWriteResult;
   cancelTask: (id: string) => TaskWriteResult;
   deleteTask: (id: string) => TaskWriteResult;
+  setStatus: (id: string, status: TaskSummary["status"]) => void;
   resetDemo: () => void;
 };
 
@@ -161,12 +162,30 @@ function deleteTask(id: string): TaskWriteResult {
   return outcome.result;
 }
 
+/** Demo-only status moves for the payment hold and activation. */
+function setStatus(id: string, status: TaskSummary["status"]) {
+  tasksSnapshot = tasksSnapshot.map((task) =>
+    task.id === id ? { ...task, status } : task,
+  );
+  notify();
+}
+
 export function useMockTasks(): TaskStore {
   const tasks = useSyncExternalStore(subscribe, getTasksSnapshot, getServerTasksSnapshot);
   const ready = useSyncExternalStore(subscribe, getReadySnapshot, getServerReadySnapshot);
   const error = useSyncExternalStore(subscribe, getErrorSnapshot, getServerErrorSnapshot);
   return useMemo(
-    () => ({ tasks, ready, error, createTask, updateTask, cancelTask, deleteTask, resetDemo }),
+    () => ({
+      tasks,
+      ready,
+      error,
+      createTask,
+      updateTask,
+      cancelTask,
+      deleteTask,
+      setStatus,
+      resetDemo,
+    }),
     [tasks, ready, error],
   );
 }
