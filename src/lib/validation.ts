@@ -43,7 +43,16 @@ export const reviewSchema = z.object({
 export const reportSchema = z.object({
   taskId: z.string().optional(),
   reportedUserId: z.string().optional(),
+  messageId: z.string().optional(),
   reason: z.string().min(5),
+});
+
+export const openChatSchema = z.object({
+  taskId: z.string().min(1),
+});
+
+export const chatMessageSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
 });
 
 export const disputeSchema = z.object({

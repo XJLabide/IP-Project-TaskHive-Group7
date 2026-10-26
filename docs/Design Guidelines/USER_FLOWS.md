@@ -68,7 +68,7 @@ Signed-in user
   -> Track application in My Tasks / My Applications
 ```
 
-The conversation is scoped to that task and available only while it is open. A Tasker may withdraw an application until assignment. Pending-verification Taskers may browse and apply; their application is visible as **Pending verification** and cannot be selected. A verification-rejected Tasker can browse only. They may file one Admin appeal; existing applications are withdrawn and their Posters notified. If approved on appeal, they must apply again.
+The conversation is scoped to that task and accepts messages only while it is open; participants keep read access to the history afterward. A Tasker may withdraw an application until assignment. Pending-verification Taskers may browse and apply; their application is visible as **Pending verification** and cannot be selected. A verification-rejected Tasker can browse only. They may file one Admin appeal; existing applications are withdrawn and their Posters notified. If approved on appeal, they must apply again.
 
 ## 5. Poster reviews applications and selects one Tasker
 

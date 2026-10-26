@@ -1,4 +1,6 @@
 import { created, problem, problemWithCode, requireUser, statusForDenial } from "@/lib/api/response";
+import { applicationFailureResponse } from "@/lib/applications/http";
+import { approveApplication } from "@/lib/applications/service";
 import { loadActorById } from "@/lib/auth/actor";
 import { can } from "@/lib/domain/access";
 import { publishJob } from "@/lib/queue/qstash";
@@ -30,6 +32,13 @@ export async function POST(
     );
   }
 
+  const eligibility = await approveApplication(
+    { id: authResult.session.user.id },
+    id,
+    taskerId,
+  );
+  if (!eligibility.ok) return applicationFailureResponse(eligibility);
+
   await publishJob("notify.hiring.approved", {
     taskId: id,
     taskerId,
@@ -40,6 +49,7 @@ export async function POST(
     taskId: id,
     posterId: authResult.session.user.id,
     taskerId,
+    applicationId: eligibility.application.id,
     nextStatus: "PENDING_PAYMENT",
   });
 }

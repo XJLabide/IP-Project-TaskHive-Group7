@@ -103,6 +103,8 @@ model User {
   reportsAgainst Report[]  @relation("ReportsAgainst")
   disputes      Dispute[]  @relation("DisputesOpened")
   adminActions  AdminAction[]
+  chatsOpened   TaskChat[] @relation("ChatsOpened")
+  chatMessages  ChatMessage[] @relation("ChatMessages")
 }
 
 model Session {
@@ -227,6 +229,7 @@ model Task {
   reviews     Review[]
   reports     Report[]
   disputes    Dispute[]
+  chats       TaskChat[]
 }
 
 model Bid {
@@ -321,6 +324,8 @@ model Report {
   reporterId     String
   reportedUserId String?
   taskId         String?
+  /// Set when a chat message is reported; keeps the offending message in history.
+  messageId      String?
   reason         String
   status         ModerationStatus @default(OPEN)
   createdAt      DateTime         @default(now())
@@ -328,6 +333,38 @@ model Report {
   reporter       User             @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
   reportedUser   User?            @relation("ReportsAgainst", fields: [reportedUserId], references: [id])
   task           Task?            @relation(fields: [taskId], references: [id])
+  message        ChatMessage?     @relation(fields: [messageId], references: [id])
+
+  @@index([messageId])
+}
+
+/// One conversation per signed-in user per task. The Poster is the other
+/// participant; only the opener and the Poster may read or write.
+model TaskChat {
+  id        String        @id @default(cuid())
+  taskId    String
+  openerId  String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  task      Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  opener    User          @relation("ChatsOpened", fields: [openerId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+
+  @@unique([taskId, openerId])
+  @@index([taskId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  senderId  String
+  body      String
+  createdAt DateTime @default(now())
+  chat      TaskChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User     @relation("ChatMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  reports   Report[]
+
+  @@index([chatId, createdAt])
 }
 
 model Dispute {
