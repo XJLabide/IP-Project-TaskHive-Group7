@@ -19,6 +19,7 @@ import {
   DashboardLoading,
   DashboardSignedOut,
 } from "@/components/dashboard/states";
+import { TaskDiscovery } from "@/components/dashboard/task-discovery";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { buildDashboard, dashboardViewState } from "@/lib/dashboard/data";
 import { dashboardGreeting, dashboardMetrics } from "@/lib/dashboard/ui";
@@ -132,6 +133,10 @@ export default function DashboardPage() {
               </div>
             </div>
           </>
+        ) : null}
+
+        {state === "ready" || state === "empty" ? (
+          <TaskDiscovery applications={applications} tasks={tasks} />
         ) : null}
       </div>
     </AppShell>
