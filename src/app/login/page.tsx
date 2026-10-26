@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/auth/login-form";
 const benefits = [
   "Post tasks and apply for work",
   "Message a Poster before applying",
-  "Track your verification and appeal state",
+  "Manage your profile and 18+ confirmation",
 ];
 
 export default function LoginPage() {

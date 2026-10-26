@@ -62,8 +62,8 @@ export function ProfileChecklist({ viewer }: { viewer: ViewerSnapshot }) {
         </ul>
 
         <p className="mt-4 rounded-xl bg-zinc-50 p-3 text-sm leading-6 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
-          One account can post and work. Guests can browse tasks, but posting, applying, and
-          chatting need a signed-in account that meets every item above.
+          One account can post and work. Guests can browse tasks. Posting and applying need every
+          item above; chat requires a signed-in account.
         </p>
       </CardContent>
     </Card>

@@ -8,26 +8,24 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { GateNotice } from "@/components/viewer/gate-notice";
 import { ProfileChecklist } from "@/components/viewer/profile-checklist";
-import { StatePreview } from "@/components/viewer/state-preview";
-import { VerificationCard } from "@/components/viewer/verification-card";
+import { AgeAttestationForm } from "@/components/viewer/age-attestation-form";
 import { useViewer } from "@/components/viewer/viewer-provider";
 
 export default function ProfilePage() {
-  const { viewer, startVerification, submitAppeal } = useViewer();
+  const { viewer } = useViewer();
 
   if (!viewer.signedIn) {
     return (
-      <AppShell title="Profile" description="Your basic profile, contact verification, and Tasker identity check.">
+      <AppShell title="Profile" description="Your profile and marketplace eligibility.">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <GateNotice code="sign_in_required" />
           <Card>
             <CardContent className="grid gap-3 p-5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
               <p className="font-bold text-zinc-950 dark:text-zinc-50">Why this page is private</p>
               <p>
-                Account pages hold contact details and verification state. Guests can browse
-                public tasks, but TaskHive does not render private account data until you sign in.
+                Account pages hold private profile details. Guests can browse public tasks, but
+                TaskHive does not render account data until you sign in.
               </p>
-              <StatePreview />
             </CardContent>
           </Card>
         </div>
@@ -38,15 +36,11 @@ export default function ProfilePage() {
   const emailDone = viewer.emailVerified;
 
   return (
-    <AppShell title="Profile" description="Your basic profile, contact verification, and Tasker identity check.">
+    <AppShell title="Profile" description="Your profile and marketplace eligibility.">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-6">
           <ProfileChecklist viewer={viewer} />
-          <VerificationCard
-            onStartVerification={startVerification}
-            onSubmitAppeal={submitAppeal}
-            viewer={viewer}
-          />
+          {viewer.missingProfileFields.includes("18+ attestation") ? <AgeAttestationForm /> : null}
         </div>
 
         <aside className="grid content-start gap-4">
@@ -77,16 +71,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-sm font-bold">Review every state</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                Preview the pending, rejected, appeal, and verified views without changing your
-                account.
-              </p>
-              <StatePreview className="mt-4" />
-            </CardContent>
-          </Card>
         </aside>
       </div>
     </AppShell>
