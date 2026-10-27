@@ -72,6 +72,8 @@ enum AssignmentStatus {
   PENDING_PAYMENT
   ACTIVE
   EXPIRED
+  COMPLETED
+  DISPUTED
   CANCELLED
 }
 
@@ -279,11 +281,21 @@ model Assignment {
   holdExpiresAt DateTime?
   activatedAt DateTime?
   expiredAt   DateTime?
+  /// Completion evidence submitted by the Tasker.
+  completedAt    DateTime?
+  completionNote String?
+  completionUrl  String?
+  confirmedAt    DateTime?
+  /// The single 24-hour Poster reminder, recorded so a retry cannot resend it.
+  reminderSentAt DateTime?
+  /// Undisputed auto-release deadline, 48 hours after completion was submitted.
+  autoReleaseAt  DateTime?
   createdAt DateTime @default(now())
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   tasker    User     @relation("AssignedTasker", fields: [taskerId], references: [id], onDelete: Cascade)
 
   @@index([status, holdExpiresAt])
+  @@index([status, autoReleaseAt])
 }
 
 model Payment {
@@ -342,12 +354,16 @@ model Review {
   revieweeId String
   rating     Int
   comment    String?
+  /// Hidden until both participants submit or the 14-day deadline passes.
+  publishAt   DateTime?
+  publishedAt DateTime?
   createdAt  DateTime @default(now())
   task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   reviewer   User     @relation("GivenReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
   reviewee   User     @relation("ReceivedReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, reviewerId, revieweeId])
+  @@index([taskId, publishedAt])
 }
 
 model Notification {

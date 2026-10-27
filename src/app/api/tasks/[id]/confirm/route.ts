@@ -1,5 +1,6 @@
 import { ok, requireUser } from "@/lib/api/response";
-import { publishJob } from "@/lib/queue/qstash";
+import { completionFailureResponse } from "@/lib/completion/http";
+import { confirmCompletion } from "@/lib/completion/service";
 
 export const runtime = "nodejs";
 
@@ -11,15 +12,11 @@ export async function POST(
   if (authResult.response) return authResult.response;
 
   const { id } = await context.params;
-  await publishJob("notify.payment.released", {
-    taskId: id,
+  const result = await confirmCompletion({
     posterId: authResult.session.user.id,
+    taskId: id,
   });
 
-  return ok({
-    taskId: id,
-    confirmedBy: authResult.session.user.id,
-    taskStatus: "COMPLETED",
-    paymentStatus: "RELEASED",
-  });
+  if (!result.ok) return completionFailureResponse(result);
+  return ok(result);
 }
