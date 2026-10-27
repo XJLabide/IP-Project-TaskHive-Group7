@@ -121,7 +121,6 @@ describe("disputing completion", () => {
     posterId: "poster_1",
     taskerId: "tasker_1",
     taskStatus: "awaiting_confirmation" as const,
-    completedAt: submittedAt,
     payoutReleasedAt: null,
     openDispute: false,
   };
@@ -136,10 +135,10 @@ describe("disputing completion", () => {
     ).toMatchObject({ allowed: false, code: "not_participant" });
   });
 
-  it("refuses a dispute before completion, after release, or twice", () => {
+  it("allows a dispute before completion, but not after release or twice", () => {
     expect(
-      canOpenDispute({ ...base, completedAt: null }),
-    ).toMatchObject({ allowed: false, code: "not_submitted" });
+      canOpenDispute({ ...base, taskStatus: "assigned" }),
+    ).toEqual({ allowed: true });
     expect(
       canOpenDispute({ ...base, payoutReleasedAt: submittedAt }),
     ).toMatchObject({ allowed: false, code: "already_released" });
