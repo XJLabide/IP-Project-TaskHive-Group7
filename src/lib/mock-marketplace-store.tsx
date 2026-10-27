@@ -32,6 +32,14 @@ import {
   startDemoCheckout,
   type DemoAssignment,
 } from "@/lib/payments/demo";
+import {
+  confirmDemoCompletion,
+  disputeDemoCompletion,
+  releaseDemoCompletionIfDue,
+  remindDemoCompletionIfDue,
+  submitDemoCompletion,
+  type DemoCompletionResult,
+} from "@/lib/completion/demo";
 import type { TaskSummary } from "@/lib/tasks/types";
 
 type MarketplaceStore = {
@@ -72,6 +80,28 @@ type MarketplaceStore = {
     taskId: string,
     now?: Date,
   ) => { expired: boolean; assignment: DemoAssignment | null };
+  submitCompletion: (input: {
+    taskId: string;
+    task: TaskSummary;
+    actor: string;
+    note: string | null;
+    url: string | null;
+  }) => DemoCompletionResult;
+  confirmCompletion: (
+    taskId: string,
+    task: TaskSummary,
+    actor: string,
+  ) => DemoCompletionResult | null;
+  disputeCompletion: (
+    taskId: string,
+    task: TaskSummary,
+    actor: string,
+    reason: string,
+  ) => DemoCompletionResult | null;
+  tickCompletion: (
+    taskId: string,
+    now?: Date,
+  ) => { reminded: boolean; released: boolean };
 };
 
 const applicationsKey = "taskhive.mock-applications.v1";
@@ -322,6 +352,97 @@ function expireHold(
   return { expired: true, assignment: result.assignment };
 }
 
+function replaceAssignment(next: DemoAssignment) {
+  assignmentsSnapshot = assignmentsSnapshot.map((assignment) =>
+    assignment.taskId === next.taskId ? next : assignment,
+  );
+}
+
+function submitCompletion(input: {
+  taskId: string;
+  task: TaskSummary;
+  actor: string;
+  note: string | null;
+  url: string | null;
+}): DemoCompletionResult {
+  const current = demoAssignmentForTask(assignmentsSnapshot, input.taskId);
+  if (!current) return { ok: false, reason: "Assignment not found." };
+
+  const result = submitDemoCompletion({
+    assignment: current,
+    task: input.task,
+    actor: input.actor,
+    note: input.note,
+    url: input.url,
+  });
+
+  if (result.ok) {
+    replaceAssignment(result.assignment);
+    notify();
+  }
+
+  return result;
+}
+
+function confirmCompletion(
+  taskId: string,
+  task: TaskSummary,
+  actor: string,
+): DemoCompletionResult | null {
+  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
+  if (!current) return null;
+
+  const result = confirmDemoCompletion({ assignment: current, task, actor });
+  if (result.ok) {
+    replaceAssignment(result.assignment);
+    notify();
+  }
+
+  return result;
+}
+
+function disputeCompletion(
+  taskId: string,
+  task: TaskSummary,
+  actor: string,
+  reason: string,
+): DemoCompletionResult | null {
+  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
+  if (!current) return null;
+
+  const result = disputeDemoCompletion({
+    assignment: current,
+    task,
+    actor,
+    reason,
+  });
+
+  if (result.ok) {
+    replaceAssignment(result.assignment);
+    notify();
+  }
+
+  return result;
+}
+
+function tickCompletion(
+  taskId: string,
+  now: Date = new Date(),
+): { reminded: boolean; released: boolean } {
+  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
+  if (!current) return { reminded: false, released: false };
+
+  const reminder = remindDemoCompletionIfDue(current, now);
+  const release = releaseDemoCompletionIfDue(reminder.assignment, now);
+
+  if (reminder.reminded || release.released) {
+    replaceAssignment(release.assignment);
+    notify();
+  }
+
+  return { reminded: reminder.reminded, released: release.released };
+}
+
 export function useMarketplace(): MarketplaceStore {
   const applications = useSyncExternalStore(
     subscribe,
@@ -357,6 +478,10 @@ export function useMarketplace(): MarketplaceStore {
       startCheckout,
       pay,
       expireHold,
+      submitCompletion,
+      confirmCompletion,
+      disputeCompletion,
+      tickCompletion,
     }),
     [applications, chats, assignments],
   );

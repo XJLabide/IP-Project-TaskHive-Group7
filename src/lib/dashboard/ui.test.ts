@@ -102,8 +102,11 @@ describe("task status tone", () => {
   it("reserves green for live work and red for cancelled work", () => {
     expect(taskStatusTone("open")).toBe("neutral");
     expect(taskStatusTone("assigned")).toBe("positive");
+    expect(taskStatusTone("completed")).toBe("positive");
     expect(taskStatusTone("pending_payment")).toBe("pending");
+    expect(taskStatusTone("awaiting_confirmation")).toBe("pending");
     expect(taskStatusTone("cancelled")).toBe("negative");
+    expect(taskStatusTone("disputed")).toBe("negative");
     expect(taskStatusTone("draft")).toBe("neutral");
   });
 });

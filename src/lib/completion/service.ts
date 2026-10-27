@@ -369,7 +369,6 @@ export async function disputeCompletion(input: {
     posterId: task.posterId,
     taskerId: task.assignment.taskerId,
     taskStatus: toDomainTaskStatus[task.status],
-    completedAt: task.assignment.completedAt,
     payoutReleasedAt: payout?.releasedAt ?? null,
     openDispute: task.disputes.length > 0,
   });

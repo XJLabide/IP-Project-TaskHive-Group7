@@ -124,16 +124,11 @@ export function canOpenDispute(input: {
   posterId: string;
   taskerId: string;
   taskStatus: TaskLifecycleStatus;
-  completedAt: Date | null;
   payoutReleasedAt: Date | null;
   openDispute: boolean;
 }): CompletionDecision {
   if (input.actorId !== input.posterId && input.actorId !== input.taskerId) {
     return deny("not_participant", "Only the Poster or assigned Tasker can dispute.");
-  }
-
-  if (!input.completedAt) {
-    return deny("not_submitted", "Submit completion before opening a dispute.");
   }
 
   if (input.payoutReleasedAt) {
@@ -144,8 +139,12 @@ export function canOpenDispute(input: {
     return deny("already_disputed", "A dispute is already open for this task.");
   }
 
-  if (input.taskStatus !== "awaiting_confirmation") {
-    return deny("invalid_state", "This task is not awaiting confirmation.");
+  if (
+    !["assigned", "in_progress", "awaiting_confirmation"].includes(
+      input.taskStatus,
+    )
+  ) {
+    return deny("invalid_state", "This task is not open for a completion dispute.");
   }
 
   return ALLOWED;

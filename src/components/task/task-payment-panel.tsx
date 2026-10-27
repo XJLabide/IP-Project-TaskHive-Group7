@@ -53,7 +53,16 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
     return () => clearTimeout(timer);
   }, [assignment, expireHold, now, setStatus, task.id]);
 
-  if (!isOwner || !assignment || assignment.status === "expired") return null;
+  if (
+    !isOwner ||
+    !assignment ||
+    assignment.status === "expired" ||
+    assignment.status === "completed" ||
+    assignment.status === "disputed" ||
+    Boolean(assignment.completedAt)
+  ) {
+    return null;
+  }
 
   function handleStart() {
     const next = startCheckout(task.id);
