@@ -1,20 +1,266 @@
-import { ArrowRight, CheckCircle2, Star, UserCheck } from "lucide-react";
+import Link from "next/link";
+import { headers } from "next/headers";
+import { EyeOff, LockKeyhole, Star } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { ReviewForm } from "@/components/reviews/review-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { loadActorFromHeaders } from "@/lib/auth/actor";
+import { guardPage } from "@/lib/auth/guard";
+import { formatChatTime } from "@/lib/chat/demo";
+import { getReviewOverview } from "@/lib/completion/service";
 
-const posterItems: [string, number][] = [["Work quality", 5], ["Punctuality", 5], ["Communication", 4], ["Professionalism", 5]];
-const taskerItems: [string, number][] = [["Clear instructions", 5], ["Fair treatment", 5], ["Communication", 5], ["Approval speed", 4]];
+export const runtime = "nodejs";
 
-function ReviewForm({ title, subtitle, reviewer, reviewee, items, text }: { title: string; subtitle: string; reviewer: string; reviewee: string; items: [string, number][]; text: string }) {
-  return <Card><CardContent className="p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Review ready</p><h2 className="mt-1 text-xl font-bold tracking-tight">{title}</h2><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p></div><Badge className="border-[#FFC800]/40 bg-[#FFD50D]/20">Unlocked</Badge></div><div className="mt-6 flex items-center justify-between rounded-xl bg-zinc-50 p-4 text-sm dark:bg-zinc-800/70"><div><span className="block text-xs text-zinc-400">Reviewer</span><strong>{reviewer}</strong></div><ArrowRight className="h-4 w-4 text-[#D19300] dark:text-[#FFD50D]" /><div className="text-right"><span className="block text-xs text-zinc-400">Review shown on</span><strong>{reviewee}</strong></div></div><div className="mt-5 divide-y divide-zinc-100 rounded-xl border border-zinc-100 px-4 dark:divide-zinc-800 dark:border-zinc-800">{items.map(([label, value]) => <div className="flex items-center justify-between py-3" key={label}><span className="text-sm text-zinc-600 dark:text-zinc-300">{label}</span><span className="flex items-center gap-1">{Array.from({ length: 5 }).map((_, index) => <Star className={index < value ? "h-4 w-4 fill-[#FFC800] text-[#FFC800]" : "h-4 w-4 text-zinc-200 dark:text-zinc-700"} key={index} />)}<b className="ml-1 text-sm">{value}.0</b></span></div>)}</div><label className="mt-5 grid gap-2 text-sm font-semibold">Public review<textarea className="min-h-28 rounded-xl border border-zinc-200 bg-white p-3 text-sm font-normal outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-[#FFD50D]" defaultValue={text} /></label><Button className="mt-5 w-full">Submit review</Button></CardContent></Card>;
+function formatDate(value: Date | null): string {
+  return value ? formatChatTime(value.toISOString()) : "when the window closes";
 }
 
-export default function ReviewsPage() {
-  return <AppShell title="Two-Way Reviews" description="Reviews unlock after task completion is confirmed.">
-    <Card><CardContent className="grid gap-5 p-5 sm:grid-cols-3 sm:p-6">{[[CheckCircle2, "Tasker marks complete", "The completed work is submitted."], [UserCheck, "Poster confirms", "Payment is ready for release."], [Star, "Both reviews open", "Each profile earns trust."]].map(([Icon, title, detail], index) => <div className="flex gap-3" key={title as string}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#FFD50D]/25 text-[#D19300] dark:bg-[#FFC800]/15 dark:text-[#FFD50D]"><Icon className="h-5 w-5" /></span><div><p className="text-sm font-bold">{title as string}</p><p className="mt-1 text-sm leading-5 text-zinc-500 dark:text-zinc-400">{detail as string}</p></div>{index < 2 && <ArrowRight className="ml-auto hidden h-4 w-4 text-zinc-300 xl:block" />}</div>)}</CardContent></Card>
-    <div className="mt-6 grid gap-6 xl:grid-cols-2"><ReviewForm title="Poster reviews Tasker" subtitle="This review affects the Tasker’s public work profile." reviewer="Maria Santos, Poster" reviewee="Ana Reyes, Tasker" items={posterItems} text="Ana finished the grocery delivery on time, communicated clearly, and handled the receipt properly." /><ReviewForm title="Tasker reviews Poster" subtitle="This review affects the Poster’s trust profile." reviewer="Ana Reyes, Tasker" reviewee="Maria Santos, Poster" items={taskerItems} text="Maria gave complete instructions, approved the completed task quickly, and was easy to coordinate with." /></div>
-    <section className="mt-8"><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">Profile result</p><div className="mt-3 grid gap-4 md:grid-cols-2">{[["Ana Reyes", "Tasker profile", "4.8", "18 completed tasks", "Reliable Tasker. Recent reviews mention punctual delivery, careful work, and clear updates."], ["Maria Santos", "Poster profile", "4.9", "12 posted tasks", "Trusted Poster. Recent reviews mention clear task details, fair budgets, and fast confirmation."]].map(([name, role, rating, count, review]) => <Card key={name}><CardContent className="p-5"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-950">{name.split(" ").map((part) => part[0]).join("")}</span><div><strong>{name}</strong><p className="text-sm text-zinc-500 dark:text-zinc-400">{role}</p></div></div><div className="text-right"><p className="flex items-center gap-1 font-bold"><Star className="h-4 w-4 fill-[#FFC800] text-[#FFC800]" />{rating}</p><p className="text-xs text-zinc-400">{count}</p></div></div><p className="mt-4 border-t border-zinc-100 pt-4 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">{review}</p></CardContent></Card>)}</div></section>
-  </AppShell>;
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span
+      aria-label={`${rating} out of 5`}
+      className="flex items-center gap-0.5"
+    >
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star
+          aria-hidden="true"
+          className={
+            index < rating
+              ? "h-4 w-4 fill-[#FFC800] text-[#FFC800]"
+              : "h-4 w-4 text-zinc-200 dark:text-zinc-700"
+          }
+          key={index}
+        />
+      ))}
+    </span>
+  );
+}
+
+export default async function ReviewsPage() {
+  await guardPage("view_private_account");
+  const actor = await loadActorFromHeaders(await headers());
+
+  if (!actor) {
+    return (
+      <AppShell
+        description="Reviews unlock after task completion is confirmed."
+        title="Two-Way Reviews"
+      >
+        <Card>
+          <CardContent className="grid gap-3 p-5 sm:p-6">
+            <p className="font-bold">Sign in to see your reviews</p>
+            <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+              Reviews are private until both participants submit or the 14-day window
+              passes.
+            </p>
+            <Button asChild className="w-fit" size="sm">
+              <Link href="/login">Sign in</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </AppShell>
+    );
+  }
+
+  const overview = await getReviewOverview(actor.id);
+  const isEmpty =
+    overview.opportunities.length === 0 &&
+    overview.waiting.length === 0 &&
+    overview.received.length === 0;
+
+  return (
+    <AppShell
+      description="Blind reviews from completed tasks. Nothing here is sample data."
+      title="Two-Way Reviews"
+    >
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid gap-6">
+          {overview.opportunities.length > 0 ? (
+            <section aria-labelledby="review-ready-title" className="grid gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">
+                  Review ready
+                </p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight" id="review-ready-title">
+                  Completed tasks waiting for your review
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Each side reviews once. Both reviews publish together, or after the
+                  14-day window.
+                </p>
+              </div>
+
+              {overview.opportunities.map((opportunity) => (
+                <Card key={opportunity.taskId}>
+                  <CardContent className="grid gap-4 p-5 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold tracking-tight">
+                          {opportunity.taskTitle}
+                        </h3>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          Publishes with both reviews or on{" "}
+                          {formatDate(opportunity.publishAt)}.
+                        </p>
+                      </div>
+                      <Badge className="border-[#FFC800]/40 bg-[#FFD50D]/20 dark:bg-[#FFC800]/15">
+                        Unlocked
+                      </Badge>
+                    </div>
+
+                    <ReviewForm
+                      counterpart={opportunity.counterpart}
+                      role={opportunity.role}
+                      taskId={opportunity.taskId}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+          ) : null}
+
+          {overview.waiting.length > 0 ? (
+            <section aria-labelledby="review-waiting-title" className="grid gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">
+                  Hidden
+                </p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight" id="review-waiting-title">
+                  Your submitted reviews
+                </h2>
+              </div>
+
+              {overview.waiting.map((item) => (
+                <Card key={item.taskId}>
+                  <CardContent className="flex flex-wrap items-start justify-between gap-3 p-5">
+                    <div className="min-w-0">
+                      <p className="font-bold">{item.taskTitle}</p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Waiting for {item.counterpart}. Publishes with both reviews or
+                        on {formatDate(item.publishAt)}.
+                      </p>
+                    </div>
+                    <Badge>
+                      <LockKeyhole className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                      Hidden
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+          ) : null}
+
+          {overview.received.length > 0 ? (
+            <section aria-labelledby="review-received-title" className="grid gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">
+                  Published
+                </p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight" id="review-received-title">
+                  Reviews about you
+                </h2>
+              </div>
+
+              {overview.received.map((review) => (
+                <Card key={review.id}>
+                  <CardContent className="grid gap-3 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-bold">{review.reviewer}</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {review.taskTitle}
+                          {review.publishedAt
+                            ? ` · ${formatChatTime(review.publishedAt.toISOString())}`
+                            : ""}
+                        </p>
+                      </div>
+                      <Stars rating={review.rating} />
+                    </div>
+                    {review.comment ? (
+                      <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                        {review.comment}
+                      </p>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+          ) : null}
+
+          {isEmpty ? (
+            <Card>
+              <CardContent className="grid gap-3 p-6">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#FFD50D]/25 text-[#D19300] dark:bg-[#FFC800]/15 dark:text-[#FFD50D]">
+                  <EyeOff className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <h2 className="text-lg font-bold">No reviews yet</h2>
+                <p className="max-w-xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                  Reviews appear after a task is completed and its payout is released.
+                  Both participants review once, and both reviews stay hidden until
+                  they are both in or 14 days pass.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild size="sm">
+                    <Link href="/dashboard">Back to dashboard</Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/tasks">Browse tasks</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+
+        <aside className="grid content-start gap-4">
+          <Card>
+            <CardContent className="grid gap-3 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">
+                Your public rating
+              </p>
+              {overview.averageRating === null ? (
+                <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                  No published reviews yet. Your first review appears after both
+                  participants submit or the 14-day window closes.
+                </p>
+              ) : (
+                <div>
+                  <p className="flex items-center gap-2 text-3xl font-bold">
+                    <Star
+                      aria-hidden="true"
+                      className="h-5 w-5 fill-[#FFC800] text-[#FFC800]"
+                    />
+                    {overview.averageRating.toFixed(1)}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    From {overview.received.length} published review
+                    {overview.received.length === 1 ? "" : "s"}.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="grid gap-2 p-5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+              <p className="font-bold text-zinc-950 dark:text-zinc-50">
+                How the blind window works
+              </p>
+              <p>
+                Your review is saved as soon as you submit it, but stays hidden. It
+                publishes when the other participant submits theirs, or automatically
+                14 days after completion.
+              </p>
+              <p>
+                Disputes freeze the payout, so reviews stay locked until the dispute is
+                resolved.
+              </p>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
+    </AppShell>
+  );
 }
