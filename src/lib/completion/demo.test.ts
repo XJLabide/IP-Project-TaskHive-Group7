@@ -4,6 +4,7 @@ import type { TaskSummary } from "@/lib/tasks/types";
 import {
   confirmDemoCompletion,
   disputeDemoCompletion,
+  requestDemoCancellation,
   publishDueDemoReviews,
   releaseDemoCompletionIfDue,
   remindDemoCompletionIfDue,
@@ -99,6 +100,57 @@ describe("demo completion evidence", () => {
         reminderSentAt: null,
       },
     });
+  });
+});
+
+describe("demo cancellation", () => {
+  it("pauses work and payout for either participant", () => {
+    const result = requestDemoCancellation({
+      assignment: assignment(),
+      task: task(),
+      actor: "Ana Reyes",
+      reason: "The agreed scope changed after hire.",
+      now,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      assignment: {
+        status: "cancellation_review",
+        cancellation: {
+          requestedBy: "Ana Reyes",
+          reviewDueAt: "2026-10-29T08:00:00.000Z",
+        },
+      },
+    });
+  });
+
+  it("refuses a released payout or a second request", () => {
+    expect(
+      requestDemoCancellation({
+        assignment: assignment({ payoutReleasedAt: now.toISOString() }),
+        task: task(),
+        actor: "Maria Santos",
+        reason: "The work was incomplete.",
+        now,
+      }),
+    ).toMatchObject({ ok: false });
+    expect(
+      requestDemoCancellation({
+        assignment: assignment({
+          cancellation: {
+            reason: "Open",
+            requestedBy: "Maria Santos",
+            requestedAt: now.toISOString(),
+            reviewDueAt: now.toISOString(),
+          },
+        }),
+        task: task(),
+        actor: "Maria Santos",
+        reason: "The work was incomplete.",
+        now,
+      }),
+    ).toMatchObject({ ok: false });
   });
 });
 

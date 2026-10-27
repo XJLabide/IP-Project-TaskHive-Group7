@@ -11,6 +11,7 @@ import {
   reminderCutoff,
   reviewPublishAt,
 } from "./rules";
+import { reviewDueAt } from "@/lib/support/rules";
 
 function demoTaskStatus(assignment: DemoAssignment): TaskLifecycleStatus {
   if (assignment.status === "pending_payment") return "pending_payment";
@@ -66,6 +67,52 @@ export function submitDemoCompletion(input: {
       reminderSentAt: null,
       dispute: null,
       payoutReleasedAt: null,
+    },
+  };
+}
+
+/** Post-hire cancellation pauses work and payout in the demo session. */
+export function requestDemoCancellation(input: {
+  assignment: DemoAssignment;
+  task: TaskSummary;
+  actor: string;
+  reason: string;
+  now?: Date;
+}): DemoCompletionResult {
+  const { assignment, task } = input;
+  const now = input.now ?? new Date();
+  const reason = input.reason.trim();
+
+  if (input.actor !== task.poster && input.actor !== assignment.tasker) {
+    return failure("Only the Poster or assigned Tasker can request cancellation.");
+  }
+  if (reason.length < 10) {
+    return failure("Explain the cancellation in at least 10 characters.");
+  }
+  if (assignment.payoutReleasedAt) {
+    return failure("The payout was released; open a support report instead.");
+  }
+  if (assignment.dispute) {
+    return failure("Resolve the open dispute before requesting cancellation.");
+  }
+  if (assignment.cancellation) {
+    return failure("A cancellation request is already open for this task.");
+  }
+  if (assignment.status !== "active") {
+    return failure("Cancellation is only available after hire and before completion.");
+  }
+
+  return {
+    ok: true,
+    assignment: {
+      ...assignment,
+      status: "cancellation_review",
+      cancellation: {
+        reason,
+        requestedBy: input.actor,
+        requestedAt: now.toISOString(),
+        reviewDueAt: reviewDueAt(now).toISOString(),
+      },
     },
   };
 }

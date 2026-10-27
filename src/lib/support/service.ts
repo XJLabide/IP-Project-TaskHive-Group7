@@ -435,6 +435,7 @@ export async function resolveReport(input: {
       reporterId: true,
       reportedUserId: true,
       taskId: true,
+      reportedUser: { select: { isAdmin: true } },
     },
   });
 
@@ -444,6 +445,10 @@ export async function resolveReport(input: {
   if (!decision.allowed) return failure(decision.code, decision.reason);
 
   const outcome = reportDecision(input.decision);
+
+  if (outcome.suspendUser && report.reportedUser?.isAdmin) {
+    return failure("forbidden", "Admin accounts are managed outside the support queue.");
+  }
 
   const applied = await prisma.$transaction(async (tx) => {
     const updated = await tx.report.updateMany({
@@ -568,6 +573,7 @@ export type SupportQueue = {
     reporter: string;
     reportedUser: string | null;
     taskTitle: string | null;
+    messageBody: string | null;
     dueAt: Date;
   }>;
   disputes: Array<{
@@ -579,6 +585,8 @@ export type SupportQueue = {
     status: string;
     createdAt: Date;
     dueAt: Date;
+    evidenceNote: string | null;
+    evidenceUrl: string | null;
   }>;
   cancellations: Array<{
     id: string;
@@ -589,6 +597,8 @@ export type SupportQueue = {
     status: string;
     createdAt: Date;
     dueAt: Date;
+    evidenceNote: string | null;
+    evidenceUrl: string | null;
   }>;
   verificationAppeals: Array<{
     userId: string;
@@ -603,6 +613,23 @@ export type SupportQueue = {
     status: string;
     poster: string;
     updatedAt: Date;
+  }>;
+  recentUsers: Array<{
+    id: string;
+    name: string;
+    status: string;
+    isAdmin: boolean;
+    updatedAt: Date;
+  }>;
+  recentDecisions: Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string;
+    notes: string | null;
+    metadata: Record<string, unknown> | null;
+    createdAt: Date;
+    admin: string;
   }>;
   totals: {
     users: number;
@@ -623,6 +650,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
     cancellations,
     appeals,
     recentTasks,
+    recentUsers,
+    recentDecisions,
     users,
     tasks,
     completed,
@@ -637,6 +666,7 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           reporter: { select: { name: true } },
           reportedUser: { select: { name: true } },
           task: { select: { title: true } },
+          message: { select: { body: true } },
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -650,7 +680,14 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           createdAt: true,
           reviewDueAt: true,
           openedBy: { select: { name: true } },
-          task: { select: { title: true } },
+          task: {
+            select: {
+              title: true,
+              assignment: {
+                select: { completionNote: true, completionUrl: true },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -664,7 +701,14 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           createdAt: true,
           reviewDueAt: true,
           requestedBy: { select: { name: true } },
-          task: { select: { title: true } },
+          task: {
+            select: {
+              title: true,
+              assignment: {
+                select: { completionNote: true, completionUrl: true },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -689,6 +733,32 @@ export async function listSupportQueue(): Promise<SupportQueue> {
         orderBy: { updatedAt: "desc" },
         take: 20,
       }),
+      prisma.user.findMany({
+        where: { isAdmin: false },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          isAdmin: true,
+          updatedAt: true,
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+      }),
+      prisma.adminAction.findMany({
+        select: {
+          id: true,
+          action: true,
+          targetType: true,
+          targetId: true,
+          notes: true,
+          metadata: true,
+          createdAt: true,
+          admin: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
       prisma.user.count(),
       prisma.task.count(),
       prisma.task.count({ where: { status: "COMPLETED" } }),
@@ -704,6 +774,7 @@ export async function listSupportQueue(): Promise<SupportQueue> {
       reporter: report.reporter.name,
       reportedUser: report.reportedUser?.name ?? null,
       taskTitle: report.task?.title ?? null,
+      messageBody: report.message?.body ?? null,
       dueAt: reviewDueAt(report.createdAt),
     })),
     disputes: disputes.map((dispute) => ({
@@ -715,6 +786,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
       status: dispute.status,
       createdAt: dispute.createdAt,
       dueAt: dispute.reviewDueAt ?? reviewDueAt(dispute.createdAt),
+      evidenceNote: dispute.task.assignment?.completionNote ?? null,
+      evidenceUrl: dispute.task.assignment?.completionUrl ?? null,
     })),
     cancellations: cancellations.map((request) => ({
       id: request.id,
@@ -725,6 +798,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
       status: request.status,
       createdAt: request.createdAt,
       dueAt: request.reviewDueAt,
+      evidenceNote: request.task.assignment?.completionNote ?? null,
+      evidenceUrl: request.task.assignment?.completionUrl ?? null,
     })),
     verificationAppeals: appeals.map((appeal) => ({
       userId: appeal.userId,
@@ -741,6 +816,23 @@ export async function listSupportQueue(): Promise<SupportQueue> {
       status: task.status,
       poster: task.poster.name,
       updatedAt: task.updatedAt,
+    })),
+    recentUsers: recentUsers.map((user) => ({
+      id: user.id,
+      name: user.name,
+      status: user.status,
+      isAdmin: user.isAdmin,
+      updatedAt: user.updatedAt,
+    })),
+    recentDecisions: recentDecisions.map((decision) => ({
+      id: decision.id,
+      action: decision.action,
+      targetType: decision.targetType,
+      targetId: decision.targetId,
+      notes: decision.notes,
+      metadata: (decision.metadata as Record<string, unknown> | null) ?? null,
+      createdAt: decision.createdAt,
+      admin: decision.admin.name,
     })),
     totals: {
       users,

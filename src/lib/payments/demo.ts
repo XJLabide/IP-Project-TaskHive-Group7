@@ -11,7 +11,8 @@ export type DemoAssignmentStatus =
   | "active"
   | "expired"
   | "completed"
-  | "disputed";
+  | "disputed"
+  | "cancellation_review";
 export type DemoPaymentStatus = "unpaid" | "checkout_started" | "paid";
 
 /** Browser-session mirror of the server assignment hold and payment row. */
@@ -42,6 +43,12 @@ export type DemoAssignment = {
     reason: string;
     openedBy: string;
     openedAt: string;
+  } | null;
+  cancellation?: {
+    reason: string;
+    requestedBy: string;
+    requestedAt: string;
+    reviewDueAt: string;
   } | null;
 };
 

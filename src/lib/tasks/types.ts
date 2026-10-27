@@ -9,6 +9,7 @@ export type UiTaskStatus =
   | "assigned"
   | "awaiting_confirmation"
   | "completed"
+  | "cancellation_review"
   | "disputed"
   | "cancelled";
 

@@ -32,6 +32,7 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
     confirmCompletion,
     disputeCompletion,
     tickCompletion,
+    requestCancellation,
   } = useMarketplace();
   const { setStatus } = useMockTasks();
   const [now, setNow] = useState(() => new Date());
@@ -39,6 +40,8 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [reason, setReason] = useState("");
   const [showDispute, setShowDispute] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [showCancellation, setShowCancellation] = useState(false);
   const [feedback, setFeedback] = useState("");
 
   const assignment = assignmentForTask(task.id);
@@ -144,6 +147,61 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
     setFeedback("Payout frozen. An Admin reviews the evidence before any money moves.");
   }
 
+  async function handleCancellation() {
+    if (!viewer.displayName) return;
+
+    if (viewer.signedIn && task.id) {
+      try {
+        const response = await fetch(`/api/tasks/${task.id}/cancellation`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason: cancellationReason }),
+        });
+
+        if (response.ok) {
+          setShowCancellation(false);
+          setStatus(task.id, "cancellation_review");
+          setFeedback(
+            "Cancellation requested. Work and payout stay paused while an Admin reviews it.",
+          );
+          return;
+        }
+
+        // Demo tasks live in sessionStorage, not the database; fall through only
+        // when the server cannot find the task.
+        if (response.status !== 404) {
+          const body = await response.json().catch(() => ({}));
+          setFeedback(
+            typeof body.error === "string"
+              ? body.error
+              : "Could not request cancellation.",
+          );
+          return;
+        }
+      } catch {
+        // Offline demo: keep the request in session state.
+      }
+    }
+
+    const result = requestCancellation({
+      taskId: task.id,
+      task,
+      actor: viewer.displayName,
+      reason: cancellationReason,
+    });
+
+    if (!result.ok) {
+      setFeedback(result.reason);
+      return;
+    }
+
+    setShowCancellation(false);
+    setStatus(task.id, "cancellation_review");
+    setFeedback(
+      "Cancellation requested. Work and payout stay paused while an Admin reviews it.",
+    );
+  }
+
   function simulate(hours: number) {
     if (!assignment?.completedAt) return;
     const simulated = new Date(
@@ -164,9 +222,11 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
       ? "Completed · paid"
       : assignment.status === "disputed"
         ? "Disputed · payout frozen"
-        : submitted
-          ? "Awaiting confirmation"
-          : "Work in progress";
+        : assignment.status === "cancellation_review"
+          ? "Cancellation review · paused"
+          : submitted
+            ? "Awaiting confirmation"
+            : "Work in progress";
 
   const statusClass =
     assignment.status === "completed"
@@ -174,6 +234,60 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
       : assignment.status === "disputed"
         ? "border-[#F04452]/40 bg-[#F04452]/10 text-[#a01a26] dark:text-[#F04452]"
         : "border-[#FFC800]/40 bg-[#FFD50D]/20 text-zinc-700 dark:bg-[#FFC800]/15 dark:text-zinc-200";
+
+  const cancellationControls =
+    assignment.status === "active" &&
+    !assignment.cancellation &&
+    !assignment.dispute &&
+    !assignment.payoutReleasedAt ? (
+      <div className="grid gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => setShowCancellation((open) => !open)}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            {showCancellation ? "Keep work active" : "Request cancellation"}
+          </Button>
+        </div>
+        {showCancellation ? (
+          <div className="grid gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+            <label className="grid gap-2 text-sm font-semibold">
+              Why should this task be cancelled?
+              <textarea
+                className="min-h-20 rounded-xl border border-zinc-200 bg-white p-3 text-sm font-normal outline-none focus:border-[#D19300] focus:ring-2 focus:ring-[#FFC800]/25 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-[#FFD50D]"
+                onChange={(event) => setCancellationReason(event.target.value)}
+                value={cancellationReason}
+              />
+            </label>
+            <Button
+              disabled={cancellationReason.trim().length < 10}
+              onClick={handleCancellation}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Pause work and request review
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
+  const cancellationCard = assignment.cancellation ? (
+    <div className="rounded-xl border border-[#FFC800]/40 bg-[#FFD50D]/10 p-4 text-sm leading-6 text-zinc-700 dark:text-zinc-200">
+      <p className="font-semibold">Cancellation under review</p>
+      <p className="mt-1">
+        {assignment.cancellation.requestedBy} requested cancellation: “
+        {assignment.cancellation.reason}”
+      </p>
+      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        Work and payout are paused. Admin review target:{" "}
+        {formatChatTime(assignment.cancellation.reviewDueAt)}. Reviews stay locked.
+      </p>
+    </div>
+  ) : null;
 
   const disputeControls = (
     <div className="grid gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
@@ -236,11 +350,13 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
             <dd>
               {assignment.payoutReleasedAt
                 ? `Released ${formatChatTime(assignment.payoutReleasedAt)}`
-                : assignment.dispute
-                  ? "Held for dispute review"
-                  : submitted
-                    ? `Auto-releases in ${countdown}`
-                    : "Held until completion"}
+                : assignment.cancellation
+                  ? "Held for cancellation review"
+                  : assignment.dispute
+                    ? "Held for dispute review"
+                    : submitted
+                      ? `Auto-releases in ${countdown}`
+                      : "Held until completion"}
             </dd>
           </div>
         </dl>
@@ -264,7 +380,9 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
         ) : null}
 
         {!submitted ? (
-          isTasker ? (
+          assignment.cancellation ? (
+            cancellationCard
+          ) : isTasker ? (
             <div className="grid gap-3">
               <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-300">
                 {isRemote
@@ -300,6 +418,7 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
                 Submit completion
               </Button>
               {disputeControls}
+              {cancellationControls}
             </div>
           ) : (
             <div className="grid gap-3">
@@ -308,6 +427,7 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
                 until you confirm.
               </p>
               {disputeControls}
+              {cancellationControls}
             </div>
           )
         ) : (
@@ -337,7 +457,9 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
               </p>
             </div>
 
-            {assignment.dispute ? (
+            {assignment.cancellation ? (
+              cancellationCard
+            ) : assignment.dispute ? (
               <div className="rounded-xl border border-[#F04452]/30 bg-[#F04452]/5 p-4 text-sm leading-6 text-[#a01a26] dark:text-[#F04452]">
                 <p className="font-semibold">Payout frozen</p>
                 <p className="mt-1">
@@ -362,6 +484,7 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
                   ) : null}
                 </div>
                 {disputeControls}
+                {cancellationControls}
 
                 <div className="flex flex-wrap gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
                   <Button

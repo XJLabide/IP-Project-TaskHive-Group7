@@ -179,9 +179,14 @@ function TaskDetailContent() {
   const isAwaitingConfirmation = task.status === "awaiting_confirmation";
   const isCompleted = task.status === "completed";
   const isDisputed = task.status === "disputed";
+  const isCancellationReview = task.status === "cancellation_review";
   const isCancelled = task.status === "cancelled";
   const hasAssignment =
-    isAssigned || isAwaitingConfirmation || isCompleted || isDisputed;
+    isAssigned ||
+    isAwaitingConfirmation ||
+    isCompleted ||
+    isDisputed ||
+    isCancellationReview;
   const applicationCount = applicationsForTask(task.id).filter((application) =>
     isLiveApplicationStatus(application.status),
   ).length;
@@ -337,8 +342,10 @@ function TaskDetailContent() {
                 <p>
                   {isPendingPayment
                     ? "The Poster is completing payment. New applications are closed and the selected Tasker stays reserved for 24 hours."
-                    : isDisputed
-                      ? "Completion is disputed. The payout stays frozen while an Admin reviews the evidence."
+                    : isCancellationReview
+                      ? "Cancellation is under review. Work and payout are paused until an Admin decides."
+                      : isDisputed
+                        ? "Completion is disputed. The payout stays frozen while an Admin reviews the evidence."
                       : isCompleted
                         ? "The task is completed and the payout was released."
                         : isAwaitingConfirmation
@@ -405,6 +412,11 @@ function TaskDetailContent() {
                 ) : isDisputed ? (
                   <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
                     The payout is frozen while an Admin reviews the dispute.
+                  </p>
+                ) : isCancellationReview ? (
+                  <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                    Cancellation is under review. Work and payout stay paused while an Admin
+                    decides from the evidence.
                   </p>
                 ) : (
                   <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">

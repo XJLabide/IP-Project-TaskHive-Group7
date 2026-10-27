@@ -59,6 +59,7 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
     assignment.status === "expired" ||
     assignment.status === "completed" ||
     assignment.status === "disputed" ||
+    assignment.status === "cancellation_review" ||
     Boolean(assignment.completedAt)
   ) {
     return null;

@@ -53,7 +53,8 @@ export function taskStatusClass(status: UiTaskStatus): string {
   if (
     status === "draft" ||
     status === "pending_payment" ||
-    status === "awaiting_confirmation"
+    status === "awaiting_confirmation" ||
+    status === "cancellation_review"
   ) {
     return "border-[#FFC800]/40 bg-[#FFD50D]/25 text-zinc-800 dark:bg-[#FFC800]/15 dark:text-zinc-100";
   }
@@ -93,6 +94,7 @@ export function taskStatusLabel(status: UiTaskStatus): string {
   if (status === "assigned") return "Assigned";
   if (status === "awaiting_confirmation") return "Awaiting confirmation";
   if (status === "completed") return "Completed";
+  if (status === "cancellation_review") return "Cancellation review";
   if (status === "disputed") return "Disputed";
   return "Open";
 }
