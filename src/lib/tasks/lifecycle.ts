@@ -10,6 +10,7 @@ export type TaskLifecycleStatus =
   | "in_progress"
   | "awaiting_confirmation"
   | "completed"
+  | "cancellation_review"
   | "cancelled"
   | "disputed";
 

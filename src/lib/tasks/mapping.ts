@@ -17,6 +17,7 @@ export const toDomainTaskStatus: Record<DbTaskStatus, TaskLifecycleStatus> = {
   [DbTaskStatus.IN_PROGRESS]: "in_progress",
   [DbTaskStatus.AWAITING_CONFIRMATION]: "awaiting_confirmation",
   [DbTaskStatus.COMPLETED]: "completed",
+  [DbTaskStatus.CANCELLATION_REVIEW]: "cancellation_review",
   [DbTaskStatus.CANCELLED]: "cancelled",
   [DbTaskStatus.DISPUTED]: "disputed",
 };
@@ -30,6 +31,7 @@ export const toDbTaskStatus: Record<TaskLifecycleStatus, DbTaskStatus> = {
   in_progress: DbTaskStatus.IN_PROGRESS,
   awaiting_confirmation: DbTaskStatus.AWAITING_CONFIRMATION,
   completed: DbTaskStatus.COMPLETED,
+  cancellation_review: DbTaskStatus.CANCELLATION_REVIEW,
   cancelled: DbTaskStatus.CANCELLED,
   disputed: DbTaskStatus.DISPUTED,
 };
