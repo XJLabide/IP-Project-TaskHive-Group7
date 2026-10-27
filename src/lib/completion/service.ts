@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notifications";
 import { isUniqueViolation } from "@/lib/db/errors";
+import { reviewDueAt } from "@/lib/support/rules";
 import { toDomainFulfillment, toDomainTaskStatus } from "@/lib/tasks/mapping";
 import {
   autoReleaseAt,
@@ -384,7 +385,13 @@ export async function disputeCompletion(input: {
     if (taskUpdate.count === 0) return null;
 
     const created = await tx.dispute.create({
-      data: { taskId: task.id, openedById: input.actorId, reason, createdAt: now },
+      data: {
+        taskId: task.id,
+        openedById: input.actorId,
+        reason,
+        reviewDueAt: reviewDueAt(now),
+        createdAt: now,
+      },
       select: { id: true },
     });
 

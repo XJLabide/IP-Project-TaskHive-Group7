@@ -36,8 +36,16 @@ enum TaskStatus {
   IN_PROGRESS
   AWAITING_CONFIRMATION
   COMPLETED
+  CANCELLATION_REVIEW
   CANCELLED
   DISPUTED
+}
+
+/// Admin outcome for a cancellation or completion dispute.
+enum SupportResolution {
+  FULL_REFUND
+  PARTIAL_PAYOUT
+  FULL_PAYOUT
 }
 
 enum FulfillmentMode {
@@ -112,6 +120,9 @@ model User {
   reportsMade   Report[]   @relation("ReportsMade")
   reportsAgainst Report[]  @relation("ReportsAgainst")
   disputes      Dispute[]  @relation("DisputesOpened")
+  disputesResolved Dispute[] @relation("DisputesResolved")
+  cancellationsRequested CancellationRequest[] @relation("CancellationsRequested")
+  cancellationsResolved  CancellationRequest[] @relation("CancellationsResolved")
   adminActions  AdminAction[]
   chatsOpened   TaskChat[] @relation("ChatsOpened")
   chatMessages  ChatMessage[] @relation("ChatMessages")
@@ -239,6 +250,7 @@ model Task {
   reviews     Review[]
   reports     Report[]
   disputes    Dispute[]
+  cancellations CancellationRequest[]
   chats       TaskChat[]
 }
 
@@ -311,6 +323,9 @@ model Payment {
   platformFeeCents      Int
   currency              String        @default("PHP")
   status                PaymentStatus @default(UNPAID)
+  /// Amount returned to the Poster by a refund or a partial-payout remainder.
+  refundedCents         Int           @default(0)
+  refundedAt            DateTime?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   task                  Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -430,10 +445,41 @@ model Dispute {
   openedById String
   reason    String
   status    ModerationStatus @default(OPEN)
+  resolution SupportResolution?
+  payoutCents Int?
+  resolvedById String?
+  resolvedAt DateTime?
+  reviewDueAt DateTime?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
   openedBy  User             @relation("DisputesOpened", fields: [openedById], references: [id], onDelete: Cascade)
+  resolvedBy User?           @relation("DisputesResolved", fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+}
+
+/// A post-hire cancellation request, distinct from a completion dispute.
+model CancellationRequest {
+  id            String           @id @default(cuid())
+  taskId        String
+  requestedById String
+  reason        String
+  status        ModerationStatus @default(OPEN)
+  resolution    SupportResolution?
+  payoutCents   Int?
+  resolvedById  String?
+  resolvedAt    DateTime?
+  /// Two business days from the request; the Admin review target.
+  reviewDueAt   DateTime
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  task          Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  requestedBy   User             @relation("CancellationsRequested", fields: [requestedById], references: [id], onDelete: Cascade)
+  resolvedBy    User?            @relation("CancellationsResolved", fields: [resolvedById], references: [id])
+
+  @@index([status, reviewDueAt])
+  @@index([taskId])
 }
 
 model AdminAction {
@@ -443,8 +489,13 @@ model AdminAction {
   targetType String
   targetId  String
   notes     String?
+  /// Safe decision metadata: outcome, amounts, and case references.
+  metadata  Json?
   createdAt DateTime @default(now())
   admin     User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@index([adminId, createdAt])
 }
 
 model UploadAsset {

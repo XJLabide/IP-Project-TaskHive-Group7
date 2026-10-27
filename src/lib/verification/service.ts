@@ -102,6 +102,7 @@ async function runEffects(
 export async function applyVerificationEvent(
   userId: string,
   event: VerificationEvent,
+  options: { adminId?: string } = {},
 ): Promise<VerificationResult> {
   const existing = await prisma.taskerVerification.findUnique({ where: { userId } });
   const result = transition(toState(existing), event);
@@ -166,6 +167,21 @@ export async function applyVerificationEvent(
       update: data,
     });
 
+    if (options.adminId && (event.type === "appeal_approved" || event.type === "appeal_denied")) {
+      await tx.adminAction.create({
+        data: {
+          adminId: options.adminId,
+          action: `verification.appeal.${event.type === "appeal_approved" ? "approved" : "denied"}`,
+          targetType: "TaskerVerification",
+          targetId: userId,
+          notes: event.type === "appeal_denied" ? event.reason : null,
+          metadata: {
+            outcome: event.type === "appeal_approved" ? "approved" : "denied",
+          },
+        },
+      });
+    }
+
     return { claimed: true as const, affectedPosters };
   });
 
@@ -202,13 +218,22 @@ export async function submitAppeal(
 export async function decideAppeal(
   userId: string,
   outcome: "approved" | "denied",
-  reason?: string,
+  reason: string | undefined,
+  adminId: string,
 ): Promise<VerificationResult> {
   if (outcome === "approved") {
-    return applyVerificationEvent(userId, { type: "appeal_approved" });
+    return applyVerificationEvent(
+      userId,
+      { type: "appeal_approved" },
+      { adminId },
+    );
   }
-  return applyVerificationEvent(userId, {
-    type: "appeal_denied",
-    reason: reason?.trim() || "Appeal denied by Admin.",
-  });
+  return applyVerificationEvent(
+    userId,
+    {
+      type: "appeal_denied",
+      reason: reason?.trim() || "Appeal denied by Admin.",
+    },
+    { adminId },
+  );
 }

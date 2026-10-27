@@ -14,6 +14,7 @@ const activeAssignmentStatuses: readonly TaskLifecycleStatus[] = [
   "assigned",
   "in_progress",
   "awaiting_confirmation",
+  "cancellation_review",
   "completed",
   "disputed",
 ];

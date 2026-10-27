@@ -33,6 +33,7 @@ export async function PATCH(
     userId,
     parsed.data.outcome,
     parsed.data.reason,
+    gate.actor.id,
   );
   if (!result.ok) return problem(result.reason, 409);
 
