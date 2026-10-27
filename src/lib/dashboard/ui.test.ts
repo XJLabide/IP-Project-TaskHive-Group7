@@ -105,6 +105,7 @@ describe("task status tone", () => {
     expect(taskStatusTone("completed")).toBe("positive");
     expect(taskStatusTone("pending_payment")).toBe("pending");
     expect(taskStatusTone("awaiting_confirmation")).toBe("pending");
+    expect(taskStatusTone("cancellation_review")).toBe("pending");
     expect(taskStatusTone("cancelled")).toBe("negative");
     expect(taskStatusTone("disputed")).toBe("negative");
     expect(taskStatusTone("draft")).toBe("neutral");

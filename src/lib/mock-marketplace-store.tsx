@@ -37,6 +37,7 @@ import {
   disputeDemoCompletion,
   releaseDemoCompletionIfDue,
   remindDemoCompletionIfDue,
+  requestDemoCancellation,
   submitDemoCompletion,
   type DemoCompletionResult,
 } from "@/lib/completion/demo";
@@ -102,6 +103,12 @@ type MarketplaceStore = {
     taskId: string,
     now?: Date,
   ) => { reminded: boolean; released: boolean };
+  requestCancellation: (input: {
+    taskId: string;
+    task: TaskSummary;
+    actor: string;
+    reason: string;
+  }) => DemoCompletionResult;
 };
 
 const applicationsKey = "taskhive.mock-applications.v1";
@@ -425,6 +432,30 @@ function disputeCompletion(
   return result;
 }
 
+function requestCancellation(input: {
+  taskId: string;
+  task: TaskSummary;
+  actor: string;
+  reason: string;
+}): DemoCompletionResult {
+  const current = demoAssignmentForTask(assignmentsSnapshot, input.taskId);
+  if (!current) return { ok: false, reason: "Assignment not found." };
+
+  const result = requestDemoCancellation({
+    assignment: current,
+    task: input.task,
+    actor: input.actor,
+    reason: input.reason,
+  });
+
+  if (result.ok) {
+    replaceAssignment(result.assignment);
+    notify();
+  }
+
+  return result;
+}
+
 function tickCompletion(
   taskId: string,
   now: Date = new Date(),
@@ -482,6 +513,7 @@ export function useMarketplace(): MarketplaceStore {
       confirmCompletion,
       disputeCompletion,
       tickCompletion,
+      requestCancellation,
     }),
     [applications, chats, assignments],
   );

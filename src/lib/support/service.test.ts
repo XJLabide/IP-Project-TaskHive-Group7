@@ -10,7 +10,7 @@ const { prismaMock, txMock, notifyUserMock } = vi.hoisted(() => {
     dispute: { updateMany: vi.fn() },
     report: { updateMany: vi.fn() },
     user: { updateMany: vi.fn() },
-    adminAction: { create: vi.fn() },
+    adminAction: { create: vi.fn(), findMany: vi.fn() },
   };
 
   const prismaMock = {
@@ -39,9 +39,14 @@ const { prismaMock, txMock, notifyUserMock } = vi.hoisted(() => {
       findMany: vi.fn(),
       updateMany: vi.fn(),
     },
-    user: { findUnique: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
+    user: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      updateMany: vi.fn(),
+      count: vi.fn(),
+    },
     taskerVerification: { findMany: vi.fn() },
-    adminAction: { create: vi.fn() },
+    adminAction: { create: vi.fn(), findMany: vi.fn() },
     $transaction: vi.fn(),
   };
 
@@ -432,6 +437,17 @@ describe("support queue", () => {
         user: { name: "Tasker" },
       },
     ]);
+    prismaMock.adminAction.findMany.mockResolvedValue([
+      {
+        id: "audit_1",
+        action: "support.dispute.resolve",
+        targetType: "Dispute",
+        targetId: "dispute_1",
+        notes: "Resolved",
+        createdAt: friday,
+        admin: { name: "Admin" },
+      },
+    ]);
     prismaMock.task.findMany.mockResolvedValue([
       {
         id: "task_1",
@@ -439,6 +455,15 @@ describe("support queue", () => {
         status: "OPEN",
         updatedAt: friday,
         poster: { name: "Maria" },
+      },
+    ]);
+    prismaMock.user.findMany.mockResolvedValue([
+      {
+        id: "user_1",
+        name: "Ana",
+        status: "ACTIVE",
+        isAdmin: false,
+        updatedAt: friday,
       },
     ]);
     prismaMock.user.count.mockResolvedValue(10);
@@ -460,5 +485,7 @@ describe("support queue", () => {
     );
     expect(queue.verificationAppeals[0].name).toBe("Tasker");
     expect(queue.recentTasks[0]).toMatchObject({ id: "task_1", poster: "Maria" });
+    expect(queue.recentUsers[0]).toMatchObject({ id: "user_1", status: "ACTIVE" });
+    expect(queue.recentDecisions[0]).toMatchObject({ admin: "Admin" });
   });
 });

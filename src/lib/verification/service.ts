@@ -102,7 +102,7 @@ async function runEffects(
 export async function applyVerificationEvent(
   userId: string,
   event: VerificationEvent,
-  options: { adminId?: string } = {},
+  options: { adminId?: string; notes?: string } = {},
 ): Promise<VerificationResult> {
   const existing = await prisma.taskerVerification.findUnique({ where: { userId } });
   const result = transition(toState(existing), event);
@@ -174,7 +174,9 @@ export async function applyVerificationEvent(
           action: `verification.appeal.${event.type === "appeal_approved" ? "approved" : "denied"}`,
           targetType: "TaskerVerification",
           targetId: userId,
-          notes: event.type === "appeal_denied" ? event.reason : null,
+          notes:
+            options.notes?.trim() ||
+            (event.type === "appeal_denied" ? event.reason : null),
           metadata: {
             outcome: event.type === "appeal_approved" ? "approved" : "denied",
           },
@@ -225,7 +227,7 @@ export async function decideAppeal(
     return applyVerificationEvent(
       userId,
       { type: "appeal_approved" },
-      { adminId },
+      { adminId, notes: reason },
     );
   }
   return applyVerificationEvent(
