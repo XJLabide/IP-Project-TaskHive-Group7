@@ -26,6 +26,7 @@ import { TaskApplicationPanel } from "@/components/task/task-application-panel";
 import { TaskApplications } from "@/components/task/task-applications";
 import { TaskChat } from "@/components/task/task-chat";
 import { TaskPaymentPanel } from "@/components/task/task-payment-panel";
+import { TaskCompletionPanel } from "@/components/task/task-completion-panel";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
@@ -175,7 +176,12 @@ function TaskDetailContent() {
   const isOpen = task.status === "open";
   const isPendingPayment = task.status === "pending_payment";
   const isAssigned = task.status === "assigned";
+  const isAwaitingConfirmation = task.status === "awaiting_confirmation";
+  const isCompleted = task.status === "completed";
+  const isDisputed = task.status === "disputed";
   const isCancelled = task.status === "cancelled";
+  const hasAssignment =
+    isAssigned || isAwaitingConfirmation || isCompleted || isDisputed;
   const applicationCount = applicationsForTask(task.id).filter((application) =>
     isLiveApplicationStatus(application.status),
   ).length;
@@ -320,8 +326,9 @@ function TaskDetailContent() {
             <TaskApplicationPanel task={task} />
           ) : null}
           <TaskPaymentPanel task={task} />
+          <TaskCompletionPanel task={task} />
 
-          {!isOwner && (isPendingPayment || isAssigned) ? (
+          {!isOwner && (isPendingPayment || hasAssignment) ? (
             <Card>
               <CardContent className="grid gap-2 p-5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
                 <h2 className="font-bold text-zinc-950 dark:text-zinc-50">
@@ -330,7 +337,13 @@ function TaskDetailContent() {
                 <p>
                   {isPendingPayment
                     ? "The Poster is completing payment. New applications are closed and the selected Tasker stays reserved for 24 hours."
-                    : "The Poster has paid and the assignment is active. Completion tools arrive with the next milestone."}
+                    : isDisputed
+                      ? "Completion is disputed. The payout stays frozen while an Admin reviews the evidence."
+                      : isCompleted
+                        ? "The task is completed and the payout was released."
+                        : isAwaitingConfirmation
+                          ? "The Tasker submitted completion and the Poster is reviewing it."
+                          : "The Poster has paid and the assignment is active."}
                 </p>
                 {isSelectedTasker ? (
                   <p className="font-medium text-zinc-600 dark:text-zinc-300">
@@ -377,8 +390,21 @@ function TaskDetailContent() {
                   </p>
                 ) : isAssigned ? (
                   <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                    The assignment is active. Completion and cancellation tools arrive with the
-                    completion milestone.
+                    The assignment is active. Completion evidence and payout release are handled
+                    below; editing stays locked.
+                  </p>
+                ) : isAwaitingConfirmation ? (
+                  <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                    The Tasker submitted completion. Confirm the payout or open a dispute within
+                    48 hours; otherwise it releases automatically.
+                  </p>
+                ) : isCompleted ? (
+                  <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                    The payout is released and both participants can review this task.
+                  </p>
+                ) : isDisputed ? (
+                  <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+                    The payout is frozen while an Admin reviews the dispute.
                   </p>
                 ) : (
                   <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
@@ -397,8 +423,8 @@ function TaskDetailContent() {
             <CardContent className="p-5">
               <p className="text-sm font-bold">Frontend demo</p>
               <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                This task lives in session storage only. Bids, chat, payment, and map
-                services are not connected.
+                This task lives in session storage only. Bids, chat, payment, completion,
+                reviews, and map services are not connected.
               </p>
               <p className="mt-4 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                 <Clock className="h-4 w-4" />
@@ -409,7 +435,7 @@ function TaskDetailContent() {
         </aside>
       </div>
 
-      {isOwner && (isOpen || isPendingPayment || isAssigned || isCancelled) ? (
+      {isOwner && (isOpen || isPendingPayment || hasAssignment || isCancelled) ? (
         <section className="mt-6 max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
             {isCancelled ? "Retained applications" : "Applications"}

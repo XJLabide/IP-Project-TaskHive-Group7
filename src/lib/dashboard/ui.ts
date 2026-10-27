@@ -85,9 +85,11 @@ export function formatHoldDue(dueAt: string | null, now: Date): string {
 }
 
 export function taskStatusTone(status: UiTaskStatus): StatusTone {
-  if (status === "assigned") return "positive";
-  if (status === "cancelled") return "negative";
-  if (status === "pending_payment") return "pending";
+  if (status === "assigned" || status === "completed") return "positive";
+  if (status === "cancelled" || status === "disputed") return "negative";
+  if (status === "pending_payment" || status === "awaiting_confirmation") {
+    return "pending";
+  }
   return "neutral";
 }
 

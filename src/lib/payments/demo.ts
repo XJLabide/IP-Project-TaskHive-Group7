@@ -6,7 +6,12 @@ import { holdExpiresAt, isHoldExpired } from "./hold";
 
 export const DEMO_PROVIDER_LABEL = "PayMongo (evaluation)";
 
-export type DemoAssignmentStatus = "pending_payment" | "active" | "expired";
+export type DemoAssignmentStatus =
+  | "pending_payment"
+  | "active"
+  | "expired"
+  | "completed"
+  | "disputed";
 export type DemoPaymentStatus = "unpaid" | "checkout_started" | "paid";
 
 /** Browser-session mirror of the server assignment hold and payment row. */
@@ -25,6 +30,19 @@ export type DemoAssignment = {
   attemptCount: number;
   lastError: string | null;
   paidAt: string | null;
+  /** Completion evidence and confirmation timers. */
+  completedAt?: string | null;
+  completionNote?: string | null;
+  completionUrl?: string | null;
+  confirmedAt?: string | null;
+  reminderSentAt?: string | null;
+  autoReleaseAt?: string | null;
+  payoutReleasedAt?: string | null;
+  dispute?: {
+    reason: string;
+    openedBy: string;
+    openedAt: string;
+  } | null;
 };
 
 export function demoAssignmentForTask(
