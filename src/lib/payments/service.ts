@@ -1,6 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notifications";
+import {
+  buildNotificationCreateData,
+  notifyUser,
+  queueNotificationEmail,
+} from "@/lib/notifications";
 import { isUniqueViolation } from "@/lib/db/errors";
 import { canApprove } from "@/lib/applications/rules";
 import { toDomainApplicationStatus } from "@/lib/applications/mapping";
@@ -205,8 +209,8 @@ export async function selectTasker(input: {
     userId: input.taskerId,
     type: "assignment.selected",
     title: "You were selected for a task",
-    job: "notify.assignment.selected",
-    jobBody: { taskId: task.id, taskerId: input.taskerId, holdExpiresAt: expiresAt },
+    body: "Complete payment setup to activate the assignment.",
+    eventKey: `assignment:${assignment.id}:selected:${expiresAt.toISOString()}`,
   });
 
   return {
@@ -374,10 +378,13 @@ async function applySucceededEvent(
   event: { amountCents: number | null },
   payment: EventPayment,
   now: Date,
-): Promise<"activated" | "duplicate" | "late" | "ignored"> {
+): Promise<
+  | { outcome: "activated"; notificationId: string }
+  | { outcome: "duplicate" | "late" | "ignored" }
+> {
   if (event.amountCents !== null && event.amountCents !== payment.amountCents) {
     // Never activate on an amount that does not match the checkout snapshot.
-    return "ignored";
+    return { outcome: "ignored" };
   }
 
   const paid = await tx.payment.updateMany({
@@ -388,11 +395,11 @@ async function applySucceededEvent(
     data: { status: "PAID_PENDING_COMPLETION" },
   });
 
-  if (paid.count === 0) return "duplicate";
+  if (paid.count === 0) return { outcome: "duplicate" };
 
   const assignment = await tx.assignment.findUnique({
     where: { taskId: payment.taskId },
-    select: { taskerId: true, status: true, holdExpiresAt: true },
+    select: { id: true, taskerId: true, status: true, holdExpiresAt: true },
   });
 
   // A payment captured after the hold expired is recorded but not activated;
@@ -402,7 +409,7 @@ async function applySucceededEvent(
     assignment.status !== "PENDING_PAYMENT" ||
     isHoldExpired(assignment.holdExpiresAt, now)
   ) {
-    return "late";
+    return { outcome: "late" };
   }
 
   await tx.task.updateMany({
@@ -426,7 +433,21 @@ async function applySucceededEvent(
     },
   });
 
-  return "activated";
+  const notificationData = buildNotificationCreateData({
+    userId: assignment.taskerId,
+    type: "assignment.active",
+    title: "Payment received — the task is yours",
+    body: "Your assignment is active. Sign in to review its details.",
+    eventKey: `assignment:${assignment.id}:activated:${payment.id}`,
+  });
+  const notification = await tx.notification.upsert({
+    where: { eventKey: notificationData.eventKey },
+    update: {},
+    create: notificationData,
+    select: { id: true },
+  });
+
+  return { outcome: "activated", notificationId: notification.id };
 }
 
 /**
@@ -457,7 +478,7 @@ export async function handleProviderEvent(input: {
   });
 
   try {
-    const outcome = await prisma.$transaction(async (tx) => {
+    const eventOutcome = await prisma.$transaction(async (tx) => {
       const recorded = await tx.paymentEvent.create({
         data: {
           provider: provider.name,
@@ -470,11 +491,14 @@ export async function handleProviderEvent(input: {
       });
 
       let result: EventOutcome;
+      let notificationId: string | undefined;
 
       if (!payment) {
         result = "ignored";
       } else if (event.type === "succeeded") {
-        result = await applySucceededEvent(tx, event, payment, now);
+        const applied = await applySucceededEvent(tx, event, payment, now);
+        result = applied.outcome;
+        notificationId = "notificationId" in applied ? applied.notificationId : undefined;
       } else if (event.type === "failed") {
         await tx.payment.updateMany({
           where: {
@@ -500,26 +524,14 @@ export async function handleProviderEvent(input: {
         data: { processedAt: now },
       });
 
-      return result;
+      return { outcome: result, notificationId };
     });
 
-    if (outcome === "activated" && payment) {
-      const assignment = await prisma.assignment.findUnique({
-        where: { taskId: payment.taskId },
-        select: { taskerId: true },
-      });
-      if (assignment) {
-        await notifyUser({
-          userId: assignment.taskerId,
-          type: "assignment.active",
-          title: "Payment received — the task is yours",
-          job: "notify.assignment.activated",
-          jobBody: { taskId: payment.taskId, taskerId: assignment.taskerId },
-        });
-      }
+    if (eventOutcome.notificationId) {
+      await queueNotificationEmail(eventOutcome.notificationId);
     }
 
-    return { ok: true, outcome };
+    return { ok: true, outcome: eventOutcome.outcome };
   } catch (error) {
     if (isUniqueViolation(error)) return { ok: true, outcome: "duplicate" };
     throw error;
@@ -543,6 +555,7 @@ export async function expireAssignmentHolds(input: {
       id: true,
       taskId: true,
       taskerId: true,
+      holdExpiresAt: true,
       task: { select: { posterId: true, title: true } },
     },
   });
@@ -599,8 +612,8 @@ export async function expireAssignmentHolds(input: {
       userId: assignment.task.posterId,
       type: "assignment.hold_expired",
       title: "Payment window expired — the task reopened",
-      job: "notify.assignment.hold_expired",
-      jobBody: { taskId, taskerId: assignment.taskerId },
+      body: "The selected Tasker was released and your task is open again.",
+      eventKey: `assignment:${assignment.id}:hold-expired:${assignment.holdExpiresAt?.toISOString()}:${assignment.task.posterId}`,
     });
   }
 

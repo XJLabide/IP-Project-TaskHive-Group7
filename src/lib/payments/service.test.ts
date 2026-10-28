@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prismaMock, txMock } = vi.hoisted(() => {
+const {
+  prismaMock,
+  txMock,
+  notifyUserMock,
+  buildNotificationCreateDataMock,
+  queueNotificationEmailMock,
+} = vi.hoisted(() => {
   const txMock = {
     task: { updateMany: vi.fn() },
     bid: { updateMany: vi.fn() },
@@ -13,6 +19,7 @@ const { prismaMock, txMock } = vi.hoisted(() => {
     payment: { updateMany: vi.fn() },
     payout: { upsert: vi.fn() },
     paymentEvent: { create: vi.fn(), update: vi.fn() },
+    notification: { upsert: vi.fn() },
   };
 
   const prismaMock = {
@@ -29,14 +36,29 @@ const { prismaMock, txMock } = vi.hoisted(() => {
     },
     paymentEvent: { create: vi.fn() },
     payout: { upsert: vi.fn() },
-    notification: { create: vi.fn() },
     $transaction: vi.fn(),
   };
 
-  return { prismaMock, txMock };
+  return {
+    prismaMock,
+    txMock,
+    notifyUserMock: vi.fn(),
+    buildNotificationCreateDataMock: vi.fn((input) => ({
+      ...input,
+      eventKey: `hashed:${input.eventKey}`,
+      href: input.href ?? "/my-work",
+      emailStatus: "PENDING",
+    })),
+    queueNotificationEmailMock: vi.fn(),
+  };
 });
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
+vi.mock("@/lib/notifications", () => ({
+  notifyUser: notifyUserMock,
+  buildNotificationCreateData: buildNotificationCreateDataMock,
+  queueNotificationEmail: queueNotificationEmailMock,
+}));
 
 import {
   expireAssignmentHolds,
@@ -84,13 +106,13 @@ beforeEach(() => {
   prismaMock.payment.findFirst.mockResolvedValue(null);
   prismaMock.payment.upsert.mockResolvedValue({ id: "payment_1" });
   prismaMock.payment.update.mockResolvedValue({});
-  prismaMock.notification.create.mockResolvedValue({});
 
   txMock.task.updateMany.mockResolvedValue({ count: 1 });
   txMock.bid.updateMany.mockResolvedValue({ count: 1 });
   txMock.taskRequest.updateMany.mockResolvedValue({ count: 0 });
   txMock.assignment.updateMany.mockResolvedValue({ count: 1 });
   txMock.assignment.findUnique.mockResolvedValue({
+    id: "assignment_1",
     taskerId: "tasker_1",
     status: "PENDING_PAYMENT",
     holdExpiresAt,
@@ -105,6 +127,8 @@ beforeEach(() => {
   txMock.payout.upsert.mockResolvedValue({});
   txMock.paymentEvent.create.mockResolvedValue({ id: "event_1" });
   txMock.paymentEvent.update.mockResolvedValue({});
+  txMock.notification.upsert.mockResolvedValue({ id: "notification_1" });
+  queueNotificationEmailMock.mockResolvedValue(true);
 });
 
 describe("selecting a Tasker", () => {
@@ -141,9 +165,11 @@ describe("selecting a Tasker", () => {
         }),
       }),
     );
-    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+    expect(notifyUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ userId: "tasker_1", type: "assignment.selected" }),
+        userId: "tasker_1",
+        type: "assignment.selected",
+        eventKey: `assignment:assignment_1:selected:${holdExpiresAt.toISOString()}`,
       }),
     );
   });
@@ -316,6 +342,32 @@ describe("provider callbacks", () => {
         },
       }),
     );
+    expect(txMock.notification.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { eventKey: "hashed:assignment:assignment_1:activated:payment_1" },
+        create: expect.objectContaining({
+          userId: "tasker_1",
+          type: "assignment.active",
+          emailStatus: "PENDING",
+        }),
+      }),
+    );
+    expect(queueNotificationEmailMock).toHaveBeenCalledWith("notification_1");
+  });
+
+  it("keeps a payment event retryable if its notification row cannot be persisted", async () => {
+    txMock.notification.upsert.mockRejectedValue(new Error("database unavailable"));
+
+    await expect(
+      fakeEvent({
+        id: "evt_1",
+        type: "succeeded",
+        reference: "fake_cs_payment_1",
+      }),
+    ).rejects.toThrow("database unavailable");
+
+    expect(txMock.paymentEvent.update).not.toHaveBeenCalled();
+    expect(queueNotificationEmailMock).not.toHaveBeenCalled();
   });
 
   it("records but does not activate a payment that arrives after expiry", async () => {
@@ -401,6 +453,7 @@ describe("expiring payment holds", () => {
         id: "assignment_1",
         taskId: "task_1",
         taskerId: "tasker_1",
+        holdExpiresAt,
         task: { posterId: "poster_1", title: "Pick up groceries" },
       },
     ]);
@@ -420,12 +473,11 @@ describe("expiring payment holds", () => {
       where: { taskId: "task_1", taskerId: "tasker_1", status: "ACCEPTED" },
       data: { status: "SUBMITTED" },
     });
-    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+    expect(notifyUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          userId: "poster_1",
-          type: "assignment.hold_expired",
-        }),
+        userId: "poster_1",
+        type: "assignment.hold_expired",
+        eventKey: `assignment:assignment_1:hold-expired:${holdExpiresAt.toISOString()}:poster_1`,
       }),
     );
   });

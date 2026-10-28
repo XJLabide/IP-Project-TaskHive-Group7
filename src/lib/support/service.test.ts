@@ -79,6 +79,7 @@ beforeEach(() => {
   txMock.cancellationRequest.updateMany.mockResolvedValue({ count: 1 });
   txMock.dispute.updateMany.mockResolvedValue({ count: 1 });
   txMock.report.updateMany.mockResolvedValue({ count: 1 });
+  txMock.adminAction.create.mockResolvedValue({ id: "admin_action_1" });
 });
 
 describe("cancellation requests", () => {

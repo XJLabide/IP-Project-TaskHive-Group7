@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notifications";
+import { notifyAdmins, notifyUser } from "@/lib/notifications";
 import { isUniqueViolation } from "@/lib/db/errors";
 import { reviewDueAt } from "@/lib/support/rules";
 import { toDomainFulfillment, toDomainTaskStatus } from "@/lib/tasks/mapping";
@@ -182,8 +182,8 @@ export async function submitCompletion(input: {
     userId: task.posterId,
     type: "completion.submitted",
     title: `Completion submitted for “${task.title}”`,
-    job: "notify.completion.submitted",
-    jobBody: { taskId: task.id, taskerId: task.assignment.taskerId },
+    body: "Review the completion evidence and confirm the work or open a dispute.",
+    eventKey: `completion:submitted:${task.id}:${task.posterId}`,
   });
 
   return {
@@ -311,8 +311,8 @@ export async function confirmCompletion(input: {
     userId: task.assignment.taskerId,
     type: "completion.confirmed",
     title: `Payout released for “${task.title}”`,
-    job: "notify.payment.released",
-    jobBody: { taskId: task.id },
+    body: "The Poster confirmed the work and released the payout.",
+    eventKey: `completion:confirmed:${task.id}:${task.assignment.taskerId}`,
   });
 
   return {
@@ -423,8 +423,15 @@ export async function disputeCompletion(input: {
     userId: otherParticipant,
     type: "completion.disputed",
     title: `A dispute froze payout for “${task.title}”`,
-    job: "notify.completion.disputed",
-    jobBody: { taskId: task.id, disputeId: dispute.id },
+    body: "Payout is paused while TaskHive support reviews the dispute.",
+    eventKey: `completion:disputed:${dispute.id}:${otherParticipant}`,
+  });
+
+  await notifyAdmins({
+    type: "support.dispute_created",
+    title: "A completion dispute needs review",
+    body: "A task dispute was opened and payout is paused. Sign in to review it.",
+    eventKey: `support.dispute:${dispute.id}`,
   });
 
   return { ok: true, disputeId: dispute.id, taskId: task.id };
@@ -466,13 +473,16 @@ export async function sendCompletionReminders(input: {
     reminded += 1;
 
     try {
-      await notifyUser({
+      const notification = await notifyUser({
         userId: assignment.task.posterId,
         type: "completion.reminder",
         title: `Confirm completion for “${assignment.task.title}”`,
-        job: "notify.completion.reminder",
-        jobBody: { taskId: assignment.taskId, taskerId: assignment.taskerId },
+        body: "Please confirm the work or open a dispute before payout auto-release.",
+        eventKey: `completion:reminder:${assignment.id}:${assignment.task.posterId}`,
       });
+      if (!notification.persisted || notification.delivery === "not_scheduled") {
+        throw new Error("Completion reminder notification was not recorded.");
+      }
     } catch {
       // Leave the reminder eligible so the next run can retry the one send.
       await prisma.assignment.updateMany({
@@ -565,15 +575,15 @@ export async function autoReleaseCompletions(input: {
       userId: assignment.task.posterId,
       type: "completion.auto_released",
       title: `Payout auto-released for “${assignment.task.title}”`,
-      job: "notify.completion.auto_released",
-      jobBody: { taskId: assignment.taskId },
+      body: "The 48-hour review period ended without a dispute.",
+      eventKey: `completion:auto-released:${assignment.id}:${assignment.task.posterId}`,
     });
     await notifyUser({
       userId: assignment.taskerId,
       type: "completion.auto_released",
       title: `Payout auto-released for “${assignment.task.title}”`,
-      job: "notify.completion.auto_released",
-      jobBody: { taskId: assignment.taskId },
+      body: "The 48-hour review period ended without a dispute.",
+      eventKey: `completion:auto-released:${assignment.id}:${assignment.taskerId}`,
     });
   }
 

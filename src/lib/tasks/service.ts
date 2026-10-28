@@ -1,6 +1,10 @@
 import type { Category, Task } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { publishJob } from "@/lib/queue/qstash";
+import {
+  buildNotificationCreateData,
+  notifyUser,
+  queueNotificationEmail,
+} from "@/lib/notifications";
 import {
   changedMaterialFields,
   materialFieldLabels,
@@ -163,13 +167,17 @@ export async function createTask(
   });
 
   try {
-    await publishJob("notify.task.created", {
-      taskId: task.id,
-      title: fields.title,
+    await notifyUser({
       userId: posterId,
+      type: "task.created",
+      title: publish ? "Your task is live" : "Your task draft is saved",
+      body: `“${fields.title}” is available in My Work.`,
+      eventKey: `task.created:${task.id}:${posterId}`,
     });
   } catch {
-    // The task is already saved; the notification job can be retried.
+    console.error("[notifications] Task creation notification failed", {
+      taskId: task.id,
+    });
   }
 
   return {
@@ -276,7 +284,11 @@ export async function updateTask(
         },
       });
 
-      if (updated.count === 0) return { raced: true as const, affected };
+      if (updated.count === 0) {
+        return { raced: true as const, affected, notificationIds: [] as string[] };
+      }
+
+      let notificationIds: string[] = [];
 
       if (clears) {
         const [bids, requests] = await Promise.all([
@@ -309,18 +321,23 @@ export async function updateTask(
           const summary = materialFields
             .map((field) => materialFieldLabels[field])
             .join(", ");
-          await tx.notification.createMany({
-            data: affected.map((userId) => ({
-              userId,
-              type: "task.material_edit",
-              title: "A task you applied to changed",
-              body: `The Poster changed ${summary}. Your application was withdrawn.`,
-            })),
+          const notifications = await tx.notification.createManyAndReturn({
+            data: affected.map((userId) =>
+              buildNotificationCreateData({
+                userId,
+                type: "task.material_edit",
+                title: "A task you applied to changed",
+                body: `The Poster changed ${summary}. Your application was withdrawn.`,
+                eventKey: `task.material-edit:${taskId}:${now.toISOString()}:${userId}`,
+              }),
+            ),
+            select: { id: true },
           });
+          notificationIds = notifications.map((notification) => notification.id);
         }
       }
 
-      return { raced: false as const, affected };
+      return { raced: false as const, affected, notificationIds };
     },
     { isolationLevel: "Serializable" },
   );
@@ -333,16 +350,12 @@ export async function updateTask(
     };
   }
 
-  if (clears && outcome.affected.length > 0) {
-    try {
-      await publishJob("notify.task.material_edit", {
-        taskId,
-        taskerIds: outcome.affected,
-        fields: materialFields,
-      });
-    } catch {
-      // The in-app notification is already committed; email delivery can retry.
-    }
+  if (clears && outcome.notificationIds.length > 0) {
+    await Promise.all(
+      outcome.notificationIds.map((notificationId) =>
+        queueNotificationEmail(notificationId),
+      ),
+    );
   }
 
   return {

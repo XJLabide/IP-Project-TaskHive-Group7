@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prismaMock, txMock, publishJobMock } = vi.hoisted(() => {
+const { prismaMock, txMock, notifyUserMock, queueNotificationEmailMock } = vi.hoisted(() => {
   const txMock = {
     task: { updateMany: vi.fn() },
     bid: { findMany: vi.fn(), updateMany: vi.fn() },
     taskRequest: { findMany: vi.fn(), updateMany: vi.fn() },
-    notification: { createMany: vi.fn() },
+    notification: { createManyAndReturn: vi.fn() },
   };
 
   const prismaMock = {
@@ -19,11 +19,32 @@ const { prismaMock, txMock, publishJobMock } = vi.hoisted(() => {
     $transaction: vi.fn(),
   };
 
-  return { prismaMock, txMock, publishJobMock: vi.fn() };
+  return {
+    prismaMock,
+    txMock,
+    notifyUserMock: vi.fn(),
+    queueNotificationEmailMock: vi.fn(),
+  };
 });
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/queue/qstash", () => ({ publishJob: publishJobMock }));
+vi.mock("@/lib/notifications", () => ({
+  notifyUser: notifyUserMock,
+  queueNotificationEmail: queueNotificationEmailMock,
+  buildNotificationCreateData: (input: {
+    userId: string;
+    type: string;
+    title: string;
+    body?: string;
+    eventKey: string;
+    href?: string;
+  }) => ({
+    ...input,
+    eventKey: `hashed:${input.eventKey}`,
+    href: input.href ?? "/my-work",
+    emailStatus: "PENDING",
+  }),
+}));
 
 import { createTask, deleteTask, updateTask } from "./service";
 const openTask = {
@@ -58,6 +79,7 @@ beforeEach(() => {
   txMock.task.updateMany.mockResolvedValue({ count: 1 });
   txMock.bid.findMany.mockResolvedValue([]);
   txMock.taskRequest.findMany.mockResolvedValue([]);
+  txMock.notification.createManyAndReturn.mockResolvedValue([{ id: "notification_1" }]);
   prismaMock.task.deleteMany.mockResolvedValue({ count: 1 });
 });
 
@@ -134,17 +156,19 @@ describe("task authoring service", () => {
     expect(txMock.bid.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: "INVALIDATED" } }),
     );
-    expect(txMock.notification.createMany).toHaveBeenCalledWith({
+    expect(txMock.notification.createManyAndReturn).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
+          eventKey: expect.stringContaining("hashed:task.material-edit:task_1:"),
           userId: "tasker_1",
           type: "task.material_edit",
+          emailStatus: "PENDING",
         }),
       ],
+      select: { id: true },
     });
-    expect(publishJobMock).toHaveBeenCalledWith(
-      "notify.task.material_edit",
-      expect.anything(),
+    expect(queueNotificationEmailMock).toHaveBeenCalledWith(
+      "notification_1",
     );
   });
 
@@ -152,7 +176,7 @@ describe("task authoring service", () => {
     await updateTask("task_1", "poster_1", { category: "Errands" });
 
     expect(txMock.bid.updateMany).not.toHaveBeenCalled();
-    expect(txMock.notification.createMany).not.toHaveBeenCalled();
+    expect(txMock.notification.createManyAndReturn).not.toHaveBeenCalled();
   });
 
   it("refuses to delete a published task", async () => {

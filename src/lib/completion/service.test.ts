@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prismaMock, txMock, notifyUserMock } = vi.hoisted(() => {
+const { prismaMock, txMock, notifyUserMock, notifyAdminsMock } = vi.hoisted(() => {
   const txMock = {
     task: { updateMany: vi.fn() },
     assignment: { updateMany: vi.fn() },
@@ -25,11 +25,19 @@ const { prismaMock, txMock, notifyUserMock } = vi.hoisted(() => {
     $transaction: vi.fn(),
   };
 
-  return { prismaMock, txMock, notifyUserMock: vi.fn() };
+  return {
+    prismaMock,
+    txMock,
+    notifyUserMock: vi.fn(),
+    notifyAdminsMock: vi.fn(),
+  };
 });
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/notifications", () => ({ notifyUser: notifyUserMock }));
+vi.mock("@/lib/notifications", () => ({
+  notifyUser: notifyUserMock,
+  notifyAdmins: notifyAdminsMock,
+}));
 
 import {
   autoReleaseCompletions,
@@ -60,6 +68,7 @@ const activeTask = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  notifyUserMock.mockResolvedValue({ persisted: true, delivery: "scheduled" });
   prismaMock.$transaction.mockImplementation(
     async (callback: (tx: typeof txMock) => unknown) => callback(txMock),
   );

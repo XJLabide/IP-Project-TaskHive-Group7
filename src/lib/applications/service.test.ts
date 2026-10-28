@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prismaMock, publishJobMock } = vi.hoisted(() => ({
+const { prismaMock, notifyUserMock } = vi.hoisted(() => ({
   prismaMock: {
     task: { findUnique: vi.fn() },
     bid: {
@@ -15,13 +15,12 @@ const { prismaMock, publishJobMock } = vi.hoisted(() => ({
       updateMany: vi.fn(),
       create: vi.fn(),
     },
-    notification: { create: vi.fn() },
   },
-  publishJobMock: vi.fn(),
+  notifyUserMock: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/queue/qstash", () => ({ publishJob: publishJobMock }));
+vi.mock("@/lib/notifications", () => ({ notifyUser: notifyUserMock }));
 
 import {
   createBid,
@@ -74,7 +73,6 @@ beforeEach(() => {
   });
   prismaMock.taskRequest.updateMany.mockResolvedValue({ count: 0 });
   prismaMock.taskRequest.findMany.mockResolvedValue([]);
-  prismaMock.notification.create.mockResolvedValue({});
 });
 
 describe("creating applications", () => {
@@ -104,12 +102,13 @@ describe("creating applications", () => {
         }),
       }),
     );
-    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+    expect(notifyUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ userId: "poster_1", type: "application.bid" }),
+        userId: "poster_1",
+        type: "application.bid",
+        eventKey: expect.stringMatching(/^application:bid_1:created:.+:poster_1$/),
       }),
     );
-    expect(publishJobMock).toHaveBeenCalledWith("notify.bid.created", expect.anything());
   });
 
   it("creates a fixed-price request", async () => {
@@ -202,13 +201,34 @@ describe("withdrawing applications", () => {
     expect(result).toMatchObject({ ok: true, status: "withdrawn" });
     expect(prismaMock.bid.updateMany).toHaveBeenCalledWith({
       where: { id: "bid_1", taskerId: "tasker_1", status: "SUBMITTED" },
-      data: { status: "WITHDRAWN" },
+      data: expect.objectContaining({ status: "WITHDRAWN", updatedAt: expect.any(Date) }),
     });
-    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+    expect(notifyUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ type: "application.withdrawn" }),
+        type: "application.withdrawn",
+        eventKey: expect.stringMatching(/^application:bid_1:withdrawn:.+:poster_1$/),
       }),
     );
+  });
+
+  it("uses a fresh event key after the same application is resubmitted and withdrawn again", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-10-28T10:00:00.000Z"));
+      prismaMock.bid.findUnique.mockResolvedValue(bidWithTask);
+      prismaMock.bid.updateMany.mockResolvedValue({ count: 1 });
+
+      await withdrawApplication("tasker_1", "bid_1");
+      const firstKey = notifyUserMock.mock.calls[0][0].eventKey;
+
+      vi.setSystemTime(new Date("2026-10-28T11:00:00.000Z"));
+      await withdrawApplication("tasker_1", "bid_1");
+      const secondKey = notifyUserMock.mock.calls[1][0].eventKey;
+
+      expect(secondKey).not.toBe(firstKey);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("refuses another Tasker's application", async () => {

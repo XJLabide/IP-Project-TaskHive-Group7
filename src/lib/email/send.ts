@@ -9,17 +9,23 @@ type Mail = {
   subject: string;
   text: string;
   html?: string;
+  idempotencyKey?: string;
 };
 
 /**
  * Transactional email boundary. With RESEND_API_KEY set, mail is delivered.
  * Without it, the message is logged so local flows can still be completed.
  */
-export async function sendMail({ to, subject, text, html }: Mail): Promise<MailResult> {
+export async function sendMail({
+  to,
+  subject,
+  text,
+  html,
+  idempotencyKey,
+}: Mail): Promise<MailResult> {
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.info(`[email:dev] to=${to} subject="${subject}"\n${text}`);
     return { delivered: false, reason: "RESEND_API_KEY is not configured" };
   }
 
@@ -30,7 +36,7 @@ export async function sendMail({ to, subject, text, html }: Mail): Promise<MailR
     subject,
     text,
     html: html ?? `<pre style="font-family:inherit;white-space:pre-wrap">${text}</pre>`,
-  });
+  }, idempotencyKey ? { idempotencyKey } : undefined);
 
   if (error) throw new Error(error.message);
 
