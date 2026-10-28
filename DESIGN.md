@@ -83,7 +83,7 @@ components:
 
 ## Direction
 
-The signed-in dashboard is a task-first marketplace home based on the user-provided TaskHive reference. It helps Posters start a task and Taskers find work, then keeps their own applications, assignments, payment actions, and activity within reach.
+The signed-in dashboard is a task-first marketplace home based on the user-provided TaskHive reference. It helps Posters start a task and Taskers find work. The separate **My Work** page holds their applications, assignments, payment actions, posted tasks, and activity.
 
 Use the reference's clear white workspace, warm process strip, yellow actions, category filters, and photographic task-card hierarchy. Dashboard cards use real category photography from Unsplash, with image credits recorded in `docs/Design Guidelines/Task Category Photo Credits.md`. Do not create sample task photography, finance-style metrics, fake notifications, or nonfunctional favorite controls.
 
@@ -106,7 +106,7 @@ The existing Theme toggle supports both modes. Light mode is the reference prese
 4. Launch-category filters remain available even when a category currently has no open tasks.
 5. Open tasks show an honest geographic scope. Use “Anywhere in the Philippines” until a real search area is selected; never imply a saved or current location from a hard-coded coordinate.
 6. Task cards show category and fulfillment/hiring modes, task details, approximate service area, deadline, applications, Poster, price, and a working task link.
-7. “Your work” follows discovery and holds the user's payment actions, applications to review, assignments, posted tasks, and recent activity.
+7. The sidebar links to **My Work**, a dedicated page for payment actions, applications to review, assignments, posted tasks, and recent activity.
 
 Empty and populated sessions use the same page structure. Empty messaging belongs inside its section and should explain a useful next step without replacing the dashboard with a separate first-run composition.
 

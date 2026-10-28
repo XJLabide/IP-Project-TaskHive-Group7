@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { ArrowRight, ShieldCheck, Star, MapPin } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
+import { loadActorFromHeaders } from "@/lib/auth/actor";
 
 const steps = [
   {
@@ -31,7 +34,11 @@ const questions = [
   ["How do I earn as a Tasker?", "Create a profile, browse tasks in your area, and send an offer for work you can complete."],
 ];
 
-export default function Home() {
+export default async function Home() {
+  // Signed-in members skip the marketing page; the landing page is for guests.
+  const actor = await loadActorFromHeaders(await headers());
+  if (actor?.signedIn) redirect("/dashboard");
+
   return (
     <main className="h-dvh overflow-y-auto overscroll-y-none bg-white text-zinc-950 transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50">
       <SiteHeader active="home" />

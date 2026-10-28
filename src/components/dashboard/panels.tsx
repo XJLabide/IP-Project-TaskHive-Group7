@@ -25,12 +25,14 @@ export function Panel({
   id,
   title,
   description,
+  count,
   action,
   children,
 }: {
   id: string;
   title: string;
   description: string;
+  count?: number;
   action?: ReactNode;
   children: ReactNode;
 }) {
@@ -40,30 +42,45 @@ export function Panel({
       className="scroll-mt-6 rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
       id={id}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200 p-5 dark:border-zinc-800">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6 sm:py-5">
+        <div className="flex min-w-0 items-center gap-3">
           <h2
-            className="text-base font-semibold text-zinc-950 dark:text-zinc-50"
+            className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-zinc-50"
             id={`${id}-title`}
           >
             {title}
           </h2>
-          <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            {description}
-          </p>
+          {typeof count === "number" ? (
+            <span
+              aria-label={`${count} ${title.toLowerCase()}`}
+              className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-zinc-100 px-2 text-xs font-semibold tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+            >
+              {count}
+            </span>
+          ) : null}
         </div>
         {action}
       </div>
+      <p className="px-5 pt-3 text-sm leading-6 text-zinc-500 dark:text-zinc-400 sm:px-6">
+        {description}
+      </p>
       {children}
     </section>
   );
 }
 
-function EmptyRow({ children }: { children: ReactNode }) {
+export function EmptyRow({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <p className="p-5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-      {children}
-    </p>
+    <div className="px-5 pb-5 pt-3 sm:px-6">
+      <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">{children}</p>
+    </div>
   );
 }
 
@@ -103,9 +120,10 @@ export function ActionsPanel({
       description="Payment holds that block the task until you act."
       id="needs-action"
       title="Needs your attention"
+      count={actions.length}
     >
       {actions.length === 0 ? (
-        <EmptyRow>No payment holds need you right now.</EmptyRow>
+        <EmptyRow title="You’re all caught up">No payment holds need you right now.</EmptyRow>
       ) : (
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {actions.map((action) => {
@@ -150,9 +168,12 @@ export function ReviewQueue({ rows }: { rows: DashboardApplication[] }) {
       description="Submitted applications waiting for your decision."
       id="review-queue"
       title="Applications to review"
+      count={rows.length}
     >
       {rows.length === 0 ? (
-        <EmptyRow>No applications are waiting for review.</EmptyRow>
+        <EmptyRow title="No applications yet">
+          New Tasker offers and requests will show up here.
+        </EmptyRow>
       ) : (
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {rows.map((row) => (
@@ -204,9 +225,12 @@ export function AssignmentsPanel({ rows }: { rows: DashboardAssignment[] }) {
       description="Paid work that is currently in progress."
       id="assignments"
       title="Active assignments"
+      count={rows.length}
     >
       {rows.length === 0 ? (
-        <EmptyRow>No assignment is active right now.</EmptyRow>
+        <EmptyRow title="No active assignments">
+          Work you’ve hired for or been assigned to will appear here.
+        </EmptyRow>
       ) : (
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {rows.map((row) => (
@@ -259,20 +283,16 @@ export function PostedTasksPanel({
 }) {
   return (
     <Panel
-      action={
-        canPost ? (
-          <Button asChild variant="outline">
-            <Link href="/tasks/new">Post a task</Link>
-          </Button>
-        ) : null
-      }
       description="Every draft, hold, assignment, and cancellation you own."
       id="your-tasks"
       title="Your tasks"
+      count={rows.length}
     >
       {rows.length === 0 ? (
-        <EmptyRow>
-          You have not posted a task yet. Post one to start collecting applications.
+        <EmptyRow title={canPost ? "Start with a task" : "No posted tasks yet"}>
+          {canPost
+            ? "Create a task to describe the work and start receiving offers."
+            : "Tasks you post will appear here."}
         </EmptyRow>
       ) : (
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
