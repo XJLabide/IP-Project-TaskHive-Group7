@@ -93,23 +93,22 @@ function failure(code: ApplicationFailureCode, reason: string): ApplicationFailu
 
 async function notifyPoster(input: {
   posterId: string;
-  taskId: string;
-  taskerId: string;
   type: string;
   title: string;
-  job: string;
+  eventKey: string;
 }): Promise<void> {
   await notifyUser({
     userId: input.posterId,
     type: input.type,
     title: input.title,
-    job: input.job,
-    jobBody: { taskId: input.taskId, taskerId: input.taskerId },
+    body: "Review this application in My Work.",
+    href: "/my-work",
+    eventKey: input.eventKey,
   });
 }
 
 type SaveOutcome =
-  | { ok: true; id: string }
+  | { ok: true; id: string; eventAt: Date }
   | { ok: false; code: "duplicate" };
 
 async function saveBid(
@@ -118,7 +117,8 @@ async function saveBid(
   existingId: string | null,
   data: { amountCents: number; message: string; estimatedTime: string | null },
 ): Promise<SaveOutcome> {
-  const values = { ...data, status: "SUBMITTED" as const };
+  const eventAt = new Date();
+  const values = { ...data, status: "SUBMITTED" as const, updatedAt: eventAt };
 
   if (existingId) {
     const reactivated = await prisma.bid.updateMany({
@@ -131,7 +131,7 @@ async function saveBid(
     });
 
     return reactivated.count > 0
-      ? { ok: true, id: existingId }
+      ? { ok: true, id: existingId, eventAt }
       : { ok: false, code: "duplicate" };
   }
 
@@ -140,7 +140,7 @@ async function saveBid(
       data: { taskId, taskerId, ...values },
       select: { id: true },
     });
-    return { ok: true, id: created.id };
+    return { ok: true, id: created.id, eventAt };
   } catch (error) {
     if (isUniqueViolation(error)) return { ok: false, code: "duplicate" };
     throw error;
@@ -153,7 +153,8 @@ async function saveRequest(
   existingId: string | null,
   data: { message: string | null },
 ): Promise<SaveOutcome> {
-  const values = { ...data, status: "SUBMITTED" as const };
+  const eventAt = new Date();
+  const values = { ...data, status: "SUBMITTED" as const, updatedAt: eventAt };
 
   if (existingId) {
     const reactivated = await prisma.taskRequest.updateMany({
@@ -166,7 +167,7 @@ async function saveRequest(
     });
 
     return reactivated.count > 0
-      ? { ok: true, id: existingId }
+      ? { ok: true, id: existingId, eventAt }
       : { ok: false, code: "duplicate" };
   }
 
@@ -175,7 +176,7 @@ async function saveRequest(
       data: { taskId, taskerId, ...values },
       select: { id: true },
     });
-    return { ok: true, id: created.id };
+    return { ok: true, id: created.id, eventAt };
   } catch (error) {
     if (isUniqueViolation(error)) return { ok: false, code: "duplicate" };
     throw error;
@@ -241,11 +242,9 @@ async function createApplication(input: {
 
   await notifyPoster({
     posterId: task.posterId,
-    taskId: task.id,
-    taskerId: input.actor.id,
     type: input.kind === "bid" ? "application.bid" : "application.request",
     title: input.kind === "bid" ? "New bid on your task" : "New request on your task",
-    job: input.kind === "bid" ? "notify.bid.created" : "notify.task.requested",
+    eventKey: `application:${id}:created:${saved.eventAt.toISOString()}:${task.posterId}`,
   });
 
   const approval = canApprove({
@@ -379,15 +378,16 @@ export async function withdrawApplication(
     return failure(decision.code, decision.reason);
   }
 
+  const withdrawnAt = new Date();
   const withdrawn =
     application.kind === "bid"
       ? await prisma.bid.updateMany({
           where: { id: applicationId, taskerId, status: "SUBMITTED" },
-          data: { status: "WITHDRAWN" },
+          data: { status: "WITHDRAWN", updatedAt: withdrawnAt },
         })
       : await prisma.taskRequest.updateMany({
           where: { id: applicationId, taskerId, status: "SUBMITTED" },
-          data: { status: "WITHDRAWN" },
+          data: { status: "WITHDRAWN", updatedAt: withdrawnAt },
         });
 
   if (withdrawn.count === 0) {
@@ -399,11 +399,9 @@ export async function withdrawApplication(
 
   await notifyPoster({
     posterId: application.task.posterId,
-    taskId: application.task.id,
-    taskerId,
     type: "application.withdrawn",
     title: "A Tasker withdrew an application",
-    job: "notify.application.withdrawn",
+    eventKey: `application:${applicationId}:withdrawn:${withdrawnAt.toISOString()}:${application.task.posterId}`,
   });
 
   return { ok: true, status: "withdrawn" };

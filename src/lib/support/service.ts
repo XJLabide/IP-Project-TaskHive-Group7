@@ -190,8 +190,8 @@ export async function requestCancellation(input: {
     userId: counterpart,
     type: "support.cancellation_requested",
     title: `Cancellation requested for “${task.title}”`,
-    job: "notify.support.cancellation_requested",
-    jobBody: { taskId: task.id, requestId: request.id },
+    body: "Work and payout are paused while TaskHive support reviews the request.",
+    eventKey: `support:cancellation-request:${request.id}:${counterpart}`,
   });
 
   return { ok: true, request };
@@ -379,12 +379,8 @@ async function resolveCase(input: {
       userId,
       type: "support.case_resolved",
       title: `Support resolved “${caseRow.task.title}”`,
-      job: "notify.support.case_resolved",
-      jobBody: {
-        taskId: caseRow.taskId,
-        caseId: caseRow.id,
-        outcome: input.outcome,
-      },
+      body: "Sign in to review the resolution and related task details.",
+      eventKey: `support:case-resolved:${caseRow.id}:${userId}`,
     });
   }
 
@@ -501,8 +497,8 @@ export async function resolveReport(input: {
       userId,
       type: "support.report_resolved",
       title: reportTitle,
-      job: "notify.support.report_resolved",
-      jobBody: { reportId: report.id, decision: input.decision },
+      body: "Sign in to review the support update.",
+      eventKey: `support:report-resolved:${report.id}:${userId}`,
     });
   }
 
@@ -530,13 +526,14 @@ export async function setUserStatus(input: {
     return failure("forbidden", "Admin accounts are managed outside the support queue.");
   }
 
+  let adminActionId = "";
   await prisma.$transaction(async (tx) => {
     await tx.user.updateMany({
       where: { id: input.userId, isAdmin: false },
       data: { status: input.status },
     });
 
-    await recordAdminAction(
+    const adminAction = await recordAdminAction(
       {
         adminId: input.adminId,
         action: `admin.user.${input.status.toLowerCase()}`,
@@ -547,6 +544,7 @@ export async function setUserStatus(input: {
       },
       tx,
     );
+    adminActionId = adminAction.id;
   });
 
   await notifyUser({
@@ -556,8 +554,8 @@ export async function setUserStatus(input: {
       input.status === "SUSPENDED"
         ? "Your TaskHive account was suspended"
         : "Your TaskHive account was reinstated",
-    job: "notify.admin.user_status",
-    jobBody: { status: input.status },
+    body: "Sign in to review your account status and any available next steps.",
+    eventKey: `admin.user-status:${adminActionId}:${input.userId}`,
   });
 
   return { ok: true, userId: input.userId, status: input.status };

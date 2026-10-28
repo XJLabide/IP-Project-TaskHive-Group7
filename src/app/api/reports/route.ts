@@ -1,8 +1,8 @@
 import { created, problem, requireUser } from "@/lib/api/response";
 import { chatFailureResponse } from "@/lib/chat/http";
 import { reportChatMessage } from "@/lib/chat/service";
+import { notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { publishJob } from "@/lib/queue/qstash";
 import { reportSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -34,16 +34,12 @@ export async function POST(request: Request) {
     select: { id: true, status: true },
   });
 
-  try {
-    await publishJob("notify.report.created", {
-      reportId: report.id,
-      reporterId,
-      reportedUserId: reportedUserId ?? null,
-      taskId: taskId ?? null,
-    });
-  } catch {
-    // The report is committed; admin delivery can retry.
-  }
+  await notifyAdmins({
+    type: "support.report_created",
+    title: "A report needs review",
+    body: "A user submitted a TaskHive report. Sign in to review it.",
+    eventKey: `support.report:${report.id}`,
+  });
 
   return created(report);
 }

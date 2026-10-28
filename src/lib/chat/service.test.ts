@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { prismaMock, publishJobMock } = vi.hoisted(() => ({
+const { prismaMock, notifyUserMock, notifyAdminsMock } = vi.hoisted(() => ({
   prismaMock: {
     task: { findUnique: vi.fn() },
+    user: { findMany: vi.fn() },
     taskChat: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -11,13 +12,16 @@ const { prismaMock, publishJobMock } = vi.hoisted(() => ({
     },
     chatMessage: { create: vi.fn(), findUnique: vi.fn() },
     report: { create: vi.fn() },
-    notification: { create: vi.fn() },
   },
-  publishJobMock: vi.fn(),
+  notifyUserMock: vi.fn(),
+  notifyAdminsMock: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/queue/qstash", () => ({ publishJob: publishJobMock }));
+vi.mock("@/lib/notifications", () => ({
+  notifyUser: notifyUserMock,
+  notifyAdmins: notifyAdminsMock,
+}));
 
 import {
   getChatMessages,
@@ -45,6 +49,7 @@ const chatRow = {
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.task.findUnique.mockResolvedValue(openTask);
+  prismaMock.user.findMany.mockResolvedValue([]);
   prismaMock.taskChat.upsert.mockResolvedValue(chatRow);
   prismaMock.taskChat.findUnique.mockResolvedValue(chatRow);
   prismaMock.taskChat.findMany.mockResolvedValue([]);
@@ -55,7 +60,6 @@ beforeEach(() => {
     body: "Is the grocery list final?",
     createdAt: new Date("2026-10-26T08:05:00.000Z"),
   });
-  prismaMock.notification.create.mockResolvedValue({});
 });
 
 describe("opening a task chat", () => {
@@ -161,12 +165,13 @@ describe("chat messages", () => {
         data: { chatId: "chat_1", senderId: "tasker_1", body: "Is the grocery list final?" },
       }),
     );
-    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+    expect(notifyUserMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ userId: "poster_1", type: "chat.message" }),
+        userId: "poster_1",
+        type: "chat.message",
+        eventKey: "chat.message:msg_1:poster_1",
       }),
     );
-    expect(publishJobMock).toHaveBeenCalledWith("notify.chat.message", expect.anything());
   });
 
   it("locks the thread and blocks non-participants", async () => {
@@ -212,7 +217,9 @@ describe("reporting a chat message", () => {
         }),
       }),
     );
-    expect(publishJobMock).toHaveBeenCalledWith("notify.report.created", expect.anything());
+    expect(notifyAdminsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventKey: "support.chat-report:report_1" }),
+    );
   });
 
   it("refuses reports from people outside the conversation", async () => {

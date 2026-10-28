@@ -1,6 +1,6 @@
 import type { TaskerVerification } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { publishJob } from "@/lib/queue/qstash";
+import { notifyAdmins, notifyUser } from "@/lib/notifications";
 import { parseProviderResult } from "./provider";
 import { toDbAppeal, toDbStatus, toDomainAppeal, toDomainStatus } from "./mapping";
 import {
@@ -60,31 +60,45 @@ async function runEffects(
   userId: string,
   effects: VerificationEffect[],
   affectedPosters: string[],
+  eventKey: string,
 ): Promise<void> {
   for (const effect of effects) {
     switch (effect.type) {
       case "notify_posters":
         for (const posterId of affectedPosters) {
-          await publishJob("notify.poster.tasker.verification", {
-            posterId,
-            taskerId: userId,
-            reason: effect.reason,
+          await notifyUser({
+            userId: posterId,
+            type: "verification.tasker_rejected",
+            title: "A Tasker application changed",
+            body: "A Tasker did not pass identity verification, so their application was withdrawn.",
+            eventKey: `${eventKey}:poster:${posterId}`,
           });
         }
         break;
       case "notify_admins":
-        await publishJob("notify.admin.verification.appeal", { taskerId: userId });
+        await notifyAdmins({
+          type: "verification.appeal_submitted",
+          title: "A Tasker verification appeal needs review",
+          body: "A Tasker submitted an identity-verification appeal. Sign in to review it.",
+          eventKey: `${eventKey}:admins`,
+        });
         break;
       case "notify_applicant":
-        await publishJob("notify.tasker.verification.decision", {
-          taskerId: userId,
-          reason: effect.reason,
+        await notifyUser({
+          userId,
+          type: "verification.decision",
+          title: "Your Tasker verification status changed",
+          body: effect.reason ?? "Sign in to review your verification status.",
+          eventKey: `${eventKey}:tasker:${userId}`,
         });
         break;
       case "require_fresh_applications":
-        await publishJob("notify.tasker.verification.appeal.approved", {
-          taskerId: userId,
-          action: "resubmit_applications",
+        await notifyUser({
+          userId,
+          type: "verification.appeal_approved",
+          title: "Your verification appeal was approved",
+          body: "You can now submit applications for tasks again.",
+          eventKey: `${eventKey}:appeal-approved:${userId}`,
         });
         break;
       case "withdraw_applications":
@@ -195,7 +209,12 @@ export async function applyVerificationEvent(
     };
   }
 
-  await runEffects(userId, result.effects, committed.affectedPosters);
+  await runEffects(
+    userId,
+    result.effects,
+    committed.affectedPosters,
+    `verification:${event.type}:${userId}:${now.toISOString()}`,
+  );
 
   return { ok: true, state: result.state };
 }

@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notifications";
-import { publishJob } from "@/lib/queue/qstash";
+import { notifyAdmins, notifyUser } from "@/lib/notifications";
 import type { TaskStatus as DbTaskStatus } from "@prisma/client";
 import { toDomainTaskStatus } from "@/lib/tasks/mapping";
 import type { TaskLifecycleStatus } from "@/lib/tasks/lifecycle";
@@ -248,8 +247,9 @@ export async function postChatMessage(
     userId: recipientId,
     type: "chat.message",
     title: "New message about a task",
-    job: "notify.chat.message",
-    jobBody: { chatId, senderId: actorId },
+    body: "A Tasker sent you a message. Sign in to read it.",
+    href: "/my-work",
+    eventKey: `chat.message:${message.id}:${recipientId}`,
   });
 
   return {
@@ -300,17 +300,12 @@ export async function reportChatMessage(
     select: { id: true, status: true },
   });
 
-  try {
-    await publishJob("notify.report.created", {
-      reportId: report.id,
-      reporterId,
-      reportedUserId: message.senderId,
-      taskId: message.chat.taskId,
-      messageId: message.id,
-    });
-  } catch {
-    // The report is committed; admin delivery can retry.
-  }
+  await notifyAdmins({
+    type: "support.report_created",
+    title: "A chat report needs review",
+    body: "A user reported a TaskHive conversation. Sign in to review it.",
+    eventKey: `support.chat-report:${report.id}`,
+  });
 
   return { ok: true, report };
 }
