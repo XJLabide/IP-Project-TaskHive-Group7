@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { TaskHiveBrand } from "@/components/layout/taskhive-brand";
 
 const navItems = [
   { href: "/", label: "Home", key: "home" },
@@ -11,12 +12,7 @@ export function SiteHeader({ active }: { active?: "home" | "tasks" }) {
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/75 text-zinc-950 shadow-[0_1px_0_rgba(24,24,27,0.06)] backdrop-blur-md transition-colors dark:border-zinc-800/80 dark:bg-zinc-950/75 dark:text-zinc-50">
       <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 md:px-8 lg:px-12">
-        <Link
-          className="text-2xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50"
-          href="/"
-        >
-          <span className="text-yellow-500">Task</span>Hive
-        </Link>
+        <TaskHiveBrand className="text-2xl text-zinc-950 dark:text-zinc-50" iconClassName="h-9 w-9" />
 
         <nav aria-label="Public navigation" className="hidden items-center gap-8 text-sm font-medium md:flex">
           {navItems.map((item) => (

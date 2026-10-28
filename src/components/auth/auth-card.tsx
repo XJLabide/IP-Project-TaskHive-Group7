@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TaskHiveBrand } from "@/components/layout/taskhive-brand";
 
 /** Centered card used by the account-recovery and email-verification flows. */
 export function AuthCard({
@@ -13,12 +14,7 @@ export function AuthCard({
   return (
     <main className="grid min-h-dvh place-items-center bg-zinc-100 px-4 py-10 dark:bg-zinc-950">
       <div className="w-full max-w-md">
-        <Link
-          className="text-xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50"
-          href="/"
-        >
-          <span className="text-[#FFC800]">Task</span>Hive
-        </Link>
+        <TaskHiveBrand className="text-xl text-zinc-950 dark:text-zinc-50" iconClassName="h-8 w-8" />
 
         <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">

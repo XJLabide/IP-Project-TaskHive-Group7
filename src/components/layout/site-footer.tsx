@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { CheckCircle2, Clock3 } from "lucide-react";
+import taskHiveLogo from "@/logos/TaskhiveLogo.png";
 
 /** Public footer shared by Home and guest-facing marketplace pages. */
 export function SiteFooter() {
@@ -12,8 +14,9 @@ export function SiteFooter() {
           <Link href="/signup">Terms</Link>
           <Link href="/signup">Privacy Policy</Link>
         </nav>
-        <p className="flex items-center gap-1 text-lg font-bold">
-          TaskHive © 2026
+        <p className="flex flex-col items-center gap-2 text-xs text-zinc-400">
+          <Image alt="TaskHive" className="h-14 w-auto" height={887} src={taskHiveLogo} width={1774} />
+          <span>© 2026 TaskHive. All rights reserved.</span>
           <Clock3 aria-hidden="true" className="hidden h-4 w-4" />
           <CheckCircle2 aria-hidden="true" className="hidden h-4 w-4" />
         </p>

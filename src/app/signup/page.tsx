@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { SignupForm } from "@/components/auth/signup-form";
+import { TaskHiveBrand } from "@/components/layout/taskhive-brand";
 
 const promises = [
   "One account for posting and tasking",
@@ -12,9 +13,7 @@ export default function SignupPage() {
   return (
     <main className="relative grid min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 transition-colors duration-200 lg:h-dvh lg:min-h-0 lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
       <section className="hidden border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-10 lg:grid lg:h-dvh lg:content-between lg:overflow-y-auto transition-colors">
-        <Link href="/" className="text-xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50">
-          <span className="text-[#FFC800]">Task</span>Hive
-        </Link>
+        <TaskHiveBrand className="text-xl text-zinc-950 dark:text-zinc-50" iconClassName="h-9 w-9" />
         <div>
           <h1 className="max-w-md text-5xl font-semibold leading-tight tracking-tight dark:text-zinc-50">
             Build one profile for posting and tasking.
@@ -38,9 +37,7 @@ export default function SignupPage() {
           <div className="w-full max-w-2xl rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 shadow-sm transition-colors">
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <Link className="text-sm font-extrabold text-zinc-950 dark:text-zinc-50 lg:hidden" href="/">
-                  <span className="text-[#FFC800]">Task</span>Hive
-                </Link>
+                <TaskHiveBrand className="text-sm text-zinc-950 dark:text-zinc-50 lg:hidden" iconClassName="h-7 w-7" />
                 <h2 className="mt-4 text-3xl font-bold tracking-tight dark:text-zinc-50 lg:mt-0">
                   Create your account
                 </h2>
