@@ -191,6 +191,7 @@ export async function requestCancellation(input: {
     type: "support.cancellation_requested",
     title: `Cancellation requested for “${task.title}”`,
     body: "Work and payout are paused while TaskHive support reviews the request.",
+    href: `/tasks/${encodeURIComponent(task.id)}`,
     eventKey: `support:cancellation-request:${request.id}:${counterpart}`,
   });
 
@@ -380,6 +381,7 @@ async function resolveCase(input: {
       type: "support.case_resolved",
       title: `Support resolved “${caseRow.task.title}”`,
       body: "Sign in to review the resolution and related task details.",
+      href: `/tasks/${encodeURIComponent(caseRow.taskId)}`,
       eventKey: `support:case-resolved:${caseRow.id}:${userId}`,
     });
   }

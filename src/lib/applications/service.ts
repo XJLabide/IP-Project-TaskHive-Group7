@@ -93,6 +93,7 @@ function failure(code: ApplicationFailureCode, reason: string): ApplicationFailu
 
 async function notifyPoster(input: {
   posterId: string;
+  taskId: string;
   type: string;
   title: string;
   eventKey: string;
@@ -102,7 +103,7 @@ async function notifyPoster(input: {
     type: input.type,
     title: input.title,
     body: "Review this application in My Work.",
-    href: "/my-work",
+    href: `/tasks/${encodeURIComponent(input.taskId)}`,
     eventKey: input.eventKey,
   });
 }
@@ -242,6 +243,7 @@ async function createApplication(input: {
 
   await notifyPoster({
     posterId: task.posterId,
+    taskId: task.id,
     type: input.kind === "bid" ? "application.bid" : "application.request",
     title: input.kind === "bid" ? "New bid on your task" : "New request on your task",
     eventKey: `application:${id}:created:${saved.eventAt.toISOString()}:${task.posterId}`,
@@ -399,6 +401,7 @@ export async function withdrawApplication(
 
   await notifyPoster({
     posterId: application.task.posterId,
+    taskId: application.task.id,
     type: "application.withdrawn",
     title: "A Tasker withdrew an application",
     eventKey: `application:${applicationId}:withdrawn:${withdrawnAt.toISOString()}:${application.task.posterId}`,

@@ -210,6 +210,7 @@ export async function selectTasker(input: {
     type: "assignment.selected",
     title: "You were selected for a task",
     body: "Complete payment setup to activate the assignment.",
+    href: `/tasks/${encodeURIComponent(input.taskId)}`,
     eventKey: `assignment:${assignment.id}:selected:${expiresAt.toISOString()}`,
   });
 
@@ -438,6 +439,7 @@ async function applySucceededEvent(
     type: "assignment.active",
     title: "Payment received — the task is yours",
     body: "Your assignment is active. Sign in to review its details.",
+    href: `/tasks/${encodeURIComponent(payment.taskId)}`,
     eventKey: `assignment:${assignment.id}:activated:${payment.id}`,
   });
   const notification = await tx.notification.upsert({
@@ -613,6 +615,7 @@ export async function expireAssignmentHolds(input: {
       type: "assignment.hold_expired",
       title: "Payment window expired — the task reopened",
       body: "The selected Tasker was released and your task is open again.",
+      href: `/tasks/${encodeURIComponent(assignment.taskId)}`,
       eventKey: `assignment:${assignment.id}:hold-expired:${assignment.holdExpiresAt?.toISOString()}:${assignment.task.posterId}`,
     });
   }
