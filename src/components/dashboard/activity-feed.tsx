@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatChatTime } from "@/lib/chat/demo";
 import type { DashboardActivity } from "@/lib/dashboard/data";
-import { Panel } from "@/components/dashboard/panels";
+import { EmptyRow, Panel } from "@/components/dashboard/panels";
 
 export function ActivityFeed({ items }: { items: DashboardActivity[] }) {
   return (
@@ -9,11 +9,12 @@ export function ActivityFeed({ items }: { items: DashboardActivity[] }) {
       description="The latest applications, payments, and messages."
       id="activity"
       title="Recent activity"
+      count={items.length}
     >
       {items.length === 0 ? (
-        <p className="p-5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          No activity yet. Applications, payments, and messages will appear here.
-        </p>
+        <EmptyRow title="Your activity will appear here">
+          Applications, payments, and messages will be collected in this timeline.
+        </EmptyRow>
       ) : (
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {items.map((item) => (
