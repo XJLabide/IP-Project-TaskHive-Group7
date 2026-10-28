@@ -248,7 +248,7 @@ export async function postChatMessage(
     type: "chat.message",
     title: "New message about a task",
     body: "A Tasker sent you a message. Sign in to read it.",
-    href: "/my-work",
+    href: `/tasks/${encodeURIComponent(chat.taskId)}#chat`,
     eventKey: `chat.message:${message.id}:${recipientId}`,
   });
 

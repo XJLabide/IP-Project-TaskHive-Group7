@@ -80,6 +80,7 @@ async function runEffects(
           type: "verification.appeal_submitted",
           title: "A Tasker verification appeal needs review",
           body: "A Tasker submitted an identity-verification appeal. Sign in to review it.",
+          href: "/admin",
           eventKey: `${eventKey}:admins`,
         });
         break;
@@ -89,6 +90,7 @@ async function runEffects(
           type: "verification.decision",
           title: "Your Tasker verification status changed",
           body: effect.reason ?? "Sign in to review your verification status.",
+          href: "/profile#verification",
           eventKey: `${eventKey}:tasker:${userId}`,
         });
         break;
@@ -98,6 +100,7 @@ async function runEffects(
           type: "verification.appeal_approved",
           title: "Your verification appeal was approved",
           body: "You can now submit applications for tasks again.",
+          href: "/profile#verification",
           eventKey: `${eventKey}:appeal-approved:${userId}`,
         });
         break;

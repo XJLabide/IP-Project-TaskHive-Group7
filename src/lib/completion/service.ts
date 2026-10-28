@@ -183,6 +183,7 @@ export async function submitCompletion(input: {
     type: "completion.submitted",
     title: `Completion submitted for “${task.title}”`,
     body: "Review the completion evidence and confirm the work or open a dispute.",
+    href: `/tasks/${encodeURIComponent(task.id)}`,
     eventKey: `completion:submitted:${task.id}:${task.posterId}`,
   });
 
@@ -312,6 +313,7 @@ export async function confirmCompletion(input: {
     type: "completion.confirmed",
     title: `Payout released for “${task.title}”`,
     body: "The Poster confirmed the work and released the payout.",
+    href: `/tasks/${encodeURIComponent(task.id)}`,
     eventKey: `completion:confirmed:${task.id}:${task.assignment.taskerId}`,
   });
 
@@ -424,6 +426,7 @@ export async function disputeCompletion(input: {
     type: "completion.disputed",
     title: `A dispute froze payout for “${task.title}”`,
     body: "Payout is paused while TaskHive support reviews the dispute.",
+    href: `/tasks/${encodeURIComponent(task.id)}`,
     eventKey: `completion:disputed:${dispute.id}:${otherParticipant}`,
   });
 
@@ -431,6 +434,7 @@ export async function disputeCompletion(input: {
     type: "support.dispute_created",
     title: "A completion dispute needs review",
     body: "A task dispute was opened and payout is paused. Sign in to review it.",
+    href: "/admin",
     eventKey: `support.dispute:${dispute.id}`,
   });
 
@@ -576,6 +580,7 @@ export async function autoReleaseCompletions(input: {
       type: "completion.auto_released",
       title: `Payout auto-released for “${assignment.task.title}”`,
       body: "The 48-hour review period ended without a dispute.",
+      href: `/tasks/${encodeURIComponent(assignment.taskId)}`,
       eventKey: `completion:auto-released:${assignment.id}:${assignment.task.posterId}`,
     });
     await notifyUser({
@@ -583,6 +588,7 @@ export async function autoReleaseCompletions(input: {
       type: "completion.auto_released",
       title: `Payout auto-released for “${assignment.task.title}”`,
       body: "The 48-hour review period ended without a dispute.",
+      href: `/tasks/${encodeURIComponent(assignment.taskId)}`,
       eventKey: `completion:auto-released:${assignment.id}:${assignment.taskerId}`,
     });
   }

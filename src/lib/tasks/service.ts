@@ -172,6 +172,7 @@ export async function createTask(
       type: "task.created",
       title: publish ? "Your task is live" : "Your task draft is saved",
       body: `“${fields.title}” is available in My Work.`,
+      href: `/tasks/${encodeURIComponent(task.id)}`,
       eventKey: `task.created:${task.id}:${posterId}`,
     });
   } catch {
@@ -328,6 +329,7 @@ export async function updateTask(
                 type: "task.material_edit",
                 title: "A task you applied to changed",
                 body: `The Poster changed ${summary}. Your application was withdrawn.`,
+                href: `/tasks/${encodeURIComponent(taskId)}`,
                 eventKey: `task.material-edit:${taskId}:${now.toISOString()}:${userId}`,
               }),
             ),
