@@ -69,6 +69,8 @@ const openTask = {
   category: { name: "Delivery" },
 };
 
+const futureDeadline = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.$transaction.mockImplementation(
@@ -94,7 +96,7 @@ describe("task authoring service", () => {
         description: "Buy groceries and deliver them nearby.",
         category: "Delivery",
         budgetCents: 45000,
-        deadline: new Date("2026-11-01T17:00:00.000Z"),
+        deadline: futureDeadline(),
         fulfillmentMode: "local",
         hiringMode: "bidding",
         locationLabel: "Sampaloc, Manila",
@@ -128,7 +130,7 @@ describe("task authoring service", () => {
         description: "Rewrite the product description for clarity.",
         category: "Writing",
         budgetCents: 45000,
-        deadline: new Date("2026-11-01T17:00:00.000Z"),
+        deadline: futureDeadline(),
         fulfillmentMode: "remote",
         hiringMode: "fixed_price",
         locationLabel: "Sampaloc, Manila",
