@@ -14,7 +14,7 @@ export function PublicShell({
 }: {
   title: string;
   description: string;
-  active?: "home" | "tasks";
+  active?: "home" | "tasks" | "map";
   children: React.ReactNode;
 }) {
   return (

@@ -1,0 +1,36 @@
+[debug] [2026-11-09T07:28:06.089Z] ----------------------------------------------------------------------
+[debug] [2026-11-09T07:28:06.091Z] Command:       /opt/homebrew/Cellar/node/24.9.0/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project demo-taskhive
+[debug] [2026-11-09T07:28:06.091Z] CLI Version:   15.35.0
+[debug] [2026-11-09T07:28:06.091Z] Platform:      darwin
+[debug] [2026-11-09T07:28:06.091Z] Node Version:  v24.9.0
+[debug] [2026-11-09T07:28:06.091Z] Detected Agent: codex_cli
+[debug] [2026-11-09T07:28:06.091Z] Time:          Mon Nov 09 2026 15:28:06 GMT+0800 (Philippine Standard Time)
+[debug] [2026-11-09T07:28:06.091Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-09T07:28:06.095Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[info] i  emulators: Detected demo project ID "demo-taskhive", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail. {"metadata":{"emulator":{"name":"hub"},"message":"Detected demo project ID \"demo-taskhive\", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail."}}
+[debug] [2026-11-09T07:28:07.129Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-09T07:28:07.129Z] [auth] Authentication Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-09T07:28:07.129Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-09T07:28:07.130Z] Write emulator hub locator at /var/folders/xx/k202gw0j0f7910tlpjf0sl_m0000gn/T/hub-demo-taskhive.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-09T07:28:09.053Z] Could not find VSCode notification endpoint: TypeError: fetch failed. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-09T07:28:09.748Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-11-09T07:28:09.748Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[info] i  To verify the email address christianjedd@gmail.com, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=Gf2h8yuF5GxiDhqi_sbgkpF9Izhfn02KIb4wJM1kt1txWOHHFpMis_&apiKey=fake-api-key&continueUrl=http%3A%2F%2Flocalhost%3A3000%2Fprofile {"metadata":{"emulator":{"name":"auth"},"message":"To verify the email address christianjedd@gmail.com, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=Gf2h8yuF5GxiDhqi_sbgkpF9Izhfn02KIb4wJM1kt1txWOHHFpMis_&apiKey=fake-api-key&continueUrl=http%3A%2F%2Flocalhost%3A3000%2Fprofile"}}

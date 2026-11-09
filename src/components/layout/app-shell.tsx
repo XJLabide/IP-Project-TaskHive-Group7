@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, BriefcaseBusiness, FileText, LayoutDashboard, LogIn, MessageSquare, Plus, Search, Shield, Star, UserRound } from "lucide-react";
+import { Bell, BriefcaseBusiness, FileText, LayoutDashboard, LogIn, Map, MessageSquare, Plus, Search, Shield, Star, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -18,6 +18,7 @@ type NavItem = {
 };
 
 const browseItem: NavItem = { href: "/tasks", label: "Browse tasks", icon: Search };
+const mapItem: NavItem = { href: "/map", label: "View map", icon: Map };
 const dashboardItem: NavItem = { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard };
 const myWorkItem: NavItem = { href: "/my-work", label: "My Work", icon: BriefcaseBusiness };
 const createTaskItem: NavItem = { href: "/tasks/new", label: "Create task", icon: Plus };
@@ -50,6 +51,8 @@ export function AppShell({ title, description, children, showHeader = true, cont
   const navItems: NavItem[] = viewer.signedIn
     ? [
         dashboardItem,
+        browseItem,
+        mapItem,
         myWorkItem,
         ...(viewer.canPost ? [createTaskItem] : []),
         applicationsItem,
@@ -59,7 +62,7 @@ export function AppShell({ title, description, children, showHeader = true, cont
         profileItem,
         ...(viewer.isAdmin ? [adminItem] : []),
       ]
-    : [browseItem];
+    : [browseItem, mapItem];
 
   const identity = viewer.signedIn ? viewer.displayName ?? "Signed in" : "Guest";
   const identityDetail = viewer.signedIn
@@ -97,7 +100,7 @@ export function AppShell({ title, description, children, showHeader = true, cont
       </aside>
       <header className="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 lg:hidden"><div className="flex items-center justify-between gap-3"><TaskHiveBrand className="text-lg" iconClassName="h-8 w-8" /><div className="flex items-center gap-2"><ThemeToggle />{viewer.canPost ? <Button asChild size="sm"><Link href="/tasks/new"><Plus className="h-4 w-4" />Create</Link></Button> : !viewer.signedIn ? <Button asChild size="sm"><Link href="/login"><LogIn className="h-4 w-4" />Sign in</Link></Button> : <Button asChild size="sm" variant="outline"><Link href="/profile"><UserRound className="h-4 w-4" />Profile</Link></Button>}</div></div><nav aria-label="Main navigation" className="mt-3 flex gap-2 overflow-x-auto pb-1">{navItems.map((item) => { const selected = pathname === item.href || (pathname.startsWith(`${item.href}/`) && !(item.href === "/tasks" && pathname === "/tasks/new")); return <Link aria-current={selected ? "page" : undefined} className={cn("inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium", selected ? "bg-[#FFD50D]/30 text-zinc-950 dark:bg-[#FFC800]/15 dark:text-zinc-50" : "text-zinc-600 dark:text-zinc-400")} href={item.href} key={item.href}><item.icon className="h-4 w-4" />{item.label}</Link>; })}</nav></header>
       <div className="lg:ml-64">
-        {showHeader && <header className="sticky top-0 z-10 border-b border-zinc-200/90 bg-white/90 px-5 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90 sm:px-7"><div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">TaskHive workspace</p><h1 className="mt-1 text-xl font-bold tracking-tight">{title}</h1><p className="mt-1 hidden text-sm text-zinc-500 dark:text-zinc-400 sm:block">{description}</p></div><div className="flex items-center gap-2"><div className="hidden h-10 w-64 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 xl:flex"><Search className="h-4 w-4" />Search workspace</div>{viewer.signedIn ? <Button asChild variant="outline" size="sm"><Link href="/notifications" aria-label="Open notifications"><Bell className="h-4 w-4" /></Link></Button> : null}{viewer.canPost ? <Button asChild className="hidden sm:inline-flex" size="sm"><Link href="/tasks/new"><Plus className="h-4 w-4" />Create task</Link></Button> : !viewer.signedIn ? <Button asChild className="hidden sm:inline-flex" size="sm"><Link href="/login"><LogIn className="h-4 w-4" />Sign in to post</Link></Button> : <Button asChild className="hidden sm:inline-flex" size="sm" variant="outline"><Link href="/profile"><UserRound className="h-4 w-4" />Complete profile</Link></Button>}</div></div></header>}
+        {showHeader && <header className="sticky top-0 z-10 border-b border-zinc-200/90 bg-white/90 px-5 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90 sm:px-7"><div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">TaskHive workspace</p><h1 className="mt-1 text-xl font-bold tracking-tight">{title}</h1><p className="mt-1 hidden text-sm text-zinc-500 dark:text-zinc-400 sm:block">{description}</p></div><div className="flex items-center gap-2">{viewer.signedIn ? <Button asChild variant="outline" size="sm"><Link href="/notifications" aria-label="Open notifications"><Bell className="h-4 w-4" /></Link></Button> : null}{viewer.canPost ? <Button asChild className="hidden sm:inline-flex" size="sm"><Link href="/tasks/new"><Plus className="h-4 w-4" />Create task</Link></Button> : !viewer.signedIn ? <Button asChild className="hidden sm:inline-flex" size="sm"><Link href="/login"><LogIn className="h-4 w-4" />Sign in to post</Link></Button> : <Button asChild className="hidden sm:inline-flex" size="sm" variant="outline"><Link href="/profile"><UserRound className="h-4 w-4" />Complete profile</Link></Button>}</div></div></header>}
         <main className={cn("mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8", contentClassName)}>{children}</main>
       </div>
     </div>

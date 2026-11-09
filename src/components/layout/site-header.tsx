@@ -5,10 +5,11 @@ import { TaskHiveBrand } from "@/components/layout/taskhive-brand";
 const navItems = [
   { href: "/", label: "Home", key: "home" },
   { href: "/tasks", label: "Browse tasks", key: "tasks" },
+  { href: "/map", label: "View map", key: "map" },
 ] as const;
 
 /** Public site chrome shared by Home and guest-facing marketplace pages. */
-export function SiteHeader({ active }: { active?: "home" | "tasks" }) {
+export function SiteHeader({ active }: { active?: "home" | "tasks" | "map" }) {
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/75 text-zinc-950 shadow-[0_1px_0_rgba(24,24,27,0.06)] backdrop-blur-md transition-colors dark:border-zinc-800/80 dark:bg-zinc-950/75 dark:text-zinc-50">
       <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 md:px-8 lg:px-12">
