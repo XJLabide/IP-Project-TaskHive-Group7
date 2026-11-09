@@ -109,7 +109,7 @@ export function TaskDiscovery({
 
     if (!navigator.geolocation) {
       setLocationError(
-        "Location access is unavailable in this browser. You can keep browsing nationwide.",
+        "Location is unavailable. Browse nationwide.",
       );
       return;
     }
@@ -127,15 +127,15 @@ export function TaskDiscovery({
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
           setLocationError(
-            "Location access is blocked. Allow it in your browser settings, then try again. You can keep browsing nationwide.",
+            "Allow location access in your browser settings to see nearby tasks.",
           );
         } else if (error.code === error.POSITION_UNAVAILABLE) {
           setLocationError(
-            "Your location could not be determined. Check device Location Services or keep browsing nationwide.",
+            "Location unavailable. Check Location Services or browse nationwide.",
           );
         } else {
           setLocationError(
-            "The location request timed out. Try again or keep browsing nationwide.",
+            "Location timed out. Try again.",
           );
         }
         setLocating(false);
@@ -146,27 +146,7 @@ export function TaskDiscovery({
 
   return (
     <section aria-labelledby="discover-title" className="grid gap-6">
-      <nav aria-label="Filter open tasks by category" className="flex flex-wrap gap-1.5">
-        {categoryFilters.map(({ label, Icon }) => {
-          const isSelected = label === activeCategory;
-          return (
-            <button
-              aria-pressed={isSelected}
-              className={
-                isSelected
-                  ? "inline-flex h-10 items-center gap-1.5 rounded-full bg-[#FFC800] px-3 text-sm font-semibold text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] focus-visible:ring-offset-2"
-                  : "inline-flex h-10 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 hover:border-[#D19300] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-[#FFD50D]"
-              }
-              key={label}
-              onClick={() => setSelected(label)}
-              type="button"
-            >
-              <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
@@ -181,10 +161,10 @@ export function TaskDiscovery({
             className="mt-1 text-sm text-zinc-600 dark:text-zinc-400"
           >
             {loading
-              ? "Finding available tasks…"
+              ? "Loading tasks…"
               : error
-                ? "Task listings could not be loaded."
-                : `Showing ${visibleTasks.length} open ${visibleTasks.length === 1 ? "task" : "tasks"}.`}
+                ? "Tasks unavailable."
+                : `${visibleTasks.length} ${visibleTasks.length === 1 ? "task" : "tasks"}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -215,14 +195,36 @@ export function TaskDiscovery({
             className="inline-flex items-center gap-1 text-sm font-semibold text-[#235FA6] hover:text-[#17477F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] dark:text-[#8CBFFF] dark:hover:text-white"
             href="/tasks"
           >
-            Browse all <ArrowRight className="h-4 w-4" />
+            View all <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
 
+      <nav aria-label="Filter open tasks by category" className="flex flex-wrap gap-1.5">
+        {categoryFilters.map(({ label, Icon }) => {
+          const isSelected = label === activeCategory;
+          return (
+            <button
+              aria-pressed={isSelected}
+              className={
+                isSelected
+                  ? "inline-flex h-10 items-center gap-1.5 rounded-full bg-[#FFC800] px-3 text-sm font-semibold text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] focus-visible:ring-offset-2"
+                  : "inline-flex h-10 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 hover:border-[#D19300] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-[#FFD50D]"
+              }
+              key={label}
+              onClick={() => setSelected(label)}
+              type="button"
+            >
+              <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
+              {label}
+            </button>
+          );
+        })}
+      </nav>
+
       {origin ? (
         <p aria-live="polite" className="-mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-          Showing local tasks within {DEFAULT_BROWSE_RADIUS_KM} km. Remote tasks remain included.
+          Local tasks within {DEFAULT_BROWSE_RADIUS_KM} km · Remote included
         </p>
       ) : null}
       {locationError ? (
@@ -251,22 +253,22 @@ export function TaskDiscovery({
           .
         </p>
       ) : visibleTasks.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-          No {activeCategory.toLowerCase()} tasks are available yet. Browse{" "}
-          <Link className="font-semibold underline underline-offset-4" href="/tasks">
-            all tasks
-          </Link>{" "}
-          to change your search.
-        </p>
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-900">
+          <p className="font-medium">No matching tasks</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm">
+            <button type="button" className="rounded font-semibold underline underline-offset-4 focus-visible:outline-yellow-400" onClick={() => { setSelected(ALL_TASKS); setOrigin(null); setLocationError(""); }}>Clear filters</button>
+            <Link className="rounded font-semibold underline underline-offset-4 focus-visible:outline-yellow-400" href="/tasks">Browse tasks</Link>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visibleTasks.slice(0, 3).map(({ task, distanceKm }) => (
+          {visibleTasks.slice(0, 6).map(({ task, distanceKm }) => (
             <TaskCard
               applicationCount={countFor(task.id)}
               distanceKm={distanceKm}
               key={task.id}
               task={task}
-              variant="dashboard"
+              variant="browse"
             />
           ))}
         </div>

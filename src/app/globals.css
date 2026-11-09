@@ -107,3 +107,58 @@ select {
   background: #18181b;
   content: "";
 }
+
+.taskhive-leaflet-count {
+  position: absolute;
+  left: 15px;
+  top: -4px;
+  min-width: 18px;
+  border-radius: 9999px;
+  background: #17191d;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.taskhive-user-location-icon {
+  border: 0;
+  background: transparent;
+}
+
+.taskhive-user-location-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 3px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #235fa6;
+  box-shadow: 0 1px 5px rgb(24 24 27 / 45%);
+}
+
+.taskhive-map-popup ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.taskhive-map-popup li {
+  display: grid;
+  gap: 2px;
+}
+
+.taskhive-map-popup a {
+  color: #235fa6;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.taskhive-map-popup span {
+  color: #5d6571;
+  font-size: 12px;
+}
