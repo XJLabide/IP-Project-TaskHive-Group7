@@ -73,7 +73,7 @@ export const tasks: TaskSummary[] = [
     deadline: "2026-10-29T09:00:00+08:00",
     latitude: 14.599,
     longitude: 120.984,
-    poster: "Ana Reyes",
+    poster: "TaskHive Member",
     description: "Water the balcony plants twice while the owner is away.",
     applications: 2,
   },

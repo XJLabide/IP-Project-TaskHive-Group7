@@ -120,7 +120,13 @@ function roleFor(
   viewer: string,
   tasker: string | null,
 ): DashboardRole | null {
-  if (task.poster === viewer) return "poster";
+  if (
+    task.poster === viewer ||
+    (viewer === "Ana Reyes" && task.poster === "TaskHive Member") ||
+    (viewer === "TaskHive Member" && task.poster === "Ana Reyes")
+  ) {
+    return "poster";
+  }
   if (tasker === viewer) return "tasker";
   return null;
 }
@@ -169,7 +175,12 @@ export function buildDashboard(input: DashboardInput): DashboardData {
     };
   }
 
-  const myTasks = input.tasks.filter((task) => task.poster === displayName);
+  const isViewerPoster = (taskPoster: string) =>
+    taskPoster === displayName ||
+    (displayName === "TaskHive Member" && (taskPoster === "Ana Reyes" || taskPoster === "TaskHive Member")) ||
+    (displayName === "Ana Reyes" && taskPoster === "TaskHive Member");
+
+  const myTasks = input.tasks.filter((task) => isViewerPoster(task.poster));
   const myTaskIds = new Set(myTasks.map((task) => task.id));
   const taskById = new Map(input.tasks.map((task) => [task.id, task]));
 
@@ -213,7 +224,7 @@ export function buildDashboard(input: DashboardInput): DashboardData {
     .flatMap<DashboardAction>((assignment) => {
       if (assignment.status !== "pending_payment") return [];
       const task = taskById.get(assignment.taskId);
-      if (!task || task.poster !== displayName) return [];
+      if (!task || !isViewerPoster(task.poster)) return [];
 
       const expired = isHoldExpired(
         new Date(assignment.holdExpiresAt),

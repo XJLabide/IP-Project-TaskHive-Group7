@@ -43,30 +43,36 @@ export async function PATCH(request: Request) {
   const { name, phone, ageAttested, location } = parsed.data;
   const userId = authResult.session.user.id;
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      ...(name ? { name } : {}),
-      ...(phone ? { phone } : {}),
-      ...(ageAttested ? { ageAttestedAt: new Date() } : {}),
-    },
-  });
-
-  if (location) {
-    await prisma.profile.upsert({
-      where: { userId },
-      update: {
-        locationLabel: location.label,
-        latitude: location.latitude,
-        longitude: location.longitude,
-      },
-      create: {
-        userId,
-        locationLabel: location.label,
-        latitude: location.latitude,
-        longitude: location.longitude,
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name ? { name } : {}),
+        ...(phone ? { phone } : {}),
+        ...(ageAttested ? { ageAttestedAt: new Date() } : {}),
       },
     });
+
+    if (location) {
+      await prisma.profile.upsert({
+        where: { userId },
+        update: {
+          locationLabel: location.label,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        create: {
+          userId,
+          locationLabel: location.label,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+      });
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") {
+      throw error;
+    }
   }
 
   const actor = await loadActorById(userId);

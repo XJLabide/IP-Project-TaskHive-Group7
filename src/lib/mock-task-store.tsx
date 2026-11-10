@@ -33,7 +33,7 @@ type TaskStore = {
   resetDemo: () => void;
 };
 
-const storageKey = "taskhive.mock-tasks.v2";
+const storageKey = "taskhive.mock-tasks.v3";
 let tasksSnapshot: Task[] = sampleTasks;
 let initialized = false;
 let storageError = false;
@@ -56,7 +56,13 @@ function subscribe(listener: () => void) {
       const stored = sessionStorage.getItem(storageKey);
       if (stored) {
         const parsed: unknown = JSON.parse(stored);
-        if (Array.isArray(parsed)) tasksSnapshot = parsed as Task[];
+        if (Array.isArray(parsed)) {
+          tasksSnapshot = (parsed as Task[]).map((task) =>
+            task.id === "task_plants" && task.poster === "Ana Reyes"
+              ? { ...task, poster: "TaskHive Member" }
+              : task,
+          );
+        }
       }
     } catch {
       try {

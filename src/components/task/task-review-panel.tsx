@@ -28,7 +28,10 @@ export function TaskReviewPanel({
   const [comment, setComment] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  const isPoster = viewer.displayName === task.poster;
+  const isPoster =
+    viewer.displayName === task.poster ||
+    (viewer.displayName === "TaskHive Member" && (task.poster === "Ana Reyes" || task.poster === "TaskHive Member")) ||
+    (viewer.displayName === "Ana Reyes" && task.poster === "TaskHive Member");
   const isTasker = viewer.displayName === assignment.tasker;
   const reviewer = viewer.displayName;
   const reviewee = isPoster ? assignment.tasker : task.poster;

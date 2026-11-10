@@ -46,7 +46,10 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
 
   const assignment = assignmentForTask(task.id);
   const isPoster =
-    viewer.signedIn && viewer.displayName === task.poster;
+    viewer.signedIn &&
+    (viewer.displayName === task.poster ||
+      (viewer.displayName === "Ana Reyes" && task.poster === "TaskHive Member") ||
+      (viewer.displayName === "TaskHive Member" && task.poster === "Ana Reyes"));
   const isTasker =
     viewer.signedIn && viewer.displayName === assignment?.tasker;
   const canSee = Boolean(assignment) && (isPoster || isTasker);

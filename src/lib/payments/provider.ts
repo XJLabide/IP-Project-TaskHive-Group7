@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import Stripe from "stripe";
 
 export type CheckoutInput = {
   taskId: string;
@@ -171,6 +172,160 @@ export function paymongoProvider(input: {
 }
 
 /**
+ * Stripe signs `{timestamp}.{rawBody}` with HMAC-SHA256 and sends signatures as
+ * `t=...,v1=...`.
+ */
+export function verifyStripeSignature(
+  header: string,
+  rawBody: string,
+  secret: string,
+): boolean {
+  const parts = Object.fromEntries(
+    header.split(",").map((part) => {
+      const [key, ...rest] = part.split("=");
+      return [key.trim(), rest.join("=")];
+    }),
+  ) as Record<string, string | undefined>;
+
+  const timestamp = parts.t;
+  if (!timestamp) return false;
+
+  const expected = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest("hex");
+
+  const signatures = header
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => p.startsWith("v1="))
+    .map((p) => p.slice(3));
+
+  return signatures.some((sig) => {
+    if (sig.length !== expected.length) return false;
+    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  });
+}
+
+/**
+ * Stripe Checkout adapter for international and card payments.
+ * Selected when PAYMENT_PROVIDER=stripe and both secretKey and webhookSecret are set.
+ */
+export function stripeProvider(input: {
+  secretKey: string;
+  webhookSecret: string;
+  stripeClient?: Stripe;
+}): PaymentProvider {
+  const stripe =
+    input.stripeClient ??
+    new Stripe(input.secretKey);
+
+  return {
+    name: "stripe",
+    async createCheckout(checkout) {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: checkout.currency.toLowerCase(),
+              product_data: {
+                name: checkout.description,
+              },
+              unit_amount: checkout.amountCents,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: checkout.successUrl,
+        cancel_url: checkout.cancelUrl,
+        client_reference_id: checkout.paymentId,
+        metadata: {
+          taskId: checkout.taskId,
+          paymentId: checkout.paymentId,
+        },
+      });
+
+      const reference = session.id;
+      const url = session.url ?? checkout.successUrl;
+      if (!reference) throw new Error("Stripe checkout response is incomplete.");
+
+      return { provider: "stripe", reference, url };
+    },
+    async parseWebhook(headers, rawBody) {
+      const signature = headers.get("stripe-signature");
+      if (!signature) return null;
+
+      let event: Stripe.Event;
+      try {
+        event = stripe.webhooks.constructEvent(
+          rawBody,
+          signature,
+          input.webhookSecret,
+        );
+      } catch {
+        return null;
+      }
+
+      const eventId = event.id;
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object as Stripe.Checkout.Session;
+        return {
+          id: eventId,
+          type: "succeeded",
+          reference: session.id,
+          amountCents: session.amount_total ?? null,
+        };
+      }
+
+      if (
+        event.type === "checkout.session.async_payment_failed" ||
+        event.type === "checkout.session.expired"
+      ) {
+        const session = event.data.object as Stripe.Checkout.Session;
+        return {
+          id: eventId,
+          type: "failed",
+          reference: session.id,
+          amountCents: session.amount_total ?? null,
+        };
+      }
+
+      if (event.type === "payment_intent.payment_failed") {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const reference =
+          (pi.metadata?.paymentReference as string | undefined) ||
+          (pi.metadata?.checkoutSessionId as string | undefined) ||
+          pi.id;
+        return {
+          id: eventId,
+          type: "failed",
+          reference,
+          amountCents: pi.amount ?? null,
+        };
+      }
+
+      if (event.type === "charge.refunded") {
+        const charge = event.data.object as Stripe.Charge;
+        const reference =
+          (charge.metadata?.paymentReference as string | undefined) ||
+          (charge.metadata?.checkoutSessionId as string | undefined) ||
+          (charge.payment_intent as string | undefined) ||
+          charge.id;
+        return {
+          id: eventId,
+          type: "refunded",
+          reference,
+          amountCents: charge.amount_refunded ?? null,
+        };
+      }
+
+      return null;
+    },
+  };
+}
+
+/**
  * PayMongo signs `{timestamp}.{rawBody}` with HMAC-SHA256 and sends test and
  * live signatures in one header: `t=...,te=...,li=...`.
  */
@@ -227,6 +382,17 @@ export function selectPaymentProvider(
     return paymongoProvider({
       secretKey: env.PAYMONGO_SECRET_KEY,
       webhookSecret: env.PAYMONGO_WEBHOOK_SECRET,
+    });
+  }
+
+  if (
+    env.PAYMENT_PROVIDER === "stripe" &&
+    env.STRIPE_SECRET_KEY &&
+    env.STRIPE_WEBHOOK_SECRET
+  ) {
+    return stripeProvider({
+      secretKey: env.STRIPE_SECRET_KEY,
+      webhookSecret: env.STRIPE_WEBHOOK_SECRET,
     });
   }
 

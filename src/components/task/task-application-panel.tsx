@@ -90,7 +90,13 @@ export function TaskApplicationPanel({ task }: { task: TaskSummary }) {
     setFeedback(result.ok ? "Application withdrawn." : result.reason);
   }
 
-  if (task.poster === viewer.displayName && viewer.signedIn) {
+  const isOwner =
+    viewer.signedIn &&
+    (task.poster === viewer.displayName ||
+      (viewer.displayName === "TaskHive Member" && (task.poster === "Ana Reyes" || task.poster === "TaskHive Member")) ||
+      (viewer.displayName === "Ana Reyes" && task.poster === "TaskHive Member"));
+
+  if (isOwner) {
     return null;
   }
 

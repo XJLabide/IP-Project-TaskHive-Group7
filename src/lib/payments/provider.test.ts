@@ -1,9 +1,11 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   fakeProvider,
   selectPaymentProvider,
+  stripeProvider,
   verifyPaymongoSignature,
+  verifyStripeSignature,
 } from "./provider";
 
 function signature(timestamp: string, body: string, secret: string): string {
@@ -48,6 +50,7 @@ describe("provider selection", () => {
   it("uses the fake provider for local development and tests", () => {
     expect(selectPaymentProvider({}).name).toBe("fake");
     expect(selectPaymentProvider({ PAYMENT_PROVIDER: "paymongo" }).name).toBe("fake");
+    expect(selectPaymentProvider({ PAYMENT_PROVIDER: "stripe" }).name).toBe("fake");
     expect(
       selectPaymentProvider({
         PAYMENT_PROVIDER: "paymongo",
@@ -55,6 +58,13 @@ describe("provider selection", () => {
         PAYMONGO_WEBHOOK_SECRET: "whsec",
       }).name,
     ).toBe("paymongo");
+    expect(
+      selectPaymentProvider({
+        PAYMENT_PROVIDER: "stripe",
+        STRIPE_SECRET_KEY: "sk_test",
+        STRIPE_WEBHOOK_SECRET: "whsec",
+      }).name,
+    ).toBe("stripe");
   });
 
   it("refuses the unsigned fake provider in production by default", () => {
@@ -95,5 +105,218 @@ describe("PayMongo webhook signatures", () => {
         secret,
       ),
     ).toBe(false);
+  });
+});
+
+describe("Stripe webhook signatures", () => {
+  const secret = "whsec_test_stripe";
+  const body = JSON.stringify({ id: "evt_stripe_1" });
+  const timestamp = "1761474000";
+  const digest = signature(timestamp, body, secret);
+
+  it("accepts a matching v1 signature", () => {
+    expect(verifyStripeSignature(`t=${timestamp},v1=${digest}`, body, secret)).toBe(true);
+    expect(
+      verifyStripeSignature(`t=${timestamp},v1=bad_sig,v1=${digest}`, body, secret),
+    ).toBe(true);
+  });
+
+  it("rejects invalid, missing, or tampered signatures", () => {
+    expect(verifyStripeSignature(`t=${timestamp},v1=deadbeef`, body, secret)).toBe(false);
+    expect(verifyStripeSignature(`v1=${digest}`, body, secret)).toBe(false);
+    expect(
+      verifyStripeSignature(
+        `t=${timestamp},v1=${digest}`,
+        JSON.stringify({ id: "tampered" }),
+        secret,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("Stripe provider", () => {
+  const secretKey = "sk_test_123";
+  const webhookSecret = "whsec_test_123";
+
+  it("creates checkout session with correct parameters", async () => {
+    const mockCreate = vi.fn().mockResolvedValue({
+      id: "cs_test_session_123",
+      url: "https://checkout.stripe.com/c/pay/cs_test_session_123",
+    });
+
+    const mockStripe = {
+      checkout: {
+        sessions: {
+          create: mockCreate,
+        },
+      },
+    } as any;
+
+    const provider = stripeProvider({
+      secretKey,
+      webhookSecret,
+      stripeClient: mockStripe,
+    });
+
+    const checkout = await provider.createCheckout({
+      taskId: "task_1",
+      paymentId: "payment_1",
+      amountCents: 50000,
+      currency: "PHP",
+      description: "Repair wooden gate",
+      successUrl: "https://taskhive.ph/success",
+      cancelUrl: "https://taskhive.ph/cancel",
+    });
+
+    expect(checkout).toEqual({
+      provider: "stripe",
+      reference: "cs_test_session_123",
+      url: "https://checkout.stripe.com/c/pay/cs_test_session_123",
+    });
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "payment",
+        client_reference_id: "payment_1",
+        metadata: { taskId: "task_1", paymentId: "payment_1" },
+        line_items: [
+          expect.objectContaining({
+            price_data: expect.objectContaining({
+              currency: "php",
+              unit_amount: 50000,
+            }),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("parses successful checkout.session.completed webhook", async () => {
+    const mockConstructEvent = vi.fn().mockReturnValue({
+      id: "evt_completed_1",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_session_123",
+          amount_total: 50000,
+        },
+      },
+    });
+
+    const mockStripe = {
+      webhooks: {
+        constructEvent: mockConstructEvent,
+      },
+    } as any;
+
+    const provider = stripeProvider({
+      secretKey,
+      webhookSecret,
+      stripeClient: mockStripe,
+    });
+
+    const headers = new Headers({ "stripe-signature": "t=123,v1=test" });
+    const event = await provider.parseWebhook(headers, '{"type":"checkout.session.completed"}');
+
+    expect(event).toEqual({
+      id: "evt_completed_1",
+      type: "succeeded",
+      reference: "cs_test_session_123",
+      amountCents: 50000,
+    });
+  });
+
+  it("parses failed payment webhook", async () => {
+    const mockConstructEvent = vi.fn().mockReturnValue({
+      id: "evt_failed_1",
+      type: "checkout.session.async_payment_failed",
+      data: {
+        object: {
+          id: "cs_test_session_123",
+          amount_total: 50000,
+        },
+      },
+    });
+
+    const mockStripe = {
+      webhooks: {
+        constructEvent: mockConstructEvent,
+      },
+    } as any;
+
+    const provider = stripeProvider({
+      secretKey,
+      webhookSecret,
+      stripeClient: mockStripe,
+    });
+
+    const headers = new Headers({ "stripe-signature": "t=123,v1=test" });
+    const event = await provider.parseWebhook(headers, "{}");
+
+    expect(event).toEqual({
+      id: "evt_failed_1",
+      type: "failed",
+      reference: "cs_test_session_123",
+      amountCents: 50000,
+    });
+  });
+
+  it("parses refunded charge webhook", async () => {
+    const mockConstructEvent = vi.fn().mockReturnValue({
+      id: "evt_refund_1",
+      type: "charge.refunded",
+      data: {
+        object: {
+          id: "ch_123",
+          payment_intent: "pi_123",
+          amount_refunded: 50000,
+          metadata: { checkoutSessionId: "cs_test_session_123" },
+        },
+      },
+    });
+
+    const mockStripe = {
+      webhooks: {
+        constructEvent: mockConstructEvent,
+      },
+    } as any;
+
+    const provider = stripeProvider({
+      secretKey,
+      webhookSecret,
+      stripeClient: mockStripe,
+    });
+
+    const headers = new Headers({ "stripe-signature": "t=123,v1=test" });
+    const event = await provider.parseWebhook(headers, "{}");
+
+    expect(event).toEqual({
+      id: "evt_refund_1",
+      type: "refunded",
+      reference: "cs_test_session_123",
+      amountCents: 50000,
+    });
+  });
+
+  it("returns null on signature error or unhandled event", async () => {
+    const mockConstructEvent = vi.fn().mockImplementation(() => {
+      throw new Error("Invalid signature");
+    });
+
+    const mockStripe = {
+      webhooks: {
+        constructEvent: mockConstructEvent,
+      },
+    } as any;
+
+    const provider = stripeProvider({
+      secretKey,
+      webhookSecret,
+      stripeClient: mockStripe,
+    });
+
+    const headers = new Headers({ "stripe-signature": "t=123,v1=bad" });
+    expect(await provider.parseWebhook(headers, "{}")).toBeNull();
+    expect(await provider.parseWebhook(new Headers(), "{}")).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +28,11 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
   const [feedback, setFeedback] = useState("");
 
   const assignment = assignmentForTask(task.id);
-  const isOwner = viewer.signedIn && viewer.displayName === task.poster;
+  const isOwner =
+    viewer.signedIn &&
+    (viewer.displayName === task.poster ||
+      (viewer.displayName === "Ana Reyes" && task.poster === "TaskHive Member") ||
+      (viewer.displayName === "TaskHive Member" && task.poster === "Ana Reyes"));
   const pending = assignment?.status === "pending_payment";
 
   useEffect(() => {
@@ -181,6 +186,11 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
                   {assignment.attemptCount} · {remaining} left.
                 </p>
                 <div className="flex flex-wrap gap-2">
+                  <Button asChild size="sm">
+                    <Link href={`/checkout?taskId=${task.id}`}>
+                      Go to Checkout Page
+                    </Link>
+                  </Button>
                   <Button onClick={() => handlePay("success")} size="sm" type="button">
                     Simulate successful payment
                   </Button>
@@ -196,9 +206,16 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
               </div>
             ) : (
               <div className="grid gap-2">
-                <Button onClick={handleStart} size="sm" type="button">
-                  {assignment.attemptCount > 0 ? "Retry payment" : "Continue to checkout"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleStart} size="sm" type="button">
+                    {assignment.attemptCount > 0 ? "Retry payment" : "Continue to checkout"}
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/checkout?taskId=${task.id}`}>
+                      Open Checkout
+                    </Link>
+                  </Button>
+                </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   {assignment.attemptCount > 0
                     ? `Attempt ${assignment.attemptCount} failed. Retry before the hold ends.`

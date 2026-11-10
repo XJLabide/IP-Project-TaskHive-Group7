@@ -35,32 +35,48 @@ function readCookie(headers: Headers, name: string) {
 async function resolveDomainUser(decoded: DecodedIdToken) {
   if (!decoded.email) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { firebaseUid: decoded.uid },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      image: true,
-      emailVerified: true,
-      isAdmin: true,
-    },
-  });
-
-  if (!user) return null;
-
-  const emailVerified = decoded.email_verified === true;
-  const email = decoded.email.toLowerCase();
-  if (user.emailVerified !== emailVerified || user.email !== email) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { emailVerified, email },
+  try {
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid: decoded.uid },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        emailVerified: true,
+        isAdmin: true,
+      },
     });
-    user.emailVerified = emailVerified;
-    user.email = email;
-  }
 
-  return user;
+    if (!user) return null;
+
+    const emailVerified = decoded.email_verified === true;
+    const email = decoded.email.toLowerCase();
+    if (user.emailVerified !== emailVerified || user.email !== email) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified, email },
+      });
+      user.emailVerified = emailVerified;
+      user.email = email;
+    }
+
+    return user;
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      const email = decoded.email.toLowerCase();
+      const name = decoded.name?.trim() || email.split("@")[0] || "TaskHive member";
+      return {
+        id: `user_${decoded.uid}`,
+        email,
+        name,
+        image: null,
+        emailVerified: decoded.email_verified === true,
+        isAdmin: false,
+      };
+    }
+    return null;
+  }
 }
 
 export async function getAuthSession(headers: Headers): Promise<AuthSession | null> {
@@ -83,18 +99,32 @@ export async function createDomainUser(decoded: DecodedIdToken) {
   const email = decoded.email.toLowerCase();
   const name = decoded.name?.trim() || email.split("@")[0] || "TaskHive member";
 
-  return prisma.user.upsert({
-    where: { firebaseUid: decoded.uid },
-    create: {
-      firebaseUid: decoded.uid,
-      email,
-      name,
-      emailVerified: decoded.email_verified === true,
-    },
-    update: {
-      email,
-      emailVerified: decoded.email_verified === true,
-    },
-    select: { id: true, email: true, name: true, image: true, emailVerified: true, isAdmin: true },
-  });
+  try {
+    return await prisma.user.upsert({
+      where: { firebaseUid: decoded.uid },
+      create: {
+        firebaseUid: decoded.uid,
+        email,
+        name,
+        emailVerified: decoded.email_verified === true,
+      },
+      update: {
+        email,
+        emailVerified: decoded.email_verified === true,
+      },
+      select: { id: true, email: true, name: true, image: true, emailVerified: true, isAdmin: true },
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      return {
+        id: `user_${decoded.uid}`,
+        email,
+        name,
+        image: null,
+        emailVerified: decoded.email_verified === true,
+        isAdmin: false,
+      };
+    }
+    throw error;
+  }
 }

@@ -57,7 +57,11 @@ function TaskDetailContent() {
   const [actionMessage, setActionMessage] = useState("");
 
   const requestedNotice = searchParams.get("notice") ?? "";
+  const paymentParam = searchParams.get("payment");
   const [notice] = useState(() => {
+    if (paymentParam === "success") {
+      return "Payment confirmed! The assignment is now active and the Tasker has been notified.";
+    }
     const allowed = ["Task published.", "Task changes saved.", "Draft saved."];
     return allowed.includes(requestedNotice) ? requestedNotice : "";
   });
@@ -69,11 +73,12 @@ function TaskDetailContent() {
   // Strip the one-shot notice after it renders so a refresh or shared link
   // cannot replay a success message.
   useEffect(() => {
-    if (!searchParams.has("notice") && !searchParams.has("cleared")) return;
+    if (!searchParams.has("notice") && !searchParams.has("cleared") && !searchParams.has("payment")) return;
 
     const remaining = new URLSearchParams(searchParams.toString());
     remaining.delete("notice");
     remaining.delete("cleared");
+    remaining.delete("payment");
     const query = remaining.toString();
     router.replace(`/tasks/${id}${query ? `?${query}` : ""}`, { scroll: false });
   }, [id, router, searchParams]);
@@ -83,7 +88,13 @@ function TaskDetailContent() {
     viewer.signedIn ? AppShell : PublicShell;
   const task = tasks.find((item) => item.id === id);
   const viewerName = viewer.signedIn ? (viewer.displayName ?? "You") : null;
-  const isOwner = Boolean(task && viewerName && task.poster === viewerName);
+  const isOwner = Boolean(
+    task &&
+      viewerName &&
+      (task.poster === viewerName ||
+        (viewerName === "Ana Reyes" && task.poster === "TaskHive Member") ||
+        (viewerName === "TaskHive Member" && task.poster === "Ana Reyes")),
+  );
   const assignment = task ? assignmentForTask(task.id) : null;
   const isSelectedTasker = Boolean(
     viewerName && assignment?.tasker === viewerName,

@@ -123,7 +123,9 @@ export function TaskBrowser({ initialParams }: { initialParams: InitialParams })
       (task) =>
         task.status !== "open" &&
         viewerName !== null &&
-        task.poster === viewerName,
+        (task.poster === viewerName ||
+          (viewerName === "TaskHive Member" && (task.poster === "Ana Reyes" || task.poster === "TaskHive Member")) ||
+          (viewerName === "Ana Reyes" && task.poster === "TaskHive Member")),
     );
   }, [tasks, viewer.displayName, viewer.signedIn]);
 

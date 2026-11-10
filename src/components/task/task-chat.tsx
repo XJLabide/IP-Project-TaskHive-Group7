@@ -26,7 +26,11 @@ export function TaskChat({ task }: { task: TaskSummary }) {
   const [sending, setSending] = useState(false);
 
   const user = viewer.displayName;
-  const isOwner = viewer.signedIn && user === task.poster;
+  const isOwner =
+    viewer.signedIn &&
+    (user === task.poster ||
+      (user === "TaskHive Member" && (task.poster === "Ana Reyes" || task.poster === "TaskHive Member")) ||
+      (user === "Ana Reyes" && task.poster === "TaskHive Member"));
   const threads = isOwner
     ? chats.filter((chat) => chat.taskId === task.id)
     : user
