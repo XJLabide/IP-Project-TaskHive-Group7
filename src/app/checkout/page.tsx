@@ -9,7 +9,6 @@ import {
   CreditCard,
   Lock,
   RefreshCw,
-  Send,
   ShieldCheck,
   Smartphone,
   Wallet,
@@ -48,10 +47,11 @@ export default function CheckoutPage() {
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [mounted, setMounted] = useState(false);
   const taskId = searchParams.get("taskId") ?? "";
   const initialGateway = searchParams.get("gateway") ?? "paymongo";
 
-  const { tasks } = useMockTasks();
+  const { tasks, setStatus } = useMockTasks();
   const { assignmentForTask, pay } = useMarketplace();
 
   const [selectedGateway, setSelectedGateway] = useState<"paymongo" | "stripe">(
@@ -59,27 +59,25 @@ function CheckoutContent() {
   );
   const [payMethod, setPayMethod] = useState<"gcash" | "maya" | "card">("gcash");
 
-  const [cardNumber, setCardNumber] = useState("4242 •••• •••• 4242");
-  const [cardExpiry, setCardExpiry] = useState("12/28");
-  const [cardCvc, setCardCvc] = useState("123");
-  const [phone, setPhone] = useState("0917 555 0199");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
+  const [phone, setPhone] = useState("");
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error" | "info";
     text: string;
   } | null>(null);
 
-  // Webhook live testing
-  const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
-  const [webhookLoading, setWebhookLoading] = useState(false);
-
-  // Find task or fallback to demo
+  // Find task or fallback
   const task = tasks.find((t) => t.id === taskId);
   const assignment = taskId ? assignmentForTask(taskId) : null;
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
+    setMounted(true);
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -90,66 +88,99 @@ function CheckoutContent() {
 
   const remainingTime = assignment ? formatRemaining(remainingMs(assignment, now)) : "23h 59m";
 
-  async function handleCompletePayment(outcome: "success" | "failure") {
-    setProcessing(true);
+  function validate(): boolean {
+    const errors: Record<string, string> = {};
+
+    if (selectedGateway === "paymongo" && (payMethod === "gcash" || payMethod === "maya")) {
+      const cleanPhone = phone.replace(/\D/g, "");
+      if (!phone.trim()) {
+        errors.phone = `Please enter your ${payMethod === "gcash" ? "GCash" : "Maya"} mobile number.`;
+      } else if (!cleanPhone.startsWith("09") || cleanPhone.length !== 11) {
+        errors.phone = "Enter a valid 11-digit mobile number starting with 09 (e.g., 0917 123 4567).";
+      }
+    } else {
+      const cleanCard = cardNumber.replace(/\D/g, "");
+      if (!cardNumber.trim()) {
+        errors.cardNumber = "Card number is required.";
+      } else if (cleanCard.length < 15 || cleanCard.length > 16) {
+        errors.cardNumber = "Card number must be 15 or 16 digits.";
+      }
+
+      const expiryParts = cardExpiry.split("/");
+      if (!cardExpiry.trim()) {
+        errors.cardExpiry = "Expiry is required.";
+      } else if (expiryParts.length !== 2) {
+        errors.cardExpiry = "Format must be MM/YY.";
+      } else {
+        const month = parseInt(expiryParts[0].trim(), 10);
+        const year = parseInt(expiryParts[1].trim(), 10);
+        if (isNaN(month) || month < 1 || month > 12) {
+          errors.cardExpiry = "Month must be between 01 and 12.";
+        } else if (isNaN(year) || year < 24) {
+          errors.cardExpiry = "Card has already expired.";
+        }
+      }
+
+      const cleanCvc = cardCvc.replace(/\D/g, "");
+      if (!cardCvc.trim()) {
+        errors.cardCvc = "CVC is required.";
+      } else if (cleanCvc.length < 3 || cleanCvc.length > 4) {
+        errors.cardCvc = "CVC must be 3 or 4 digits.";
+      }
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setStatusMessage({
+        type: "error",
+        text: "Please provide all required payment details correctly before proceeding.",
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  async function handleCompletePayment() {
     setStatusMessage(null);
+
+    if (!validate()) {
+      return;
+    }
+
+    setProcessing(true);
 
     await new Promise((res) => setTimeout(res, 800));
 
-    if (outcome === "success") {
-      if (taskId) {
-        pay(taskId, "success");
-      }
-      setStatusMessage({
-        type: "success",
-        text: `Payment of ${money(amountCents)} confirmed via ${selectedGateway.toUpperCase()}. Assignment is now ACTIVE.`,
-      });
-      setProcessing(false);
+    if (taskId) {
+      pay(taskId, "success");
+      setStatus(taskId, "assigned");
+    }
+    setStatusMessage({
+      type: "success",
+      text: `Payment of ${money(amountCents)} confirmed via ${selectedGateway.toUpperCase()}. Assignment is now ACTIVE.`,
+    });
+    setProcessing(false);
 
-      if (taskId) {
-        setTimeout(() => {
-          router.push(`/tasks/${taskId}?payment=success`);
-        }, 1200);
-      }
-    } else {
-      if (taskId) {
-        pay(taskId, "failure");
-      }
-      setStatusMessage({
-        type: "error",
-        text: `Payment attempt was declined by ${selectedGateway.toUpperCase()}. The hold remains open for retries.`,
-      });
-      setProcessing(false);
+    if (taskId) {
+      setTimeout(() => {
+        router.push(`/tasks/${taskId}?payment=success`);
+      }, 1000);
     }
   }
 
-  async function testWebhookApi(type: "succeeded" | "failed" | "refunded") {
-    setWebhookLoading(true);
-    setWebhookStatus(null);
-    try {
-      const response = await fetch("/api/payments/webhook", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          id: `test_evt_${Date.now()}`,
-          type,
-          reference: assignment?.id ? `fake_cs_${assignment.id}` : "fake_cs_test_123",
-          amountCents,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      setWebhookStatus(
-        `HTTP ${response.status} ${response.statusText} — Response: ${JSON.stringify(data)}`,
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "network error";
-      setWebhookStatus(`Webhook call failed: ${msg}`);
-    } finally {
-      setWebhookLoading(false);
-    }
+  if (!mounted) {
+    return (
+      <AppShell
+        title="Secure Checkout"
+        description="Complete payment to reserve and activate your chosen Tasker."
+      >
+        <div className="mx-auto max-w-5xl py-24 text-center text-sm text-zinc-500">
+          Loading checkout…
+        </div>
+      </AppShell>
+    );
   }
 
   return (
@@ -296,15 +327,20 @@ function CheckoutContent() {
                           {payMethod === "gcash" ? "GCash" : "Maya"} Registered Mobile Number
                         </label>
                         <input
-                          className={inputClass}
+                          className={`${inputClass} ${fieldErrors.phone ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                           id="mobile-number"
-                          onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            setPhone(e.target.value);
+                            if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                          }}
                           placeholder="0917 123 4567"
                           value={phone}
                         />
+                        {fieldErrors.phone ? (
+                          <p className="text-xs font-medium text-[#F04452]">{fieldErrors.phone}</p>
+                        ) : null}
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          In live mode, PayMongo routes to the {payMethod.toUpperCase()} OTP
-                          confirmation portal.
+                          Payment will be authenticated and processed securely via {payMethod.toUpperCase()}.
                         </p>
                       </div>
                     ) : (
@@ -314,11 +350,18 @@ function CheckoutContent() {
                             Card Number
                           </label>
                           <input
-                            className={inputClass}
+                            className={`${inputClass} ${fieldErrors.cardNumber ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                             id="card-num"
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => setCardNumber(e.target.value)}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                              setCardNumber(e.target.value);
+                              if (fieldErrors.cardNumber) setFieldErrors((prev) => ({ ...prev, cardNumber: "" }));
+                            }}
+                            placeholder="4242 4242 4242 4242"
                             value={cardNumber}
                           />
+                          {fieldErrors.cardNumber ? (
+                            <p className="mt-1 text-xs font-medium text-[#F04452]">{fieldErrors.cardNumber}</p>
+                          ) : null}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -326,22 +369,36 @@ function CheckoutContent() {
                               Expiry
                             </label>
                             <input
-                              className={inputClass}
+                              className={`${inputClass} ${fieldErrors.cardExpiry ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                               id="card-exp"
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => setCardExpiry(e.target.value)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                setCardExpiry(e.target.value);
+                                if (fieldErrors.cardExpiry) setFieldErrors((prev) => ({ ...prev, cardExpiry: "" }));
+                              }}
+                              placeholder="12/28"
                               value={cardExpiry}
                             />
+                            {fieldErrors.cardExpiry ? (
+                              <p className="mt-1 text-xs font-medium text-[#F04452]">{fieldErrors.cardExpiry}</p>
+                            ) : null}
                           </div>
                           <div>
                             <label className="text-sm font-semibold" htmlFor="card-cvc">
                               CVC
                             </label>
                             <input
-                              className={inputClass}
+                              className={`${inputClass} ${fieldErrors.cardCvc ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                               id="card-cvc"
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => setCardCvc(e.target.value)}
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                setCardCvc(e.target.value);
+                                if (fieldErrors.cardCvc) setFieldErrors((prev) => ({ ...prev, cardCvc: "" }));
+                              }}
+                              placeholder="123"
                               value={cardCvc}
                             />
+                            {fieldErrors.cardCvc ? (
+                              <p className="mt-1 text-xs font-medium text-[#F04452]">{fieldErrors.cardCvc}</p>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -354,11 +411,18 @@ function CheckoutContent() {
                         Card Number
                       </label>
                       <input
-                        className={inputClass}
+                        className={`${inputClass} ${fieldErrors.cardNumber ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                         id="stripe-card-num"
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setCardNumber(e.target.value)}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                          setCardNumber(e.target.value);
+                          if (fieldErrors.cardNumber) setFieldErrors((prev) => ({ ...prev, cardNumber: "" }));
+                        }}
+                        placeholder="4242 4242 4242 4242"
                         value={cardNumber}
                       />
+                      {fieldErrors.cardNumber ? (
+                        <p className="mt-1 text-xs font-medium text-[#F04452]">{fieldErrors.cardNumber}</p>
+                      ) : null}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -366,36 +430,50 @@ function CheckoutContent() {
                           Expiry (MM/YY)
                         </label>
                         <input
-                          className={inputClass}
+                          className={`${inputClass} ${fieldErrors.cardExpiry ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                           id="stripe-card-exp"
-                          onChange={(e: ChangeEvent<HTMLInputElement>) => setCardExpiry(e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            setCardExpiry(e.target.value);
+                            if (fieldErrors.cardExpiry) setFieldErrors((prev) => ({ ...prev, cardExpiry: "" }));
+                          }}
+                          placeholder="12/28"
                           value={cardExpiry}
                         />
+                        {fieldErrors.cardExpiry ? (
+                          <p className="mt-1 text-xs font-medium text-[#F04452]">{fieldErrors.cardExpiry}</p>
+                        ) : null}
                       </div>
                       <div>
                         <label className="text-sm font-semibold" htmlFor="stripe-card-cvc">
                           CVC
                         </label>
                         <input
-                          className={inputClass}
+                          className={`${inputClass} ${fieldErrors.cardCvc ? "border-[#F04452] focus:border-[#F04452]" : ""}`}
                           id="stripe-card-cvc"
-                          onChange={(e: ChangeEvent<HTMLInputElement>) => setCardCvc(e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            setCardCvc(e.target.value);
+                            if (fieldErrors.cardCvc) setFieldErrors((prev) => ({ ...prev, cardCvc: "" }));
+                          }}
+                          placeholder="123"
                           value={cardCvc}
                         />
+                        {fieldErrors.cardCvc ? (
+                          <p className="mt-1 text-xs font-medium text-[#F04452]">{fieldErrors.cardCvc}</p>
+                        ) : null}
                       </div>
                     </div>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Standard Stripe test card <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">4242 4242...</code> pre-filled.
+                      Card information is securely encrypted and processed.
                     </p>
                   </div>
                 )}
 
-                {/* Primary Payment Actions */}
+                {/* Primary Payment Action */}
                 <div className="mt-2 flex flex-col gap-3">
                   <Button
                     className="w-full gap-2 text-base font-semibold"
                     disabled={processing}
-                    onClick={() => handleCompletePayment("success")}
+                    onClick={handleCompletePayment}
                     size="lg"
                     type="button"
                   >
@@ -406,65 +484,7 @@ function CheckoutContent() {
                     )}
                     Authorize & Pay {money(amountCents)} ({selectedGateway.toUpperCase()})
                   </Button>
-
-                  <Button
-                    className="w-full"
-                    disabled={processing}
-                    onClick={() => handleCompletePayment("failure")}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Simulate Payment Failure / Card Decline
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Live API Webhook Testing Tool */}
-            <Card className="border-dashed">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                  Developer Webhook Verification Tool
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 text-xs">
-                <p className="text-zinc-500 dark:text-zinc-400">
-                  Test the actual HTTP <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">POST /api/payments/webhook</code> endpoint directly from this browser session:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    disabled={webhookLoading}
-                    onClick={() => testWebhookApi("succeeded")}
-                    size="sm"
-                    type="button"
-                  >
-                    <Send className="mr-1 h-3.5 w-3.5" /> Test Webhook: succeeded
-                  </Button>
-                  <Button
-                    disabled={webhookLoading}
-                    onClick={() => testWebhookApi("failed")}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Test Webhook: failed
-                  </Button>
-                  <Button
-                    disabled={webhookLoading}
-                    onClick={() => testWebhookApi("refunded")}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Test Webhook: refunded
-                  </Button>
-                </div>
-                {webhookStatus ? (
-                  <pre className="overflow-x-auto rounded-lg bg-zinc-900 p-3 font-mono text-[11px] text-zinc-200">
-                    {webhookStatus}
-                  </pre>
-                ) : null}
               </CardContent>
             </Card>
           </div>

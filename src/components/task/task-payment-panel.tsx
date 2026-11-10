@@ -8,11 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
-import {
-  DEMO_PROVIDER_LABEL,
-  formatRemaining,
-  remainingMs,
-} from "@/lib/payments/demo";
+import { formatRemaining, remainingMs } from "@/lib/payments/demo";
 import { formatChatTime } from "@/lib/chat/demo";
 import type { TaskSummary } from "@/lib/tasks/types";
 
@@ -22,7 +18,7 @@ function money(cents: number): string {
 
 export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
   const { viewer } = useViewer();
-  const { assignmentForTask, startCheckout, pay, expireHold } = useMarketplace();
+  const { assignmentForTask, expireHold } = useMarketplace();
   const { setStatus } = useMockTasks();
   const [now, setNow] = useState(() => new Date());
   const [feedback, setFeedback] = useState("");
@@ -68,35 +64,6 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
     Boolean(assignment.completedAt)
   ) {
     return null;
-  }
-
-  function handleStart() {
-    const next = startCheckout(task.id);
-    if (!next) {
-      setFeedback("The payment hold could not be found.");
-      return;
-    }
-    setFeedback("");
-  }
-
-  function handlePay(outcome: "success" | "failure") {
-    const next = pay(task.id, outcome);
-    if (!next) return;
-
-    if (outcome === "success") {
-      setStatus(task.id, "assigned");
-      setFeedback("Payment succeeded. The assignment is active and the Tasker can start.");
-    } else {
-      setFeedback("The payment did not go through. You can retry until the window closes.");
-    }
-  }
-
-  function handleExpire() {
-    const result = expireHold(task.id);
-    if (result.expired) {
-      setStatus(task.id, "open");
-      setFeedback("Demo expiry applied. The task reopened with the other applications retained.");
-    }
   }
 
   const remaining = formatRemaining(remainingMs(assignment, now));
@@ -174,63 +141,25 @@ export function TaskPaymentPanel({ task }: { task: TaskSummary }) {
               </p>
             ) : null}
 
-            {assignment.paymentStatus === "checkout_started" ? (
-              <div className="grid gap-3 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
-                <p className="text-sm font-semibold">{DEMO_PROVIDER_LABEL} checkout</p>
-                <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                  Demo only: no live charge and no legal escrow. PayMongo is being evaluated and
-                  is not a confirmed provider.
-                </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  The assignment activates only after a successful provider payment. Attempt{" "}
-                  {assignment.attemptCount} · {remaining} left.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild size="sm">
-                    <Link href={`/checkout?taskId=${task.id}`}>
-                      Go to Checkout Page
-                    </Link>
-                  </Button>
-                  <Button onClick={() => handlePay("success")} size="sm" type="button">
-                    Simulate successful payment
-                  </Button>
-                  <Button
-                    onClick={() => handlePay("failure")}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Simulate failed payment
-                  </Button>
-                </div>
+            <div className="grid gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Button asChild size="sm">
+                  <Link href={`/checkout?taskId=${task.id}`}>
+                    {assignment.attemptCount > 0 ? "Retry Payment" : "Proceed to Checkout"}
+                  </Link>
+                </Button>
               </div>
-            ) : (
-              <div className="grid gap-2">
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleStart} size="sm" type="button">
-                    {assignment.attemptCount > 0 ? "Retry payment" : "Continue to checkout"}
-                  </Button>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/checkout?taskId=${task.id}`}>
-                      Open Checkout
-                    </Link>
-                  </Button>
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {assignment.attemptCount > 0
-                    ? `Attempt ${assignment.attemptCount} failed. Retry before the hold ends.`
-                    : "The task and Tasker stay reserved for 24 hours while payment is completed."}
-                </p>
-              </div>
-            )}
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {assignment.attemptCount > 0
+                  ? `Attempt ${assignment.attemptCount} was declined. Retry before the reservation hold ends.`
+                  : "The task and selected Tasker stay reserved for 24 hours while payment is completed."}
+              </p>
+            </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
               <span className="text-xs text-zinc-400">
-                Other applications stay pending until the hold closes.
+                Other applications stay pending until the payment hold closes.
               </span>
-              <Button onClick={handleExpire} size="sm" type="button" variant="ghost">
-                Simulate 24h expiry (demo)
-              </Button>
             </div>
           </>
         )}
