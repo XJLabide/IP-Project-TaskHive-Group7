@@ -1,3 +1,4 @@
+import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { startCheckout, handleProviderEvent } from "./service";
 import { stripeProvider, paymongoProvider } from "./provider";
@@ -76,17 +77,17 @@ describe("Payment Gateway Integration - Stripe", () => {
     webhooks: {
       constructEvent: vi.fn(),
     },
-  } as any;
+  };
 
   const provider = stripeProvider({
     secretKey,
     webhookSecret,
-    stripeClient: mockStripeClient,
+    stripeClient: mockStripeClient as unknown as Stripe,
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prismaMock.$transaction.mockImplementation(async (callback: any) =>
+    prismaMock.$transaction.mockImplementation(async (callback: (tx: typeof txMock) => Promise<unknown>) =>
       callback(txMock),
     );
     txMock.task.updateMany.mockResolvedValue({ count: 1 });
@@ -292,7 +293,7 @@ describe("Payment Gateway Integration - PayMongo", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prismaMock.$transaction.mockImplementation(async (callback: any) =>
+    prismaMock.$transaction.mockImplementation(async (callback: (tx: typeof txMock) => Promise<unknown>) =>
       callback(txMock),
     );
     txMock.task.updateMany.mockResolvedValue({ count: 1 });

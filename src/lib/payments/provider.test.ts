@@ -1,3 +1,4 @@
+import type Stripe from "stripe";
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -150,7 +151,7 @@ describe("Stripe provider", () => {
           create: mockCreate,
         },
       },
-    } as any;
+    } as unknown as Stripe;
 
     const provider = stripeProvider({
       secretKey,
@@ -207,7 +208,7 @@ describe("Stripe provider", () => {
       webhooks: {
         constructEvent: mockConstructEvent,
       },
-    } as any;
+    } as unknown as Stripe;
 
     const provider = stripeProvider({
       secretKey,
@@ -242,7 +243,7 @@ describe("Stripe provider", () => {
       webhooks: {
         constructEvent: mockConstructEvent,
       },
-    } as any;
+    } as unknown as Stripe;
 
     const provider = stripeProvider({
       secretKey,
@@ -279,7 +280,7 @@ describe("Stripe provider", () => {
       webhooks: {
         constructEvent: mockConstructEvent,
       },
-    } as any;
+    } as unknown as Stripe;
 
     const provider = stripeProvider({
       secretKey,
@@ -307,7 +308,7 @@ describe("Stripe provider", () => {
       webhooks: {
         constructEvent: mockConstructEvent,
       },
-    } as any;
+    } as unknown as Stripe;
 
     const provider = stripeProvider({
       secretKey,

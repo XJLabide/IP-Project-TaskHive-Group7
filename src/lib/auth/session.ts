@@ -62,7 +62,7 @@ async function resolveDomainUser(decoded: DecodedIdToken) {
     }
 
     return user;
-  } catch (error) {
+  } catch {
     if (process.env.NODE_ENV !== "production") {
       const email = decoded.email.toLowerCase();
       const name = decoded.name?.trim() || email.split("@")[0] || "TaskHive member";

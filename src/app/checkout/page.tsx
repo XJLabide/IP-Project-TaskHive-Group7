@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, type ChangeEvent } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -18,13 +18,16 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
 import { formatRemaining, remainingMs } from "@/lib/payments/demo";
 
 const inputClass =
   "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none placeholder:text-zinc-400 focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-[#FFD50D]";
+
+function subscribeToHydration() {
+  return () => {};
+}
 
 function money(cents: number): string {
   return `PHP ${(cents / 100).toFixed(2)}`;
@@ -47,7 +50,7 @@ export default function CheckoutPage() {
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const taskId = searchParams.get("taskId") ?? "";
   const initialGateway = searchParams.get("gateway") ?? "paymongo";
 
@@ -77,7 +80,6 @@ function CheckoutContent() {
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    setMounted(true);
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
