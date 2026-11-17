@@ -70,8 +70,8 @@ describe("Maya sandbox provider", () => {
 
   it("accepts a fresh Maya RSA webhook and maps successful payment", async () => {
     const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-    const payload = { id: "maya_payment_1", status: "PAYMENT_SUCCESS", isPaid: true, amount: 123.45, currency: "PHP", updatedAt: new Date().toISOString() };
-    const flattened = Object.entries(payload).map(([key, value]) => `${key}=${value}`).sort().join("&");
+    const payload = { id: "maya_payment_1", items: [{ name: "Test task", quantity: "1" }], status: "PAYMENT_SUCCESS", isPaid: true, amount: 123.45, currency: "PHP", updatedAt: new Date().toISOString() };
+    const flattened = Object.entries(payload).filter(([, value]) => !Array.isArray(value)).map(([key, value]) => `${key}=${value}`).sort().join("&");
     const nonce = "maya_nonce_1";
     const signer = createSign("RSA-SHA256");
     signer.update(`${flattened}&nonce=${nonce}`);

@@ -79,8 +79,8 @@ describe("payment webhook", () => {
     const publicPem = publicKey.export({ type: "spki", format: "pem" }).toString();
     vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_1", publicPem);
     vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_2", publicPem);
-    const payload = { id: "payment_1", status: "PAYMENT_SUCCESS", isPaid: true, amount: "10", currency: "PHP", updatedAt: new Date().toISOString() };
-    const flattened = Object.entries(payload).map(([key, value]) => `${key}=${value}`).sort().join("&");
+    const payload = { id: "payment_1", items: [{ name: "Test task", quantity: "1" }], status: "PAYMENT_SUCCESS", isPaid: true, amount: "10", currency: "PHP", updatedAt: new Date().toISOString() };
+    const flattened = Object.entries(payload).filter(([, value]) => !Array.isArray(value)).map(([key, value]) => `${key}=${value}`).sort().join("&");
     const nonce = "webhook_nonce";
     const signer = createSign("RSA-SHA256");
     signer.update(`${flattened}&nonce=${nonce}`);

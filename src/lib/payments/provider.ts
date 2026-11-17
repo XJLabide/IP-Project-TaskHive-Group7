@@ -137,6 +137,7 @@ export function mayaProvider(input: {
       const visit = (value: unknown, prefix: string) => {
         if (value === null || value === undefined || value === "") return;
         if (typeof value === "object") {
+          if (Array.isArray(value)) return;
           const entries = Object.entries(value);
           if (entries.length === 0) return;
           entries.forEach(([key, item]) => visit(item, prefix ? `${prefix}.${key}` : key));
