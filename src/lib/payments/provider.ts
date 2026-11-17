@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, createVerify, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
 
 export type CheckoutInput = {
@@ -17,7 +17,7 @@ export type CheckoutSession = {
   url: string;
 };
 
-export type ProviderEventType = "succeeded" | "failed" | "refunded";
+export type ProviderEventType = "succeeded" | "failed" | "refunded" | "pending";
 
 export type ProviderEvent = {
   id: string;
@@ -31,6 +31,7 @@ export interface PaymentProvider {
   name: string;
   createCheckout(input: CheckoutInput): Promise<CheckoutSession>;
   parseWebhook(headers: Headers, rawBody: string): Promise<ProviderEvent | null>;
+  getPaymentStatus?(reference: string): Promise<ProviderEvent | null>;
 }
 
 /**
@@ -75,6 +76,148 @@ export function fakeProvider(): PaymentProvider {
 }
 
 const paymongoApi = "https://api.paymongo.com/v1";
+
+// Maya publishes these shared sandbox credentials for quick integration trials.
+// They are public test values; live deployments must provide a different provider.
+const mayaSharedSandboxApiKey = "pk-Z0OSzLvIcOI2UIvDhdTGVVfRSSeiGStnceqwUE7n0Ah";
+const mayaSandboxWebhookPublicKeys = [
+  `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjNkSX6p+goDPaPAYuTzT
+zKTCBeLhh8FkPMbZxDKTUxF93dOwiC7jsdx7KyopupeLosiVlbs+gpAJ7XBQP/Ex
+giyzXC9TljpyvkUQfyRPMAMKq+BzxdUliTl6hgrLBsH28CP5FuPHCsfxDXe7mDtv
+9H4mP3SKO0HfkZ45tudxD9CWbwWKF0lU9LRbLlJ0y7KEaK7Rv9fI1Dp/KPT+9pls
+tU+CPNKaxJjGRKGuxW2AOCabSD0cTZNXki+K51mNoma7Mj1HMhnsR68FGJvCqk1q
+Wsr3q8+EUMVPBMX+5nKATfZYGvxg4ytzT8pnEVeWl6phYKviB9aVVwurh1gDJB4r
+lQIDAQAB
+-----END PUBLIC KEY-----`,
+  `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp14gezqq4dGWu7EZ7BHx
+8wD3y1hqxwQR7UYPXtXJP+WngN4wqwatjsnQaRGnmdPRG8VEzUzw9PlR7t7P24uW
++J08xBrtTVouD2MKglcIcy13rt1XL79zr/LIAFMFI6f4O8/OQi1xsGsZ6xarD+wl
+OQKG4W66I3yp2jNAbge25eSPuo0BNqPWvebMcIYJu4f3Fxu1eDgeM6zCEqLc6+jX
+cNTP/zFHCvQaiIlLOqfgXDRPBcHPPZ2qcB99UVPAHXBKsKdtBB2w2qT2l99MlTAB
+iRy+IKtVQcQyRP7T8blegO25x35G2CZ3VCKPkmUen3eXQ4+r5fVlzEIBSfNvBwT9
+jQIDAQAB
+-----END PUBLIC KEY-----`,
+];
+
+/** Maya Checkout adapter restricted to its sandbox environment. */
+export function mayaProvider(input: {
+  publicApiKey: string;
+  mode: "sandbox";
+  webhookPublicKeys?: string[];
+}): PaymentProvider {
+  const baseUrl = "https://pg-sandbox.paymaya.com";
+
+  return {
+    name: "maya",
+    async createCheckout(checkout) {
+      const response = await fetch(`${baseUrl}/checkout/v1/checkouts`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Basic ${Buffer.from(`${input.publicApiKey}:`).toString("base64")}`,
+        },
+        body: JSON.stringify({
+          totalAmount: { value: checkout.amountCents / 100, currency: checkout.currency },
+          redirectUrl: {
+            success: checkout.successUrl,
+            failure: checkout.cancelUrl,
+            cancel: checkout.cancelUrl,
+          },
+          requestReferenceNumber: checkout.paymentId,
+          metadata: { taskId: checkout.taskId, paymentId: checkout.paymentId },
+        }),
+      });
+      if (!response.ok) throw new Error(`Maya sandbox checkout failed with ${response.status}.`);
+      const body = await response.json() as { checkoutId?: string; redirectUrl?: string };
+      if (!body.checkoutId || !body.redirectUrl) throw new Error("Maya checkout response is incomplete.");
+      const redirect = new URL(body.redirectUrl);
+      if (redirect.protocol !== "https:" || !["payments-web-sandbox.paymaya.com", "payments-web-sandbox.maya.ph"].includes(redirect.hostname)) {
+        throw new Error("Maya returned an unexpected sandbox checkout URL.");
+      }
+      return { provider: "maya", reference: body.checkoutId, url: body.redirectUrl };
+    },
+    async getPaymentStatus(reference) {
+      const response = await fetch(`${baseUrl}/payments/v1/payments/${encodeURIComponent(reference)}/status`, {
+        headers: { authorization: `Basic ${Buffer.from(`${input.publicApiKey}:`).toString("base64")}` },
+      });
+      if (!response.ok) throw new Error(`Maya sandbox status check failed with ${response.status}.`);
+      const body = await response.json() as { id?: string; status?: string };
+      if (body.id !== reference || !body.status) return null;
+      const type: ProviderEventType | null = body.status === "PAYMENT_SUCCESS"
+        ? "succeeded"
+        : ["PAYMENT_FAILED", "PAYMENT_EXPIRED", "PAYMENT_CANCELLED"].includes(body.status)
+          ? "failed"
+          : body.status === "AUTHORIZED" || body.status === "PENDING_PAYMENT" || body.status === "PENDING_TOKEN"
+            ? "pending" : null;
+      if (!type) return null;
+      return { id: `maya-status:${reference}:${body.status}`, type, reference, amountCents: null };
+    },
+    async parseWebhook(headers, rawBody) {
+      const timestamp = headers.get("x-maya-webhook-timestamp");
+      const signatureHeader = headers.get("x-maya-webhook-signature");
+      if (!timestamp || !signatureHeader || input.webhookPublicKeys?.length !== 2) return null;
+      const timestampMs = Number(timestamp);
+      if (!Number.isSafeInteger(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) return null;
+
+      let payload: Record<string, unknown>;
+      try {
+        const parsed: unknown = JSON.parse(rawBody);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+        payload = parsed as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+      const parts = Object.fromEntries(signatureHeader.split(",").map((part) => {
+        const separator = part.indexOf("=");
+        return separator < 0 ? [part.trim(), ""] : [part.slice(0, separator).trim(), part.slice(separator + 1).trim()];
+      }));
+      if (!parts.nonce || !parts.v1 || !/^[a-f\d]+$/i.test(parts.v1)) return null;
+      const flattened: string[] = [];
+      const visit = (value: unknown, prefix: string) => {
+        if (value === null || value === undefined || value === "") return;
+        if (typeof value === "object") {
+          if (Array.isArray(value)) return;
+          const entries = Object.entries(value);
+          if (entries.length === 0) return;
+          entries.forEach(([key, item]) => visit(item, prefix ? `${prefix}.${key}` : key));
+        } else {
+          flattened.push(`${prefix}=${String(value)}`);
+        }
+      };
+      visit(payload, "");
+      const signedContent = `${flattened.sort().join("&")}&nonce=${parts.nonce}`;
+      const valid = input.webhookPublicKeys.some((key) => {
+        try {
+          const verifier = createVerify("RSA-SHA256");
+          verifier.update(signedContent);
+          verifier.end();
+          return verifier.verify(key, Buffer.from(parts.v1, "hex"));
+        } catch {
+          return false;
+        }
+      });
+      if (!valid) return null;
+
+      const id = payload.id;
+      const status = payload.paymentStatus ?? payload.status;
+      const totalAmount = payload.totalAmount && typeof payload.totalAmount === "object" ? (payload.totalAmount as Record<string, unknown>).value : null;
+      const amountValue = payload.amount ?? totalAmount;
+      if (typeof id !== "string" || typeof status !== "string") return null;
+      const type: ProviderEventType | null = status === "PAYMENT_SUCCESS" && payload.isPaid === true
+        ? "succeeded"
+        : ["PAYMENT_FAILED", "PAYMENT_EXPIRED", "PAYMENT_CANCELLED"].includes(status)
+          ? "failed"
+          : status === "AUTHORIZED" ? "pending" : null;
+      if (!type) return null;
+      const parsedAmount = typeof amountValue === "number" ? amountValue : typeof amountValue === "string" ? Number(amountValue) : NaN;
+      const amountCents = Number.isFinite(parsedAmount) ? Math.round(parsedAmount * 100) : null;
+      const updatedAt = typeof payload.updatedAt === "string" ? payload.updatedAt : timestamp;
+      return { id: `${id}:${status}:${updatedAt}`, type, reference: id, amountCents };
+    },
+  };
+}
 
 /**
  * PayMongo is the first provider to evaluate, not an approved production
@@ -268,11 +411,11 @@ export function stripeProvider(input: {
       }
 
       const eventId = event.id;
-      if (event.type === "checkout.session.completed") {
+      if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
         const session = event.data.object as Stripe.Checkout.Session;
         return {
           id: eventId,
-          type: "succeeded",
+          type: session.payment_status === "paid" ? "succeeded" : "pending",
           reference: session.id,
           amountCents: session.amount_total ?? null,
         };
@@ -375,6 +518,22 @@ export function selectPaymentProvider(
   env: Record<string, string | undefined> = process.env,
 ): PaymentProvider {
   if (
+    env.PAYMENT_PROVIDER === "maya" &&
+    env.MAYA_MODE === "sandbox" &&
+    env.VERCEL_ENV !== "production" &&
+    !(env.NODE_ENV === "production" && !env.VERCEL_ENV)
+  ) {
+    return mayaProvider({
+      publicApiKey: env.MAYA_PUBLIC_API_KEY || mayaSharedSandboxApiKey,
+      mode: "sandbox",
+      webhookPublicKeys: [
+        env.MAYA_WEBHOOK_PUBLIC_KEY_1 || mayaSandboxWebhookPublicKeys[0],
+        env.MAYA_WEBHOOK_PUBLIC_KEY_2 || mayaSandboxWebhookPublicKeys[1],
+      ],
+    });
+  }
+
+  if (
     env.PAYMENT_PROVIDER === "paymongo" &&
     env.PAYMONGO_SECRET_KEY &&
     env.PAYMONGO_WEBHOOK_SECRET
@@ -396,7 +555,7 @@ export function selectPaymentProvider(
     });
   }
 
-  if (env.NODE_ENV === "production" && env.ALLOW_FAKE_PAYMENTS !== "1") {
+  if (env.NODE_ENV === "production" || env.VERCEL_ENV === "production") {
     return disabledProvider();
   }
 

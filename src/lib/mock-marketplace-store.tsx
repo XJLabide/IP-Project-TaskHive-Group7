@@ -27,9 +27,7 @@ import { seedApplications, seedChats } from "@/lib/applications/seed";
 import {
   demoAssignmentForTask,
   expireHoldIfDue,
-  recordPayment,
   selectDemoTasker,
-  startDemoCheckout,
   type DemoAssignment,
 } from "@/lib/payments/demo";
 import {
@@ -75,8 +73,6 @@ type MarketplaceStore = {
     task: TaskSummary;
     application: DemoApplication;
   }) => ReturnType<typeof selectDemoTasker>;
-  startCheckout: (taskId: string) => DemoAssignment | null;
-  pay: (taskId: string, outcome: "success" | "failure") => DemoAssignment | null;
   expireHold: (
     taskId: string,
     now?: Date,
@@ -152,7 +148,10 @@ function subscribe(listener: () => void) {
   if (!initialized && typeof window !== "undefined") {
     applicationsSnapshot = readStored(applicationsKey, seedApplications);
     chatsSnapshot = readStored(chatsKey, seedChats);
-    assignmentsSnapshot = readStored(assignmentsKey, []);
+    // Previously simulated payments must never appear as real paid assignments.
+    assignmentsSnapshot = readStored<DemoAssignment[]>(assignmentsKey, []).filter(
+      (assignment) => (assignment.status === "pending_payment" || assignment.status === "expired") && assignment.paymentStatus !== "paid",
+    );
     initialized = true;
     listeners.forEach((notify) => notify());
   }
@@ -311,30 +310,6 @@ function selectTasker(input: {
   );
   notify();
   return result;
-}
-
-function startCheckout(taskId: string): DemoAssignment | null {
-  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
-  if (!current) return null;
-
-  const next = startDemoCheckout(current);
-  assignmentsSnapshot = assignmentsSnapshot.map((assignment) =>
-    assignment.taskId === taskId ? next : assignment,
-  );
-  notify();
-  return next;
-}
-
-function pay(taskId: string, outcome: "success" | "failure"): DemoAssignment | null {
-  const current = demoAssignmentForTask(assignmentsSnapshot, taskId);
-  if (!current) return null;
-
-  const next = recordPayment(current, outcome);
-  assignmentsSnapshot = assignmentsSnapshot.map((assignment) =>
-    assignment.taskId === taskId ? next : assignment,
-  );
-  notify();
-  return next;
 }
 
 function expireHold(
@@ -506,8 +481,6 @@ export function useMarketplace(): MarketplaceStore {
       assignmentForTask: (taskId: string) =>
         demoAssignmentForTask(assignments, taskId),
       selectTasker,
-      startCheckout,
-      pay,
       expireHold,
       submitCompletion,
       confirmCompletion,

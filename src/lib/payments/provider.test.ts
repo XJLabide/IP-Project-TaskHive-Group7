@@ -1,8 +1,9 @@
 import type Stripe from "stripe";
-import { createHmac } from "node:crypto";
+import { createHmac, createSign, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
   fakeProvider,
+  mayaProvider,
   selectPaymentProvider,
   stripeProvider,
   verifyPaymongoSignature,
@@ -47,6 +48,54 @@ describe("fake provider", () => {
   });
 });
 
+
+describe("Maya sandbox provider", () => {
+  it("creates Maya hosted checkout and returns its redirect URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ checkoutId: "maya_checkout_1", redirectUrl: "https://payments-web-sandbox.maya.ph/v2/checkout?id=maya_checkout_1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = mayaProvider({ publicApiKey: "pk-test", mode: "sandbox" });
+    const result = await provider.createCheckout({
+      taskId: "task_1", paymentId: "payment_1", amountCents: 12345, currency: "PHP",
+      description: "Test task", successUrl: "https://taskhive.test/checkout?payment=success",
+      cancelUrl: "https://taskhive.test/checkout?payment=cancelled",
+    });
+    expect(result).toEqual({ provider: "maya", reference: "maya_checkout_1", url: "https://payments-web-sandbox.maya.ph/v2/checkout?id=maya_checkout_1" });
+    const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(request.method).toBe("POST");
+    expect(JSON.parse(String(request.body))).toMatchObject({ totalAmount: { value: 123.45, currency: "PHP" }, requestReferenceNumber: "payment_1" });
+  });
+
+  it("retrieves Maya payment status from its authenticated sandbox endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "maya_checkout_1", status: "PAYMENT_SUCCESS" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = mayaProvider({ publicApiKey: "pk-test", mode: "sandbox" });
+    const status = await provider.getPaymentStatus?.("maya_checkout_1");
+    expect(status).toEqual({ id: "maya-status:maya_checkout_1:PAYMENT_SUCCESS", type: "succeeded", reference: "maya_checkout_1", amountCents: null });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://pg-sandbox.paymaya.com/payments/v1/payments/maya_checkout_1/status");
+  });
+
+  it("accepts a fresh Maya RSA webhook and maps successful payment", async () => {
+    const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const payload = { id: "maya_payment_1", items: [{ name: "Test task", quantity: "1" }], status: "PAYMENT_SUCCESS", isPaid: true, amount: 123.45, currency: "PHP", updatedAt: new Date().toISOString() };
+    const flattened = Object.entries(payload).filter(([, value]) => !Array.isArray(value)).map(([key, value]) => `${key}=${value}`).sort().join("&");
+    const nonce = "maya_nonce_1";
+    const signer = createSign("RSA-SHA256");
+    signer.update(`${flattened}&nonce=${nonce}`);
+    signer.end();
+    const signature = signer.sign(privateKey).toString("hex");
+    const provider = mayaProvider({ publicApiKey: "pk-test", mode: "sandbox", webhookPublicKeys: [publicKey.export({ type: "spki", format: "pem" }).toString(), publicKey.export({ type: "spki", format: "pem" }).toString()] });
+    const event = await provider.parseWebhook(new Headers({ "x-maya-webhook-timestamp": String(Date.now()), "x-maya-webhook-signature": `nonce=${nonce},v1=${signature}` }), JSON.stringify(payload));
+    expect(event).toMatchObject({ id: `maya_payment_1:PAYMENT_SUCCESS:${payload.updatedAt}`, type: "succeeded", reference: "maya_payment_1", amountCents: 12345 });
+    const stale = await provider.parseWebhook(new Headers({ "x-maya-webhook-timestamp": String(Date.now() - 6 * 60 * 1000), "x-maya-webhook-signature": `nonce=${nonce},v1=${signature}` }), JSON.stringify(payload));
+    expect(stale).toBeNull();
+    const tampered = await provider.parseWebhook(new Headers({ "x-maya-webhook-timestamp": String(Date.now()), "x-maya-webhook-signature": `nonce=${nonce},v1=${signature}` }), JSON.stringify({ ...payload, isPaid: false }));
+    expect(tampered).toBeNull();
+  });
+});
+
 describe("provider selection", () => {
   it("uses the fake provider for local development and tests", () => {
     expect(selectPaymentProvider({}).name).toBe("fake");
@@ -68,14 +117,22 @@ describe("provider selection", () => {
     ).toBe("stripe");
   });
 
-  it("refuses the unsigned fake provider in production by default", () => {
+  it("selects Maya only for explicitly enabled sandbox outside production", () => {
+    const sandbox = { PAYMENT_PROVIDER: "maya", MAYA_MODE: "sandbox" };
+    expect(selectPaymentProvider(sandbox).name).toBe("maya");
+    expect(selectPaymentProvider({ ...sandbox, VERCEL_ENV: "preview" }).name).toBe("maya");
+    expect(selectPaymentProvider({ ...sandbox, VERCEL_ENV: "production" }).name).toBe("disabled");
+    expect(selectPaymentProvider({ ...sandbox, NODE_ENV: "production" }).name).toBe("disabled");
+  });
+
+  it("refuses the unsigned fake provider in production even if explicitly enabled", () => {
     expect(selectPaymentProvider({ NODE_ENV: "production" }).name).toBe("disabled");
     expect(
       selectPaymentProvider({
         NODE_ENV: "production",
         ALLOW_FAKE_PAYMENTS: "1",
       }).name,
-    ).toBe("fake");
+    ).toBe("disabled");
   });
 });
 
@@ -199,6 +256,7 @@ describe("Stripe provider", () => {
       data: {
         object: {
           id: "cs_test_session_123",
+          payment_status: "paid",
           amount_total: 50000,
         },
       },
@@ -234,6 +292,7 @@ describe("Stripe provider", () => {
       data: {
         object: {
           id: "cs_test_session_123",
+          payment_status: "paid",
           amount_total: 50000,
         },
       },

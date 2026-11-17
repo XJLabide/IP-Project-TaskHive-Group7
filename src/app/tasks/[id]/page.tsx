@@ -25,7 +25,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskApplicationPanel } from "@/components/task/task-application-panel";
 import { TaskApplications } from "@/components/task/task-applications";
 import { TaskChat } from "@/components/task/task-chat";
-import { TaskPaymentPanel } from "@/components/task/task-payment-panel";
 import { TaskCompletionPanel } from "@/components/task/task-completion-panel";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
@@ -60,7 +59,10 @@ function TaskDetailContent() {
   const paymentParam = searchParams.get("payment");
   const [notice] = useState(() => {
     if (paymentParam === "success") {
-      return "Payment confirmed! The assignment is now active and the Tasker has been notified.";
+      return "You returned from checkout. Payment status will update after provider confirmation.";
+    }
+    if (paymentParam === "cancelled") {
+      return "Checkout was cancelled. No payment was confirmed.";
     }
     const allowed = ["Task published.", "Task changes saved.", "Draft saved."];
     return allowed.includes(requestedNotice) ? requestedNotice : "";
@@ -177,6 +179,20 @@ function TaskDetailContent() {
             <Button asChild className="w-fit">
               <Link href="/tasks">Back to Browse Tasks</Link>
             </Button>
+          </CardContent>
+        </Card>
+      </Shell>
+    );
+  }
+
+  // Session-stored assignments are previews and cannot prove a real payment.
+  if ((assignment && assignment.status !== "expired") || ["pending_payment", "assigned", "awaiting_confirmation", "completed", "disputed", "cancellation_review"].includes(task.status)) {
+    return (
+      <Shell title={task.title || "Task details"} description="Payment status">
+        <Card>
+          <CardContent className="grid gap-4 p-6">
+            <p>This preview task cannot confirm payment or assignment status. Check your pending payments for real tasks.</p>
+            <Button asChild className="w-fit"><Link href="/checkout">View pending payments</Link></Button>
           </CardContent>
         </Card>
       </Shell>
@@ -341,7 +357,6 @@ function TaskDetailContent() {
           {!isDraft && !isPendingPayment && !isAssigned ? (
             <TaskApplicationPanel task={task} />
           ) : null}
-          <TaskPaymentPanel task={task} />
           <TaskCompletionPanel task={task} />
 
           {!isOwner && (isPendingPayment || hasAssignment) ? (
