@@ -2,6 +2,7 @@ import { created, ok, problem, requireUser } from "@/lib/api/response";
 import { prisma } from "@/lib/prisma";
 import { refreshMayaSandboxPaymentStatus, startCheckout } from "@/lib/payments/service";
 import { paymentFailureResponse } from "@/lib/payments/http";
+import { getPaymentHistory } from "@/lib/payments/history";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,14 @@ export async function GET(request: Request) {
   const authResult = await requireUser(request);
   if (authResult.response) return authResult.response;
 
-  const taskId = new URL(request.url).searchParams.get("taskId")?.trim();
+  const searchParams = new URL(request.url).searchParams;
+  const historyCursor = searchParams.get("historyCursor")?.trim();
+  if (historyCursor) {
+    const page = await getPaymentHistory(authResult.session.user.id, historyCursor);
+    return ok({ history: page.items, historyNextCursor: page.nextCursor });
+  }
+
+  const taskId = searchParams.get("taskId")?.trim();
   if (taskId) {
     await refreshMayaSandboxPaymentStatus({ posterId: authResult.session.user.id, taskId });
     const task = await prisma.task.findFirst({
@@ -27,16 +35,32 @@ export async function GET(request: Request) {
     return ok({ status });
   }
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      posterId: authResult.session.user.id,
-      status: "PENDING_PAYMENT",
-      assignment: { is: { status: "PENDING_PAYMENT" } },
-    },
-    select: { id: true, title: true },
-    orderBy: { updatedAt: "desc" },
-  });
-  return ok({ tasks });
+  const [taskRows, historyPage] = await Promise.all([
+    prisma.task.findMany({
+      where: {
+        posterId: authResult.session.user.id,
+        status: "PENDING_PAYMENT",
+        assignment: { is: { status: "PENDING_PAYMENT" } },
+      },
+      select: {
+        id: true,
+        title: true,
+        budgetCents: true,
+        currency: true,
+        hiringMode: true,
+        bids: { where: { status: "ACCEPTED" }, select: { amountCents: true }, take: 1 },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    getPaymentHistory(authResult.session.user.id),
+  ]);
+  const tasks = taskRows.map((task) => ({
+    id: task.id,
+    title: task.title,
+    amountCents: task.hiringMode === "BIDDING" ? task.bids[0]?.amountCents ?? null : task.budgetCents,
+    currency: task.currency,
+  }));
+  return ok({ tasks, history: historyPage.items, historyNextCursor: historyPage.nextCursor });
 }
 
 /** Starts Maya sandbox checkout outside the production deployment only. */

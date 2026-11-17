@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireUserMock, startCheckoutMock, refreshStatusMock, findManyMock, findFirstMock } = vi.hoisted(() => ({
+const { requireUserMock, startCheckoutMock, refreshStatusMock, historyMock, findManyMock, findFirstMock } = vi.hoisted(() => ({
   requireUserMock: vi.fn(),
   startCheckoutMock: vi.fn(),
   refreshStatusMock: vi.fn(),
+  historyMock: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
   findManyMock: vi.fn(),
   findFirstMock: vi.fn(),
 }));
@@ -14,6 +15,7 @@ vi.mock("@/lib/api/response", () => ({
   ok: (data: unknown) => Response.json({ data }),
 }));
 vi.mock("@/lib/payments/service", () => ({ startCheckout: startCheckoutMock, refreshMayaSandboxPaymentStatus: refreshStatusMock }));
+vi.mock("@/lib/payments/history", () => ({ getPaymentHistory: historyMock }));
 vi.mock("@/lib/prisma", () => ({ prisma: { task: { findMany: findManyMock, findFirst: findFirstMock } } }));
 import { GET, POST } from "./route";
 
@@ -39,7 +41,7 @@ describe("checkout API", () => {
   it("lists the Poster's pending-payment tasks for checkout", async () => {
     findManyMock.mockResolvedValue([{ id: "task_1", title: "Deliver groceries" }]);
     const response = await GET(new Request("https://example.com/api/payments/checkout"));
-    expect(await response.json()).toEqual({ data: { tasks: [{ id: "task_1", title: "Deliver groceries" }] } });
+    expect(await response.json()).toEqual({ data: { tasks: [{ id: "task_1", title: "Deliver groceries" }], history: [], historyNextCursor: null } });
     expect(findManyMock).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ posterId: "poster_1", status: "PENDING_PAYMENT" }) }));
   });
 

@@ -68,7 +68,7 @@ describe("checkout failures", () => {
   });
 
   it("offers real pending tasks when opened without a task ID", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { tasks: [{ id: "task_real", title: "Deliver groceries" }] } }) }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { tasks: [{ id: "task_real", title: "Deliver groceries", amountCents: 12500, currency: "PHP" }], history: [] } }) }));
     searchMock.mockReturnValue(new URLSearchParams());
     await act(async () => root.render(createElement(CheckoutPage)));
     expect(container.textContent).toContain("Deliver groceries");
