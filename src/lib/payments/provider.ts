@@ -76,6 +76,30 @@ export function fakeProvider(): PaymentProvider {
 
 const paymongoApi = "https://api.paymongo.com/v1";
 
+// Maya publishes these shared sandbox credentials for quick integration trials.
+// They are public test values; live deployments must provide a different provider.
+const mayaSharedSandboxApiKey = "pk-Z0OSzLvIcOI2UIvDhdTGVVfRSSeiGStnceqwUE7n0Ah";
+const mayaSandboxWebhookPublicKeys = [
+  `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjNkSX6p+goDPaPAYuTzT
+zKTCBeLhh8FkPMbZxDKTUxF93dOwiC7jsdx7KyopupeLosiVlbs+gpAJ7XBQP/Ex
+giyzXC9TljpyvkUQfyRPMAMKq+BzxdUliTl6hgrLBsH28CP5FuPHCsfxDXe7mDtv
+9H4mP3SKO0HfkZ45tudxD9CWbwWKF0lU9LRbLlJ0y7KEaK7Rv9fI1Dp/KPT+9pls
+tU+CPNKaxJjGRKGuxW2AOCabSD0cTZNXki+K51mNoma7Mj1HMhnsR68FGJvCqk1q
+Wsr3q8+EUMVPBMX+5nKATfZYGvxg4ytzT8pnEVeWl6phYKviB9aVVwurh1gDJB4r
+lQIDAQAB
+-----END PUBLIC KEY-----`,
+  `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp14gezqq4dGWu7EZ7BHx
+8wD3y1hqxwQR7UYPXtXJP+WngN4wqwatjsnQaRGnmdPRG8VEzUzw9PlR7t7P24uW
++J08xBrtTVouD2MKglcIcy13rt1XL79zr/LIAFMFI6f4O8/OQi1xsGsZ6xarD+wl
+OQKG4W66I3yp2jNAbge25eSPuo0BNqPWvebMcIYJu4f3Fxu1eDgeM6zCEqLc6+jX
+cNTP/zFHCvQaiIlLOqfgXDRPBcHPPZ2qcB99UVPAHXBKsKdtBB2w2qT2l99MlTAB
+iRy+IKtVQcQyRP7T8blegO25x35G2CZ3VCKPkmUen3eXQ4+r5fVlzEIBSfNvBwT9
+jQIDAQAB
+-----END PUBLIC KEY-----`,
+];
+
 /** Maya Checkout adapter restricted to its sandbox environment. */
 export function mayaProvider(input: {
   publicApiKey: string;
@@ -108,7 +132,7 @@ export function mayaProvider(input: {
       const body = await response.json() as { checkoutId?: string; redirectUrl?: string };
       if (!body.checkoutId || !body.redirectUrl) throw new Error("Maya checkout response is incomplete.");
       const redirect = new URL(body.redirectUrl);
-      if (redirect.protocol !== "https:" || redirect.hostname !== "payments-web-sandbox.paymaya.com") {
+      if (redirect.protocol !== "https:" || !["payments-web-sandbox.paymaya.com", "payments-web-sandbox.maya.ph"].includes(redirect.hostname)) {
         throw new Error("Maya returned an unexpected sandbox checkout URL.");
       }
       return { provider: "maya", reference: body.checkoutId, url: body.redirectUrl };
@@ -479,16 +503,16 @@ export function selectPaymentProvider(
   if (
     env.PAYMENT_PROVIDER === "maya" &&
     env.MAYA_MODE === "sandbox" &&
-    env.MAYA_PUBLIC_API_KEY &&
-    env.MAYA_WEBHOOK_PUBLIC_KEY_1 &&
-    env.MAYA_WEBHOOK_PUBLIC_KEY_2 &&
     env.VERCEL_ENV !== "production" &&
     !(env.NODE_ENV === "production" && !env.VERCEL_ENV)
   ) {
     return mayaProvider({
-      publicApiKey: env.MAYA_PUBLIC_API_KEY,
+      publicApiKey: env.MAYA_PUBLIC_API_KEY || mayaSharedSandboxApiKey,
       mode: "sandbox",
-      webhookPublicKeys: [env.MAYA_WEBHOOK_PUBLIC_KEY_1, env.MAYA_WEBHOOK_PUBLIC_KEY_2],
+      webhookPublicKeys: [
+        env.MAYA_WEBHOOK_PUBLIC_KEY_1 || mayaSandboxWebhookPublicKeys[0],
+        env.MAYA_WEBHOOK_PUBLIC_KEY_2 || mayaSandboxWebhookPublicKeys[1],
+      ],
     });
   }
 

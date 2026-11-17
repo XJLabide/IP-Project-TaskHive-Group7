@@ -82,9 +82,6 @@ describe("checkout API", () => {
   it("starts a Maya checkout only in an explicitly configured non-production sandbox", async () => {
     vi.stubEnv("PAYMENT_PROVIDER", "maya");
     vi.stubEnv("MAYA_MODE", "sandbox");
-    vi.stubEnv("MAYA_PUBLIC_API_KEY", "pk-test");
-    vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_1", "public-key-1");
-    vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_2", "public-key-2");
     vi.stubEnv("VERCEL_ENV", "preview");
     startCheckoutMock.mockResolvedValue({ ok: true, paymentId: "payment_1", provider: "maya", checkoutUrl: "https://payments-web-sandbox.paymaya.com/checkout/1", amountCents: 12345, platformFeeCents: 617, payoutCents: 11728, holdExpiresAt: new Date("2100-01-01") });
     const response = await POST(new Request("https://preview.example/api/payments/checkout", { method: "POST", body: JSON.stringify({ taskId: "task_1" }) }));

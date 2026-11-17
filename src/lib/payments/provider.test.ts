@@ -53,7 +53,7 @@ describe("Maya sandbox provider", () => {
   it("creates Maya hosted checkout and returns its redirect URL", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ checkoutId: "maya_checkout_1", redirectUrl: "https://payments-web-sandbox.paymaya.com/checkout/1" }),
+      json: async () => ({ checkoutId: "maya_checkout_1", redirectUrl: "https://payments-web-sandbox.maya.ph/v2/checkout?id=maya_checkout_1" }),
     });
     vi.stubGlobal("fetch", fetchMock);
     const provider = mayaProvider({ publicApiKey: "pk-test", mode: "sandbox" });
@@ -62,7 +62,7 @@ describe("Maya sandbox provider", () => {
       description: "Test task", successUrl: "https://taskhive.test/checkout?payment=success",
       cancelUrl: "https://taskhive.test/checkout?payment=cancelled",
     });
-    expect(result).toEqual({ provider: "maya", reference: "maya_checkout_1", url: "https://payments-web-sandbox.paymaya.com/checkout/1" });
+    expect(result).toEqual({ provider: "maya", reference: "maya_checkout_1", url: "https://payments-web-sandbox.maya.ph/v2/checkout?id=maya_checkout_1" });
     const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(request.method).toBe("POST");
     expect(JSON.parse(String(request.body))).toMatchObject({ totalAmount: { value: 123.45, currency: "PHP" }, requestReferenceNumber: "payment_1" });
@@ -109,7 +109,7 @@ describe("provider selection", () => {
   });
 
   it("selects Maya only for explicitly enabled sandbox outside production", () => {
-    const sandbox = { PAYMENT_PROVIDER: "maya", MAYA_MODE: "sandbox", MAYA_PUBLIC_API_KEY: "pk-test", MAYA_WEBHOOK_PUBLIC_KEY_1: "key-1", MAYA_WEBHOOK_PUBLIC_KEY_2: "key-2" };
+    const sandbox = { PAYMENT_PROVIDER: "maya", MAYA_MODE: "sandbox" };
     expect(selectPaymentProvider(sandbox).name).toBe("maya");
     expect(selectPaymentProvider({ ...sandbox, VERCEL_ENV: "preview" }).name).toBe("maya");
     expect(selectPaymentProvider({ ...sandbox, VERCEL_ENV: "production" }).name).toBe("disabled");

@@ -51,9 +51,6 @@ export async function POST(request: Request) {
   if (
     process.env.PAYMENT_PROVIDER !== "maya" ||
     process.env.MAYA_MODE !== "sandbox" ||
-    !process.env.MAYA_PUBLIC_API_KEY ||
-    !process.env.MAYA_WEBHOOK_PUBLIC_KEY_1 ||
-    !process.env.MAYA_WEBHOOK_PUBLIC_KEY_2 ||
     process.env.VERCEL_ENV === "production" ||
     (process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV)
   ) {

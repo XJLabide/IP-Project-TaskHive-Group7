@@ -4,7 +4,7 @@ Production must use a configured provider; the unsigned fake provider is disable
 
 Maya sandbox checkout is enabled only for local development and Vercel Preview. Production checkout remains disabled. The concurrent-checkout race in issue #59 is still unresolved, so use one checkout attempt at a time and disposable test tasks; do not treat this sandbox flow as ready for live payments.
 
-For Maya sandbox, the shared public test key is available in Maya's Developer Hub; no business signup is needed to try the sandbox. Configure `PAYMENT_PROVIDER=maya`, `MAYA_MODE=sandbox`, `MAYA_PUBLIC_API_KEY`, and both Maya sandbox webhook public keys as `MAYA_WEBHOOK_PUBLIC_KEY_1` and `_2`. Keep them in an untracked local env file or Vercel Preview variables. Use a non-production database and disposable test tasks. Register the preview HTTPS callback at `/api/payments/webhook`; local testing requires a secure webhook forwarder. Never put private keys or real payment credentials in fixtures, logs, or Git.
+For Maya sandbox, the shared public test key is available in Maya's Developer Hub; no business signup is needed to try the sandbox. Set `PAYMENT_PROVIDER=maya` and `MAYA_MODE=sandbox` in your local environment or Vercel Preview. The adapter uses Maya’s published shared sandbox API key and both published sandbox webhook verification keys by default; override these in an untracked env file if Maya rotates them or provides account-specific sandbox values. Use a non-production database and disposable test tasks. Register the preview HTTPS callback at `/api/payments/webhook`; local testing requires a secure webhook forwarder. Never put private keys or real payment credentials in fixtures, logs, or Git.
 
 For Maya sandbox, verify:
 

@@ -60,8 +60,8 @@ function TaskCheckout({ taskId, paymentReturn }: { taskId: string; paymentReturn
       const url = new URL(data.checkoutUrl);
       const expectedHost = data.provider === "stripe" ? "checkout.stripe.com"
         : data.provider === "paymongo" ? "checkout.paymongo.com"
-        : data.provider === "maya" ? "payments-web-sandbox.paymaya.com" : null;
-      if (url.protocol !== "https:" || !expectedHost || url.hostname !== expectedHost || url.username || url.password || url.port) {
+        : data.provider === "maya" ? ["payments-web-sandbox.paymaya.com", "payments-web-sandbox.maya.ph"] : null;
+      if (url.protocol !== "https:" || !expectedHost || !(Array.isArray(expectedHost) ? expectedHost.includes(url.hostname) : url.hostname === expectedHost) || url.username || url.password || url.port) {
         throw new Error("Invalid checkout URL");
       }
       setCheckoutUrl(url.toString());
