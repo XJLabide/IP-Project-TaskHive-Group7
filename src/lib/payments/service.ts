@@ -334,8 +334,8 @@ export async function startCheckout(input: {
       amountCents,
       currency: currencyOrDefault(task.currency),
       description: task.title,
-      successUrl: `${baseUrl}/tasks/${task.id}?payment=success`,
-      cancelUrl: `${baseUrl}/tasks/${task.id}?payment=cancelled`,
+      successUrl: `${baseUrl}/checkout?taskId=${encodeURIComponent(task.id)}&payment=success`,
+      cancelUrl: `${baseUrl}/checkout?taskId=${encodeURIComponent(task.id)}&payment=cancelled`,
     });
   } catch {
     await prisma.payment.updateMany({
@@ -504,6 +504,8 @@ export async function handleProviderEvent(input: {
       let notificationId: string | undefined;
 
       if (!payment) {
+        result = "ignored";
+      } else if (event.type === "pending") {
         result = "ignored";
       } else if (event.type === "succeeded") {
         const applied = await applySucceededEvent(tx, event, payment, now);

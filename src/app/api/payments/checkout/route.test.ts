@@ -1,0 +1,80 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { requireUserMock, startCheckoutMock, findManyMock, findFirstMock } = vi.hoisted(() => ({
+  requireUserMock: vi.fn(),
+  startCheckoutMock: vi.fn(),
+  findManyMock: vi.fn(),
+  findFirstMock: vi.fn(),
+}));
+vi.mock("@/lib/api/response", () => ({
+  requireUser: requireUserMock,
+  problem: (error: string, status: number) => Response.json({ error }, { status }),
+  created: (data: unknown) => Response.json({ data }, { status: 201 }),
+  ok: (data: unknown) => Response.json({ data }),
+}));
+vi.mock("@/lib/payments/service", () => ({ startCheckout: startCheckoutMock }));
+vi.mock("@/lib/prisma", () => ({ prisma: { task: { findMany: findManyMock, findFirst: findFirstMock } } }));
+import { GET, POST } from "./route";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  requireUserMock.mockResolvedValue({ session: { user: { id: "poster_1" } }, response: null });
+});
+
+describe("checkout API", () => {
+  it("rejects a null request body without creating checkout", async () => {
+    const response = await POST(new Request("https://example.com/api/payments/checkout", { method: "POST", body: "null" }));
+    expect(response.status).toBe(422);
+    expect(startCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps provider checkout unavailable until checkout attempts are safe", async () => {
+    const response = await POST(new Request("https://example.com/api/payments/checkout", { method: "POST", body: JSON.stringify({ taskId: "task_1" }) }));
+    expect(response.status).toBe(503);
+    expect(startCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("lists the Poster's pending-payment tasks for checkout", async () => {
+    findManyMock.mockResolvedValue([{ id: "task_1", title: "Deliver groceries" }]);
+    const response = await GET(new Request("https://example.com/api/payments/checkout"));
+    expect(await response.json()).toEqual({ data: { tasks: [{ id: "task_1", title: "Deliver groceries" }] } });
+    expect(findManyMock).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ posterId: "poster_1", status: "PENDING_PAYMENT" }) }));
+  });
+
+
+  it("reports confirmed payment only for the Poster's active assignment", async () => {
+    findFirstMock.mockResolvedValue({ assignment: { status: "ACTIVE" }, payments: [{ status: "PAID_PENDING_COMPLETION" }] });
+    const response = await GET(new Request("https://example.com/api/payments/checkout?taskId=task_1"));
+    expect(await response.json()).toEqual({ data: { status: "confirmed" } });
+    expect(findFirstMock).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "task_1", posterId: "poster_1" } }));
+  });
+
+
+  it("does not report an expired assignment as confirmed even when payment was received", async () => {
+    findFirstMock.mockResolvedValue({ assignment: { status: "EXPIRED" }, payments: [{ status: "PAID_PENDING_COMPLETION" }] });
+    const response = await GET(new Request("https://example.com/api/payments/checkout?taskId=task_1"));
+    expect(await response.json()).toEqual({ data: { status: "needs_attention" } });
+  });
+
+  it("does not disclose payment status for another Poster's task", async () => {
+    findFirstMock.mockResolvedValue(null);
+    const response = await GET(new Request("https://example.com/api/payments/checkout?taskId=other_task"));
+    expect(response.status).toBe(404);
+    expect(findFirstMock).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "other_task", posterId: "poster_1" } }));
+  });
+
+
+  it("reports disputed payment as needing attention", async () => {
+    findFirstMock.mockResolvedValue({ assignment: { status: "DISPUTED" }, payments: [{ status: "DISPUTED" }] });
+    const response = await GET(new Request("https://example.com/api/payments/checkout?taskId=task_1"));
+    expect(await response.json()).toEqual({ data: { status: "needs_attention" } });
+  });
+
+
+  it("reports a failed or unpaid payment without marking it confirmed", async () => {
+    findFirstMock.mockResolvedValue({ assignment: { status: "PENDING_PAYMENT" }, payments: [{ status: "UNPAID" }] });
+    const response = await GET(new Request("https://example.com/api/payments/checkout?taskId=task_1"));
+    expect(await response.json()).toEqual({ data: { status: "unpaid" } });
+  });
+
+});

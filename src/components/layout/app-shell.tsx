@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, BriefcaseBusiness, FileText, LayoutDashboard, LogIn, Map, MessageSquare, Plus, Search, Shield, Star, UserRound } from "lucide-react";
+import { Bell, BriefcaseBusiness, CreditCard, FileText, LayoutDashboard, LogIn, Map, MessageSquare, Plus, Search, Shield, Star, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -20,6 +20,7 @@ type NavItem = {
 const browseItem: NavItem = { href: "/tasks", label: "Browse tasks", icon: Search };
 const mapItem: NavItem = { href: "/map", label: "View map", icon: Map };
 const dashboardItem: NavItem = { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard };
+const paymentsItem: NavItem = { href: "/checkout", label: "Payments", icon: CreditCard };
 const myWorkItem: NavItem = { href: "/my-work", label: "My Work", icon: BriefcaseBusiness };
 const createTaskItem: NavItem = { href: "/tasks/new", label: "Create task", icon: Plus };
 const reviewsItem: NavItem = { href: "/reviews", label: "Reviews", icon: Star };
@@ -54,6 +55,7 @@ export function AppShell({ title, description, children, showHeader = true, cont
         browseItem,
         mapItem,
         myWorkItem,
+        paymentsItem,
         ...(viewer.canPost ? [createTaskItem] : []),
         applicationsItem,
         messagesItem,

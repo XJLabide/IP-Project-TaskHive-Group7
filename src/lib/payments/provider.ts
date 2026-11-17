@@ -17,7 +17,7 @@ export type CheckoutSession = {
   url: string;
 };
 
-export type ProviderEventType = "succeeded" | "failed" | "refunded";
+export type ProviderEventType = "succeeded" | "failed" | "refunded" | "pending";
 
 export type ProviderEvent = {
   id: string;
@@ -268,11 +268,11 @@ export function stripeProvider(input: {
       }
 
       const eventId = event.id;
-      if (event.type === "checkout.session.completed") {
+      if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
         const session = event.data.object as Stripe.Checkout.Session;
         return {
           id: eventId,
-          type: "succeeded",
+          type: session.payment_status === "paid" ? "succeeded" : "pending",
           reference: session.id,
           amountCents: session.amount_total ?? null,
         };
@@ -396,7 +396,7 @@ export function selectPaymentProvider(
     });
   }
 
-  if (env.NODE_ENV === "production" && env.ALLOW_FAKE_PAYMENTS !== "1") {
+  if (env.NODE_ENV === "production") {
     return disabledProvider();
   }
 

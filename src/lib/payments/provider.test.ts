@@ -68,14 +68,14 @@ describe("provider selection", () => {
     ).toBe("stripe");
   });
 
-  it("refuses the unsigned fake provider in production by default", () => {
+  it("refuses the unsigned fake provider in production even if explicitly enabled", () => {
     expect(selectPaymentProvider({ NODE_ENV: "production" }).name).toBe("disabled");
     expect(
       selectPaymentProvider({
         NODE_ENV: "production",
         ALLOW_FAKE_PAYMENTS: "1",
       }).name,
-    ).toBe("fake");
+    ).toBe("disabled");
   });
 });
 
@@ -199,6 +199,7 @@ describe("Stripe provider", () => {
       data: {
         object: {
           id: "cs_test_session_123",
+          payment_status: "paid",
           amount_total: 50000,
         },
       },
@@ -234,6 +235,7 @@ describe("Stripe provider", () => {
       data: {
         object: {
           id: "cs_test_session_123",
+          payment_status: "paid",
           amount_total: 50000,
         },
       },

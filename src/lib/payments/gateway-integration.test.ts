@@ -183,6 +183,7 @@ describe("Payment Gateway Integration - Stripe", () => {
       data: {
         object: {
           id: "cs_stripe_12345",
+          payment_status: "paid",
           amount_total: 150000,
         },
       },
@@ -251,6 +252,7 @@ describe("Payment Gateway Integration - Stripe", () => {
       data: {
         object: {
           id: "cs_stripe_12345",
+          payment_status: "paid",
           amount_total: 150000,
         },
       },
