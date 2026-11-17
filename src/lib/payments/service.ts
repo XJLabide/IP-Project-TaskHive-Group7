@@ -15,6 +15,7 @@ import { platformFeeCents } from "./fee";
 import {
   selectPaymentProvider,
   type PaymentProvider,
+  type ProviderEvent,
 } from "./provider";
 
 export type PaymentFailureCode =
@@ -467,10 +468,14 @@ export async function handleProviderEvent(input: {
   const event = await provider.parseWebhook(input.headers, input.rawBody);
   if (!event) return failure("invalid_event", "The provider event could not be verified.");
 
+  return applyProviderEvent(event, provider.name, now);
+}
+
+async function applyProviderEvent(event: ProviderEvent, providerName: string, now: Date): Promise<ProviderEventResult> {
   let payment;
   try {
     payment = await prisma.payment.findFirst({
-      where: { provider: provider.name, providerCheckoutId: event.reference },
+      where: { provider: providerName, providerCheckoutId: event.reference },
       select: {
         id: true,
         taskId: true,
@@ -491,7 +496,7 @@ export async function handleProviderEvent(input: {
     const eventOutcome = await prisma.$transaction(async (tx) => {
       const recorded = await tx.paymentEvent.create({
         data: {
-          provider: provider.name,
+          provider: providerName,
           eventId: event.id,
           type: event.type,
           providerReference: event.reference,
@@ -548,6 +553,21 @@ export async function handleProviderEvent(input: {
     if (isUniqueViolation(error)) return { ok: true, outcome: "duplicate" };
     throw error;
   }
+}
+
+/** Reconciles a sandbox Maya payment from its authenticated status endpoint. */
+export async function refreshMayaSandboxPaymentStatus(input: { posterId: string; taskId: string; now?: Date }): Promise<ProviderEventResult | null> {
+  if (process.env.MAYA_MODE !== "sandbox" || process.env.PAYMENT_PROVIDER !== "maya" || process.env.VERCEL_ENV === "production" || (process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV)) return null;
+  const payment = await prisma.payment.findFirst({
+    where: { taskId: input.taskId, posterId: input.posterId, provider: "maya", status: { in: ["CHECKOUT_STARTED", "UNPAID"] } },
+    select: { providerCheckoutId: true },
+  });
+  if (!payment?.providerCheckoutId) return null;
+  const provider = selectPaymentProvider();
+  if (provider.name !== "maya" || !provider.getPaymentStatus) return null;
+  const event = await provider.getPaymentStatus(payment.providerCheckoutId);
+  if (!event) return null;
+  return applyProviderEvent(event, provider.name, input.now ?? new Date());
 }
 
 /**

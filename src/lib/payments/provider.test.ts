@@ -68,6 +68,15 @@ describe("Maya sandbox provider", () => {
     expect(JSON.parse(String(request.body))).toMatchObject({ totalAmount: { value: 123.45, currency: "PHP" }, requestReferenceNumber: "payment_1" });
   });
 
+  it("retrieves Maya payment status from its authenticated sandbox endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "maya_checkout_1", status: "PAYMENT_SUCCESS" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = mayaProvider({ publicApiKey: "pk-test", mode: "sandbox" });
+    const status = await provider.getPaymentStatus?.("maya_checkout_1");
+    expect(status).toEqual({ id: "maya-status:maya_checkout_1:PAYMENT_SUCCESS", type: "succeeded", reference: "maya_checkout_1", amountCents: null });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://pg-sandbox.paymaya.com/payments/v1/payments/maya_checkout_1/status");
+  });
+
   it("accepts a fresh Maya RSA webhook and maps successful payment", async () => {
     const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
     const payload = { id: "maya_payment_1", items: [{ name: "Test task", quantity: "1" }], status: "PAYMENT_SUCCESS", isPaid: true, amount: 123.45, currency: "PHP", updatedAt: new Date().toISOString() };

@@ -31,6 +31,7 @@ export interface PaymentProvider {
   name: string;
   createCheckout(input: CheckoutInput): Promise<CheckoutSession>;
   parseWebhook(headers: Headers, rawBody: string): Promise<ProviderEvent | null>;
+  getPaymentStatus?(reference: string): Promise<ProviderEvent | null>;
 }
 
 /**
@@ -136,6 +137,22 @@ export function mayaProvider(input: {
         throw new Error("Maya returned an unexpected sandbox checkout URL.");
       }
       return { provider: "maya", reference: body.checkoutId, url: body.redirectUrl };
+    },
+    async getPaymentStatus(reference) {
+      const response = await fetch(`${baseUrl}/payments/v1/payments/${encodeURIComponent(reference)}/status`, {
+        headers: { authorization: `Basic ${Buffer.from(`${input.publicApiKey}:`).toString("base64")}` },
+      });
+      if (!response.ok) throw new Error(`Maya sandbox status check failed with ${response.status}.`);
+      const body = await response.json() as { id?: string; status?: string };
+      if (body.id !== reference || !body.status) return null;
+      const type: ProviderEventType | null = body.status === "PAYMENT_SUCCESS"
+        ? "succeeded"
+        : ["PAYMENT_FAILED", "PAYMENT_EXPIRED", "PAYMENT_CANCELLED"].includes(body.status)
+          ? "failed"
+          : body.status === "AUTHORIZED" || body.status === "PENDING_PAYMENT" || body.status === "PENDING_TOKEN"
+            ? "pending" : null;
+      if (!type) return null;
+      return { id: `maya-status:${reference}:${body.status}`, type, reference, amountCents: null };
     },
     async parseWebhook(headers, rawBody) {
       const timestamp = headers.get("x-maya-webhook-timestamp");

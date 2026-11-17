@@ -1,6 +1,6 @@
 import { created, ok, problem, requireUser } from "@/lib/api/response";
 import { prisma } from "@/lib/prisma";
-import { startCheckout } from "@/lib/payments/service";
+import { refreshMayaSandboxPaymentStatus, startCheckout } from "@/lib/payments/service";
 import { paymentFailureResponse } from "@/lib/payments/http";
 
 export const runtime = "nodejs";
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
 
   const taskId = new URL(request.url).searchParams.get("taskId")?.trim();
   if (taskId) {
+    await refreshMayaSandboxPaymentStatus({ posterId: authResult.session.user.id, taskId });
     const task = await prisma.task.findFirst({
       where: { id: taskId, posterId: authResult.session.user.id },
       select: { assignment: { select: { status: true } }, payments: { select: { status: true }, take: 1 } },
