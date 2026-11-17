@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,11 @@ import { canWithdraw } from "@/lib/applications/rules";
 import { applicationStatusClass } from "@/lib/applications/ui";
 import { formatTaskDeadline } from "@/lib/tasks/ui";
 import type { TaskSummary } from "@/lib/tasks/types";
+import { requestData } from "@/lib/marketplace/http";
+import { budgetToCents } from "@/lib/tasks/ui";
+import type { ApplicationView } from "@/lib/applications/service";
+import { applicationFormErrors } from "@/lib/applications/demo";
+import { shouldUseMarketplacePreview } from "@/lib/marketplace/preview";
 
 const inputClass =
   "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-[#FFD50D]";
@@ -25,6 +30,13 @@ const inputClass =
 const emptyValues: ApplicationFormValues = { amount: "", message: "", estimatedTime: "" };
 
 export function TaskApplicationPanel({ task }: { task: TaskSummary }) {
+  const { isPreview } = useViewer();
+  return shouldUseMarketplacePreview(isPreview)
+    ? <DemoTaskApplicationPanel task={task} />
+    : <PersistentTaskApplicationPanel key={task.id} task={task} />;
+}
+
+function DemoTaskApplicationPanel({ task }: { task: TaskSummary }) {
   const { viewer } = useViewer();
   const {
     applicationsForTask,
@@ -265,6 +277,142 @@ export function TaskApplicationPanel({ task }: { task: TaskSummary }) {
           Demo: applications are stored in this browser session. Selecting a Tasker and payment
           are not connected.
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PersistentTaskApplicationPanel({ task }: { task: TaskSummary }) {
+  const { viewer } = useViewer();
+  const [applications, setApplications] = useState<ApplicationView[]>([]);
+  const [role, setRole] = useState<"poster" | "tasker" | null>(null);
+  const [values, setValues] = useState<ApplicationFormValues>(emptyValues);
+  const [errors, setErrors] = useState<ApplicationFormErrors>({});
+  const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(viewer.signedIn);
+  const [saving, setSaving] = useState(false);
+  const kind = kindForTask(task);
+
+  useEffect(() => {
+    if (!viewer.signedIn) return;
+    const controller = new AbortController();
+    void requestData<{ role: "poster" | "tasker"; applications: ApplicationView[] }>(
+      `/api/tasks/${encodeURIComponent(task.id)}/bids`,
+      { signal: controller.signal },
+    )
+      .then((result) => {
+        setRole(result.role);
+        setApplications(result.applications);
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setFeedback(error instanceof Error ? error.message : "Could not load your application.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [task.id, viewer.signedIn]);
+
+  const live = applications.find((application) =>
+    application.status === "submitted" || application.status === "accepted",
+  ) ?? null;
+  const lastApplication = applications[0] ?? null;
+  const canApply = viewer.canApply && task.status === "open" && !live;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextErrors = applicationFormErrors(values, kind);
+    setErrors(nextErrors);
+    setFeedback("");
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSaving(true);
+    try {
+      const path = `/api/tasks/${encodeURIComponent(task.id)}/${kind === "bid" ? "bids" : "requests"}`;
+      const body = kind === "bid"
+        ? { amountCents: budgetToCents(values.amount), message: values.message.trim(), estimatedTime: values.estimatedTime.trim() || undefined }
+        : { message: values.message.trim() || undefined };
+      await requestData<ApplicationView>(path, { method: "POST", body: JSON.stringify(body) });
+      const result = await requestData<{ role: "poster" | "tasker"; applications: ApplicationView[] }>(
+        `/api/tasks/${encodeURIComponent(task.id)}/bids`,
+      );
+      setRole(result.role);
+      setApplications(result.applications);
+      setValues(emptyValues);
+      setFeedback("Application sent. The Poster chooses one Tasker.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not send this application.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleWithdraw(id: string) {
+    if (!window.confirm("Withdraw this application? You can apply again while the task is open.")) return;
+    setFeedback("");
+    try {
+      await requestData(`/api/applications/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setApplications((current) => current.map((application) =>
+        application.id === id ? { ...application, status: "withdrawn" } : application,
+      ));
+      setFeedback("Application withdrawn.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not withdraw this application.");
+    }
+  }
+
+  if (role === "poster") return null;
+
+  return (
+    <Card>
+      <CardContent className="grid gap-4 p-5">
+        <div>
+          <h2 className="font-bold">Your application</h2>
+          <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+            {kind === "bid" ? "Send a bid with your price and a short message." : `Request this task at the listed price of PHP ${task.budget.toFixed(2)}.`}
+          </p>
+        </div>
+
+        {!viewer.signedIn ? (
+          <>
+            <GateNotice code="sign_in_required" />
+            <Button asChild size="sm" variant="outline"><Link href="/login">Sign in to apply</Link></Button>
+          </>
+        ) : viewer.denials.apply ? <GateNotice code={viewer.denials.apply} /> : null}
+
+        {loading ? <p role="status" className="text-sm text-zinc-500">Loading your application…</p> : null}
+        {feedback ? <p aria-live="polite" role="status" className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">{feedback}</p> : null}
+
+        {live ? (
+          <div className="grid gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Application {applicationStatusLabel(live.status).toLowerCase()}</p>
+              <Badge className={applicationStatusClass(live.status)}>{applicationStatusLabel(live.status)}</Badge>
+            </div>
+            <dl className="grid gap-1 text-sm text-zinc-600 dark:text-zinc-300">
+              {live.amountCents !== null ? <div className="flex justify-between gap-4"><dt>Your bid</dt><dd className="font-semibold">PHP {(live.amountCents / 100).toFixed(2)}</dd></div> : null}
+              {live.estimatedTime ? <div className="flex justify-between gap-4"><dt>Estimated time</dt><dd>{live.estimatedTime}</dd></div> : null}
+              <div className="flex justify-between gap-4"><dt>Verification</dt><dd className="capitalize">{live.verification.replace("_", " ")}</dd></div>
+            </dl>
+            {live.verification !== "verified" ? <p className="rounded-lg bg-[#FFD50D]/15 px-3 py-2 text-xs leading-5 text-zinc-700 dark:bg-[#FFC800]/10 dark:text-zinc-300">The Poster can see this application, but cannot select you until your identity verification is complete.</p> : null}
+            {live.status === "submitted" && task.status === "open" ? <Button onClick={() => void handleWithdraw(live.id)} size="sm" type="button" variant="outline">Withdraw application</Button> : null}
+          </div>
+        ) : null}
+
+        {lastApplication && !live ? <p className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">Your last application is {applicationStatusLabel(lastApplication.status).toLowerCase()}. You can apply again while the task is open.</p> : null}
+
+        {canApply ? (
+          <form className="grid gap-3" noValidate onSubmit={(event) => void handleSubmit(event)}>
+            {kind === "bid" ? <label className="grid gap-1.5 text-sm font-semibold">Your bid (PHP)<input aria-invalid={errors.amount ? true : undefined} className={inputClass} inputMode="decimal" min="0" onChange={(event) => setValues((current) => ({ ...current, amount: event.target.value }))} placeholder="450" step="0.01" type="number" value={values.amount} />{errors.amount ? <span className="text-xs font-normal text-[#a01a26] dark:text-[#F04452]">{errors.amount}</span> : null}</label> : null}
+            <label className="grid gap-1.5 text-sm font-semibold">Message {kind === "request" ? "(optional)" : ""}<textarea aria-invalid={errors.message ? true : undefined} className="min-h-24 rounded-xl border border-zinc-200 bg-white p-3 text-sm font-normal text-zinc-950 outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-[#FFD50D]" maxLength={500} onChange={(event) => setValues((current) => ({ ...current, message: event.target.value }))} placeholder="Availability, experience, or a question" value={values.message} />{errors.message ? <span className="text-xs font-normal text-[#a01a26] dark:text-[#F04452]">{errors.message}</span> : null}</label>
+            {kind === "bid" ? <label className="grid gap-1.5 text-sm font-semibold">Estimated time (optional)<input className={inputClass} maxLength={60} onChange={(event) => setValues((current) => ({ ...current, estimatedTime: event.target.value }))} placeholder="1 hour" value={values.estimatedTime} /></label> : null}
+            <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-zinc-500 dark:text-zinc-400">Deadline: {task.deadline ? formatTaskDeadline(task.deadline) : "not set"}</p><Button disabled={saving || loading} size="sm" type="submit">{saving ? "Sending…" : kind === "bid" ? "Send bid" : "Send request"}</Button></div>
+          </form>
+        ) : null}
+
+        {task.status !== "open" ? <p className="text-sm text-zinc-500 dark:text-zinc-400">This task is no longer accepting applications.</p> : null}
       </CardContent>
     </Card>
   );

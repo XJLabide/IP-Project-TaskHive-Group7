@@ -31,6 +31,8 @@ import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
 import { formatTaskDeadline, taskFieldLabels, taskFormErrors, taskStatusClass, taskStatusLabel, taskToFields, toTaskFormValues } from "@/lib/tasks/ui";
 import { isLiveApplicationStatus } from "@/lib/applications/rules";
+import { PersistentTaskDetail } from "@/components/task/persistent-task-detail";
+import { shouldUseMarketplacePreview } from "@/lib/marketplace/preview";
 
 export default function TaskDetailPage() {
   return (
@@ -47,6 +49,11 @@ export default function TaskDetailPage() {
 }
 
 function TaskDetailContent() {
+  const { isPreview } = useViewer();
+  return shouldUseMarketplacePreview(isPreview) ? <DemoTaskDetailContent /> : <PersistentTaskDetail />;
+}
+
+function DemoTaskDetailContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();

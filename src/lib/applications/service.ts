@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notifications";
 import type { TaskerVerificationStatus } from "@/lib/domain/access";
+import type { TaskLifecycleStatus } from "@/lib/tasks/lifecycle";
 import type {
   BidStatus as DbApplicationStatus,
   TaskStatus as DbTaskStatus,
@@ -33,6 +34,8 @@ export type ApplicationView = {
   id: string;
   kind: ApplicationKind;
   taskId: string;
+  taskTitle: string;
+  taskStatus: TaskLifecycleStatus;
   taskerId: string;
   taskerName: string | null;
   verification: TaskerVerificationStatus;
@@ -261,6 +264,8 @@ async function createApplication(input: {
       id: id as string,
       kind: input.kind,
       taskId: task.id,
+      taskTitle: task.title,
+      taskStatus: toDomainTaskStatus[task.status],
       taskerId: input.actor.id,
       taskerName: null,
       verification: input.actor.verification,
@@ -419,7 +424,7 @@ type ApplicationRow = {
   estimatedTime: string | null;
   status: DbApplicationStatus;
   createdAt: Date;
-  task: { status: DbTaskStatus };
+  task: { status: DbTaskStatus; title: string };
   tasker: {
     name: string;
     taskerVerification: { status: DbVerificationStatus } | null;
@@ -433,7 +438,7 @@ const verificationSelect = {
   },
 } as const;
 
-const taskStatusSelect = { select: { status: true } } as const;
+const taskStatusSelect = { select: { status: true, title: true } } as const;
 
 function toApplicationView(row: ApplicationRow, kind: ApplicationKind): ApplicationView {
   const verification = toDomainVerification[
@@ -451,6 +456,8 @@ function toApplicationView(row: ApplicationRow, kind: ApplicationKind): Applicat
     id: row.id,
     kind,
     taskId: row.taskId,
+    taskTitle: row.task.title,
+    taskStatus,
     taskerId: row.taskerId,
     taskerName: row.tasker?.name ?? null,
     verification,

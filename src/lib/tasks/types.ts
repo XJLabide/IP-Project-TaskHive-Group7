@@ -5,8 +5,10 @@ import type { TaskFieldErrors } from "./validation";
 export type UiTaskStatus =
   | "draft"
   | "open"
+  | "pending_approval"
   | "pending_payment"
   | "assigned"
+  | "in_progress"
   | "awaiting_confirmation"
   | "completed"
   | "cancellation_review"

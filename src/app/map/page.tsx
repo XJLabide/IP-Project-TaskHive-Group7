@@ -7,8 +7,17 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { TaskMap, mappableTasks } from "@/components/task/task-map";
 import { useMockTasks } from "@/lib/mock-task-store";
 import { useViewer } from "@/components/viewer/viewer-provider";
+import { shouldUseMarketplacePreview } from "@/lib/marketplace/preview";
+import { PersistentTaskBrowser } from "@/components/task/persistent-task-browser";
 
 export default function MapPage() {
+  const { isPreview } = useViewer();
+  return shouldUseMarketplacePreview(isPreview)
+    ? <DemoMapPage />
+    : <PersistentTaskBrowser initialParams={{ view: "map" }} />;
+}
+
+function DemoMapPage() {
   const { tasks, ready } = useMockTasks();
   const { viewer } = useViewer();
   const mapped = mappableTasks(tasks);

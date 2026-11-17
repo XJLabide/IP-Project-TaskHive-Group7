@@ -15,6 +15,7 @@ export type DiscoverableTask = PublicTaskCandidate & {
   exactAddress: string | null;
   latitude: number | null;
   longitude: number | null;
+  applicationCount?: number;
 };
 
 export type RankedTask = {
@@ -140,6 +141,7 @@ export type PublicTaskSummary = {
   areaLabel: string | null;
   /** Whole kilometres only, so the distance cannot be used to pin an address. */
   distanceKm: number | null;
+  applicationCount: number;
 };
 
 /** The public view of a task: no exact address and no coordinates. */
@@ -162,12 +164,16 @@ export function toPublicTaskSummary(
     areaLabel: task.fulfillmentMode === "local" ? task.areaLabel : null,
     distanceKm:
       distance === null ? null : Math.max(1, Math.round(distance)),
+    applicationCount: task.applicationCount ?? 0,
   };
 }
 
 export type PublicTaskDetail = PublicTaskSummary & {
   exactAddress: string | null;
   addressVisible: boolean;
+  taskStatus: TaskLifecycleStatus;
+  isPoster: boolean;
+  isAssignedTasker: boolean;
 };
 
 export function toPublicTaskDetail(
@@ -181,6 +187,10 @@ export function toPublicTaskDetail(
     ...toPublicTaskSummary(task, distance),
     exactAddress: addressVisible ? task.exactAddress : null,
     addressVisible,
+    taskStatus: access.taskStatus,
+    isPoster: access.viewerId !== null && access.viewerId === access.posterId,
+    isAssignedTasker:
+      access.viewerId !== null && access.viewerId === access.assignmentTaskerId,
   };
 }
 

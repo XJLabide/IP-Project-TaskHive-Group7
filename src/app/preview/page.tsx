@@ -6,6 +6,7 @@ import { ProfileChecklist } from "@/components/viewer/profile-checklist";
 import { StatePreview } from "@/components/viewer/state-preview";
 import { VerificationCard } from "@/components/viewer/verification-card";
 import { demoViewers } from "@/lib/viewer/demo";
+import { notFound } from "next/navigation";
 
 const gateCodes = [
   "sign_in_required",
@@ -16,6 +17,8 @@ const gateCodes = [
 ] as const;
 
 export default function PreviewPage() {
+  if (process.env.NODE_ENV === "production") notFound();
+
   return (
     <AppShell
       title="State preview"

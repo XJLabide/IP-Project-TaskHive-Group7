@@ -8,6 +8,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PublicShell } from "@/components/layout/public-shell";
 import { TaskCard } from "@/components/task/task-card";
 import { TaskMap } from "@/components/task/task-map";
+import { PersistentTaskBrowser } from "@/components/task/persistent-task-browser";
+import { shouldUseMarketplacePreview } from "@/lib/marketplace/preview";
 import {
   LeafletLocationPicker,
   PHILIPPINES_MAP_CENTER,
@@ -89,6 +91,13 @@ function LoadingCard() {
 }
 
 export function TaskBrowser({ initialParams }: { initialParams: InitialParams }) {
+  const { isPreview } = useViewer();
+  return shouldUseMarketplacePreview(isPreview)
+    ? <DemoTaskBrowser initialParams={initialParams} />
+    : <PersistentTaskBrowser initialParams={initialParams} />;
+}
+
+function DemoTaskBrowser({ initialParams }: { initialParams: InitialParams }) {
   const router = useRouter();
   const { tasks, ready, error, resetDemo } = useMockTasks();
   const { applications } = useMarketplace();

@@ -6,7 +6,7 @@ import { TaskDiscovery } from "@/components/dashboard/task-discovery";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 
 export default function DashboardPage() {
-  const { tasks, applications, viewer, data, now, state } = useDashboardData();
+  const { tasks, applications, viewer, data, now, state, persistentMode } = useDashboardData();
 
   return (
     <AppShell
@@ -21,6 +21,7 @@ export default function DashboardPage() {
           applications={applications}
           error={state === "error"}
           loading={state === "loading"}
+          persistentCounts={persistentMode}
           tasks={tasks}
         />
       </div>
