@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { requireUserMock, startCheckoutMock, findManyMock, findFirstMock } = vi.hoisted(() => ({
   requireUserMock: vi.fn(),
@@ -20,6 +20,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   requireUserMock.mockResolvedValue({ session: { user: { id: "poster_1" } }, response: null });
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("checkout API", () => {
   it("rejects a null request body without creating checkout", async () => {
@@ -75,6 +76,25 @@ describe("checkout API", () => {
     findFirstMock.mockResolvedValue({ assignment: { status: "PENDING_PAYMENT" }, payments: [{ status: "UNPAID" }] });
     const response = await GET(new Request("https://example.com/api/payments/checkout?taskId=task_1"));
     expect(await response.json()).toEqual({ data: { status: "unpaid" } });
+  });
+
+
+  it("starts a Maya checkout only in an explicitly configured non-production sandbox", async () => {
+    vi.stubEnv("PAYMENT_PROVIDER", "maya");
+    vi.stubEnv("MAYA_MODE", "sandbox");
+    vi.stubEnv("MAYA_PUBLIC_API_KEY", "pk-test");
+    vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_1", "public-key-1");
+    vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_2", "public-key-2");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    startCheckoutMock.mockResolvedValue({ ok: true, paymentId: "payment_1", provider: "maya", checkoutUrl: "https://payments-web-sandbox.paymaya.com/checkout/1", amountCents: 12345, platformFeeCents: 617, payoutCents: 11728, holdExpiresAt: new Date("2100-01-01") });
+    const response = await POST(new Request("https://preview.example/api/payments/checkout", { method: "POST", body: JSON.stringify({ taskId: "task_1" }) }));
+    expect(response.status).toBe(201);
+    expect((await response.json()).data.provider).toBe("maya");
+    startCheckoutMock.mockClear();
+    vi.stubEnv("VERCEL_ENV", "production");
+    const productionResponse = await POST(new Request("https://taskhive.example/api/payments/checkout", { method: "POST", body: JSON.stringify({ taskId: "task_1" }) }));
+    expect(productionResponse.status).toBe(503);
+    expect(startCheckoutMock).not.toHaveBeenCalled();
   });
 
 });

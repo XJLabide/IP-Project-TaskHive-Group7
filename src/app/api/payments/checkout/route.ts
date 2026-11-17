@@ -1,5 +1,7 @@
-import { ok, problem, requireUser } from "@/lib/api/response";
+import { created, ok, problem, requireUser } from "@/lib/api/response";
 import { prisma } from "@/lib/prisma";
+import { startCheckout } from "@/lib/payments/service";
+import { paymentFailureResponse } from "@/lib/payments/http";
 
 export const runtime = "nodejs";
 
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
   return ok({ tasks });
 }
 
-/** Checkout stays disabled until provider attempts and callbacks are race-safe. */
+/** Starts Maya sandbox checkout outside the production deployment only. */
 export async function POST(request: Request) {
   const authResult = await requireUser(request);
   if (authResult.response) return authResult.response;
@@ -46,5 +48,32 @@ export async function POST(request: Request) {
     ? body.taskId.trim() : null;
   if (!taskId) return problem("A taskId is required to start checkout", 422);
 
-  return problem("Checkout is temporarily unavailable. Please try again later.", 503);
+  if (
+    process.env.PAYMENT_PROVIDER !== "maya" ||
+    process.env.MAYA_MODE !== "sandbox" ||
+    !process.env.MAYA_PUBLIC_API_KEY ||
+    !process.env.MAYA_WEBHOOK_PUBLIC_KEY_1 ||
+    !process.env.MAYA_WEBHOOK_PUBLIC_KEY_2 ||
+    process.env.VERCEL_ENV === "production" ||
+    (process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV)
+  ) {
+    return problem("Checkout is unavailable outside a configured Maya sandbox.", 503);
+  }
+
+  const result = await startCheckout({
+    posterId: authResult.session.user.id,
+    taskId,
+    baseUrl: new URL(request.url).origin,
+  });
+  if (!result.ok) return paymentFailureResponse(result);
+
+  return created({
+    paymentId: result.paymentId,
+    provider: result.provider,
+    checkoutUrl: result.checkoutUrl,
+    amountCents: result.amountCents,
+    platformFeeCents: result.platformFeeCents,
+    payoutCents: result.payoutCents,
+    holdExpiresAt: result.holdExpiresAt,
+  });
 }

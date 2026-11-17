@@ -104,4 +104,13 @@ describe("checkout failures", () => {
     expect(container.textContent).toContain("Payment confirmed");
   });
 
+
+  it("opens only the Maya sandbox hosted checkout URL", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: { provider: "maya", checkoutUrl: "https://payments-web-sandbox.paymaya.com/checkout/1" } }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const button = [...container.querySelectorAll("button")].find((element) => element.textContent?.includes("Continue to payment"));
+    await act(async () => button!.click());
+    expect(container.querySelector('a[href="https://payments-web-sandbox.paymaya.com/checkout/1"]')).not.toBeNull();
+  });
+
 });

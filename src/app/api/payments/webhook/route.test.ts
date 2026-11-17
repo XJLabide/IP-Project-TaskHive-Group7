@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, createSign, generateKeyPairSync } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { prismaMock, txMock } = vi.hoisted(() => {
@@ -67,6 +67,31 @@ describe("payment webhook", () => {
     const response = await POST(new Request("https://example.com/api/payments/webhook", { method: "POST", body, headers: { "stripe-signature": `t=${Math.floor(Date.now() / 1000)},v1=invalid` } }));
     expect(response.status).toBe(400);
     expect(prismaMock.payment.findFirst).not.toHaveBeenCalled();
+  });
+
+
+  it("accepts a Maya sandbox signature and applies the matching payment event", async () => {
+    vi.stubEnv("PAYMENT_PROVIDER", "maya");
+    vi.stubEnv("MAYA_MODE", "sandbox");
+    vi.stubEnv("MAYA_PUBLIC_API_KEY", "pk-test");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const publicPem = publicKey.export({ type: "spki", format: "pem" }).toString();
+    vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_1", publicPem);
+    vi.stubEnv("MAYA_WEBHOOK_PUBLIC_KEY_2", publicPem);
+    const payload = { id: "payment_1", status: "PAYMENT_SUCCESS", isPaid: true, amount: "10", currency: "PHP", updatedAt: new Date().toISOString() };
+    const flattened = Object.entries(payload).map(([key, value]) => `${key}=${value}`).sort().join("&");
+    const nonce = "webhook_nonce";
+    const signer = createSign("RSA-SHA256");
+    signer.update(`${flattened}&nonce=${nonce}`);
+    signer.end();
+    const signature = signer.sign(privateKey).toString("hex");
+    const response = await POST(new Request("https://preview.example/api/payments/webhook", {
+      method: "POST", body: JSON.stringify(payload),
+      headers: { "x-maya-webhook-timestamp": String(Date.now()), "x-maya-webhook-signature": `nonce=${nonce},v1=${signature}` },
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ data: { received: true, outcome: "activated" } });
   });
 
 });

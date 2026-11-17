@@ -2,11 +2,11 @@
 
 Production must use a configured provider; the unsigned fake provider is disabled in production. The checkout page is designed to send only a task ID to TaskHive before opening the provider's hosted checkout. A return from checkout is not payment confirmation: only a verified provider callback can activate an assignment.
 
-Checkout creation is currently disabled until concurrent checkout attempts and unmatched callbacks are handled safely (issue #59). The hosted checkout UI and provider adapters must remain unavailable for real payments until that work and the sandbox verification below are complete.
+Maya sandbox checkout is enabled only for local development and Vercel Preview. Production checkout remains disabled. The concurrent-checkout race in issue #59 is still unresolved, so use one checkout attempt at a time and disposable test tasks; do not treat this sandbox flow as ready for live payments.
 
-Before enabling payments, use a dedicated provider test account, test credentials, a non-production database, and disposable test tasks. Configure the selected provider's test secret and webhook signing secret (`PAYMENT_PROVIDER` and the corresponding `STRIPE_*` or `PAYMONGO_*` variables). Configure the provider's test webhook to deliver to `/api/payments/webhook`; local testing requires a provider-supported way to forward that webhook to the app. Never put real card details or secrets in fixtures, logs, or Git.
+For Maya sandbox, the shared public test key is available in Maya's Developer Hub; no business signup is needed to try the sandbox. Configure `PAYMENT_PROVIDER=maya`, `MAYA_MODE=sandbox`, `MAYA_PUBLIC_API_KEY`, and both Maya sandbox webhook public keys as `MAYA_WEBHOOK_PUBLIC_KEY_1` and `_2`. Keep them in an untracked local env file or Vercel Preview variables. Use a non-production database and disposable test tasks. Register the preview HTTPS callback at `/api/payments/webhook`; local testing requires a secure webhook forwarder. Never put private keys or real payment credentials in fixtures, logs, or Git.
 
-For each provider before enabling it:
+For Maya sandbox, verify:
 
 1. Create a task and a pending-payment assignment as the Poster. Start checkout and confirm that the hosted URL belongs to the selected provider and no payment fields are collected by TaskHive.
 2. Complete payment using only the provider's documented test method. Verify that the assignment remains pending until an authentic successful webhook is processed, then becomes active exactly once.
@@ -14,4 +14,4 @@ For each provider before enabling it:
 4. Redeliver the same successful webhook and verify that it does not activate the assignment twice or create an additional payout. Send an invalid signature and verify it is rejected.
 5. Check the provider dashboard, TaskHive's payment and event records, and callback delivery logs for agreement. Exercise delayed and out-of-order callbacks before production use.
 
-The repository tests use mocked gateway clients; they do not replace these sandbox checks. See [Stripe's hosted Checkout documentation](https://docs.stripe.com/payments/checkout) and [PayMongo's Checkout Session reference](https://docs.paymongo.com/reference/checkout-session-resource) for the provider's current test setup.
+The repository tests use mocked gateway clients; they do not replace these sandbox checks. Maya documents shared sandbox keys and test cards in [About Maya Checkout](https://developers.maya.ph/reference/about-maya-checkout), the [Create Checkout API](https://developers.maya.ph/reference/createv1checkout), and [Webhook Security](https://developers.maya.ph/reference/webhook-security).

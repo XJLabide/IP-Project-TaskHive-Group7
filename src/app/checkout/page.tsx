@@ -58,7 +58,9 @@ function TaskCheckout({ taskId, paymentReturn }: { taskId: string; paymentReturn
         throw new Error("Invalid checkout response");
       }
       const url = new URL(data.checkoutUrl);
-      const expectedHost = data.provider === "stripe" ? "checkout.stripe.com" : data.provider === "paymongo" ? "checkout.paymongo.com" : null;
+      const expectedHost = data.provider === "stripe" ? "checkout.stripe.com"
+        : data.provider === "paymongo" ? "checkout.paymongo.com"
+        : data.provider === "maya" ? "payments-web-sandbox.paymaya.com" : null;
       if (url.protocol !== "https:" || !expectedHost || url.hostname !== expectedHost || url.username || url.password || url.port) {
         throw new Error("Invalid checkout URL");
       }
