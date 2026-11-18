@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import {
   buildNotificationCreateData,
@@ -28,6 +29,7 @@ export type PaymentFailureCode =
   | "already_paid"
   | "not_pending_payment"
   | "provider_error"
+  | "reconciliation_required"
   | "invalid_event";
 
 export type PaymentFailure = {
@@ -68,7 +70,8 @@ export type EventOutcome =
   | "refunded"
   | "ignored"
   | "duplicate"
-  | "late";
+  | "late"
+  | "pending_reconciliation";
 
 export type ProviderEventResult =
   | {
@@ -308,8 +311,6 @@ export async function startCheckout(input: {
     where: { taskId: task.id },
     update: {
       provider: provider.name,
-      status: "CHECKOUT_STARTED",
-      attemptCount: { increment: 1 },
       amountCents,
       platformFeeCents: fee,
     },
@@ -317,8 +318,8 @@ export async function startCheckout(input: {
       taskId: task.id,
       posterId: input.posterId,
       provider: provider.name,
-      status: "CHECKOUT_STARTED",
-      attemptCount: 1,
+      status: "UNPAID",
+      attemptCount: 0,
       amountCents,
       platformFeeCents: fee,
       currency: currencyOrDefault(task.currency),
@@ -326,12 +327,92 @@ export async function startCheckout(input: {
     select: { id: true },
   });
 
+  let attempt = await prisma.paymentAttempt.findFirst({
+    where: { paymentId: payment.id, status: { in: ["CREATING", "CHECKOUT_STARTED", "RECONCILIATION_REQUIRED"] } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (attempt?.status === "RECONCILIATION_REQUIRED") {
+    return failure(
+      "reconciliation_required",
+      "Checkout may have been created by the provider. Verify its dashboard before retrying.",
+    );
+  }
+
+  if (!attempt) {
+    try {
+      attempt = await prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            provider: provider.name,
+            status: "CHECKOUT_STARTED",
+            attemptCount: { increment: 1 },
+          },
+        });
+        return tx.paymentAttempt.create({
+          data: {
+            paymentId: payment.id,
+            provider: provider.name,
+            idempotencyKey: randomUUID(),
+            amountCents,
+            status: "CREATING",
+          },
+        });
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      attempt = await prisma.paymentAttempt.findFirst({
+        where: { paymentId: payment.id, status: { in: ["CREATING", "CHECKOUT_STARTED", "RECONCILIATION_REQUIRED"] } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!attempt) throw error;
+      if (attempt.status === "RECONCILIATION_REQUIRED") {
+        return failure(
+          "reconciliation_required",
+          "Checkout may have been created by the provider. Verify its dashboard before retrying.",
+        );
+      }
+    }
+  }
+
+  if (attempt.checkoutUrl && attempt.providerCheckoutId) {
+    return {
+      ok: true,
+      paymentId: payment.id,
+      provider: attempt.provider,
+      checkoutUrl: attempt.checkoutUrl,
+      amountCents: attempt.amountCents,
+      platformFeeCents: platformFeeCents(attempt.amountCents),
+      payoutCents: attempt.amountCents - platformFeeCents(attempt.amountCents),
+      holdExpiresAt: assignment.holdExpiresAt ?? now,
+    };
+  }
+
+  if (!provider.checkoutIdempotent) {
+    const claimed = await prisma.paymentAttempt.updateMany({
+      where: { id: attempt.id, status: "CREATING", providerCallStarted: false },
+      data: { providerCallStarted: true },
+    });
+    if (claimed.count === 0) {
+      await prisma.paymentAttempt.updateMany({
+        where: { id: attempt.id, status: "CREATING", providerCallStarted: true },
+        data: { status: "RECONCILIATION_REQUIRED" },
+      });
+      return failure(
+        "reconciliation_required",
+        "Checkout may already be in progress with the provider. Verify its dashboard before retrying.",
+      );
+    }
+  }
+
   const baseUrl = input.baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   let session;
   try {
     session = await provider.createCheckout({
       taskId: task.id,
       paymentId: payment.id,
+      idempotencyKey: attempt.idempotencyKey,
       amountCents,
       currency: currencyOrDefault(task.currency),
       description: task.title,
@@ -339,20 +420,41 @@ export async function startCheckout(input: {
       cancelUrl: `${baseUrl}/checkout?taskId=${encodeURIComponent(task.id)}&payment=cancelled`,
     });
   } catch {
-    await prisma.payment.updateMany({
-      where: { id: payment.id, status: "CHECKOUT_STARTED" },
-      data: { status: "UNPAID" },
-    });
+    if (!provider.checkoutIdempotent) {
+      await prisma.paymentAttempt.update({
+        where: { id: attempt.id },
+        data: { status: "RECONCILIATION_REQUIRED" },
+      });
+      return failure(
+        "reconciliation_required",
+        "Checkout may have been created by the provider. Verify its dashboard before retrying.",
+      );
+    }
+    // The provider may have accepted the request before its response timed
+    // out. Keep this attempt open so a retry reuses its persisted key.
     return failure("provider_error", "The payment provider could not start checkout.");
   }
 
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      providerCheckoutId: session.reference,
-      checkoutUrl: session.url,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.paymentAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        providerCheckoutId: session.reference,
+        checkoutUrl: session.url,
+        status: "CHECKOUT_STARTED",
+      },
+    });
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        provider: session.provider,
+        providerCheckoutId: session.reference,
+        checkoutUrl: session.url,
+      },
+    });
   });
+
+  await reconcileUnmatchedProviderEvents(provider.name, session.reference, now);
 
   return {
     ok: true,
@@ -364,6 +466,31 @@ export async function startCheckout(input: {
     payoutCents: amountCents - fee,
     holdExpiresAt: assignment.holdExpiresAt ?? now,
   };
+}
+
+/*
+ * Provider references are not known until checkout creation returns. Webhooks
+ * received before that point remain unprocessed and are replayed when the
+ * reference is attached to its durable attempt.
+ */
+async function reconcileUnmatchedProviderEvents(provider: string, reference: string, now: Date) {
+  const events = await prisma.paymentEvent.findMany({
+    where: { provider, providerReference: reference, paymentId: null, processedAt: null },
+    select: { eventId: true, type: true, providerReference: true, amountCents: true },
+  });
+  for (const event of events) {
+    if (
+      event.providerReference &&
+      (event.type === "succeeded" || event.type === "failed" || event.type === "refunded" || event.type === "pending")
+    ) {
+      await applyProviderEvent({
+        id: event.eventId,
+        type: event.type,
+        reference: event.providerReference,
+        amountCents: event.amountCents,
+      }, provider, now);
+    }
+  }
 }
 
 type EventPayment = {
@@ -472,19 +599,28 @@ export async function handleProviderEvent(input: {
 }
 
 async function applyProviderEvent(event: ProviderEvent, providerName: string, now: Date): Promise<ProviderEventResult> {
+  let attempt;
   let payment;
   try {
-    payment = await prisma.payment.findFirst({
+    attempt = await prisma.paymentAttempt.findFirst({
       where: { provider: providerName, providerCheckoutId: event.reference },
       select: {
         id: true,
-        taskId: true,
-        posterId: true,
-        amountCents: true,
-        platformFeeCents: true,
+        paymentId: true,
         status: true,
+        payment: {
+          select: {
+            id: true,
+            taskId: true,
+            posterId: true,
+            amountCents: true,
+            platformFeeCents: true,
+            status: true,
+          },
+        },
       },
     });
+    payment = attempt?.payment;
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       return { ok: true, outcome: event.type === "succeeded" ? "activated" : "failed" };
@@ -494,28 +630,55 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
 
   try {
     const eventOutcome = await prisma.$transaction(async (tx) => {
-      const recorded = await tx.paymentEvent.create({
-        data: {
+      const recorded = await tx.paymentEvent.upsert({
+        where: { provider_eventId: { provider: providerName, eventId: event.id } },
+        create: {
           provider: providerName,
           eventId: event.id,
           type: event.type,
           providerReference: event.reference,
+          amountCents: event.amountCents,
           paymentId: payment?.id ?? null,
+          attemptId: attempt?.id ?? null,
         },
-        select: { id: true },
+        update: {},
+        select: { id: true, processedAt: true },
       });
+
+      if (recorded.processedAt) return { outcome: "duplicate" as const, notificationId: undefined };
 
       let result: EventOutcome;
       let notificationId: string | undefined;
 
       if (!payment) {
-        result = "ignored";
+        result = "pending_reconciliation";
       } else if (event.type === "pending") {
         result = "ignored";
       } else if (event.type === "succeeded") {
-        const applied = await applySucceededEvent(tx, event, payment, now);
-        result = applied.outcome;
-        notificationId = "notificationId" in applied ? applied.notificationId : undefined;
+        if (attempt?.status === "SUCCEEDED") {
+          result = "duplicate";
+        } else {
+          const applied = await applySucceededEvent(tx, event, payment, now);
+          result = applied.outcome;
+          if (result === "duplicate") {
+            const currentAttempt = attempt
+              ? await tx.paymentAttempt.findUnique({
+                  where: { id: attempt.id },
+                  select: { status: true },
+                })
+              : null;
+            if (currentAttempt?.status !== "SUCCEEDED") {
+              const currentPayment = await tx.payment.findUnique({
+                where: { id: payment.id },
+                select: { status: true },
+              });
+              if (currentPayment?.status && currentPayment.status !== "UNPAID" && currentPayment.status !== "CHECKOUT_STARTED") {
+                result = "late";
+              }
+            }
+          }
+          notificationId = "notificationId" in applied ? applied.notificationId : undefined;
+        }
       } else if (event.type === "failed") {
         await tx.payment.updateMany({
           where: {
@@ -536,10 +699,29 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
         result = refunded.count > 0 ? "refunded" : "ignored";
       }
 
-      await tx.paymentEvent.update({
-        where: { id: recorded.id },
-        data: { processedAt: now },
-      });
+      if (payment) {
+        await tx.paymentEvent.update({
+          where: { id: recorded.id },
+          data: { processedAt: now, paymentId: payment.id, attemptId: attempt?.id ?? null },
+        });
+      }
+
+      if (attempt && (result === "activated" || result === "late")) {
+        await tx.paymentAttempt.update({
+          where: { id: attempt.id },
+          data: { status: result === "activated" ? "SUCCEEDED" : "LATE" },
+        });
+      } else if (attempt && event.type === "failed") {
+        await tx.paymentAttempt.updateMany({
+          where: { id: attempt.id, status: { in: ["CREATING", "CHECKOUT_STARTED"] } },
+          data: { status: "FAILED" },
+        });
+      } else if (attempt && result === "refunded") {
+        await tx.paymentAttempt.update({
+          where: { id: attempt.id },
+          data: { status: "REFUNDED" },
+        });
+      }
 
       return { outcome: result, notificationId };
     });

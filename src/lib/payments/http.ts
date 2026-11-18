@@ -10,6 +10,7 @@ const statuses: Record<string, number> = {
   hold_expired: 409,
   already_paid: 409,
   provider_error: 502,
+  reconciliation_required: 409,
   invalid_event: 400,
 };
 

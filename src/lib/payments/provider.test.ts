@@ -20,6 +20,7 @@ describe("fake provider", () => {
     const checkout = await provider.createCheckout({
       taskId: "task_1",
       paymentId: "payment_1",
+      idempotencyKey: "attempt_1",
       amountCents: 45000,
       currency: "PHP",
       description: "Pick up groceries",
@@ -27,16 +28,16 @@ describe("fake provider", () => {
       cancelUrl: "https://example.test/cancel",
     });
 
-    expect(checkout).toMatchObject({ provider: "fake", reference: "fake_cs_payment_1" });
+    expect(checkout).toMatchObject({ provider: "fake", reference: "fake_cs_attempt_1" });
 
     const event = await provider.parseWebhook(
       new Headers(),
-      JSON.stringify({ id: "evt_1", type: "succeeded", reference: "fake_cs_payment_1" }),
+      JSON.stringify({ id: "evt_1", type: "succeeded", reference: "fake_cs_attempt_1" }),
     );
     expect(event).toEqual({
       id: "evt_1",
       type: "succeeded",
-      reference: "fake_cs_payment_1",
+      reference: "fake_cs_attempt_1",
       amountCents: null,
     });
   });
@@ -58,14 +59,14 @@ describe("Maya sandbox provider", () => {
     vi.stubGlobal("fetch", fetchMock);
     const provider = mayaProvider({ publicApiKey: "pk-test", mode: "sandbox" });
     const result = await provider.createCheckout({
-      taskId: "task_1", paymentId: "payment_1", amountCents: 12345, currency: "PHP",
+      taskId: "task_1", paymentId: "payment_1", idempotencyKey: "attempt_1", amountCents: 12345, currency: "PHP",
       description: "Test task", successUrl: "https://taskhive.test/checkout?payment=success",
       cancelUrl: "https://taskhive.test/checkout?payment=cancelled",
     });
     expect(result).toEqual({ provider: "maya", reference: "maya_checkout_1", url: "https://payments-web-sandbox.maya.ph/v2/checkout?id=maya_checkout_1" });
     const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(request.method).toBe("POST");
-    expect(JSON.parse(String(request.body))).toMatchObject({ totalAmount: { value: 123.45, currency: "PHP" }, requestReferenceNumber: "payment_1" });
+    expect(JSON.parse(String(request.body))).toMatchObject({ totalAmount: { value: 123.45, currency: "PHP" }, requestReferenceNumber: "attempt_1" });
   });
 
   it("retrieves Maya payment status from its authenticated sandbox endpoint", async () => {
@@ -219,6 +220,7 @@ describe("Stripe provider", () => {
     const checkout = await provider.createCheckout({
       taskId: "task_1",
       paymentId: "payment_1",
+      idempotencyKey: "attempt_1",
       amountCents: 50000,
       currency: "PHP",
       description: "Repair wooden gate",
@@ -246,6 +248,7 @@ describe("Stripe provider", () => {
           }),
         ],
       }),
+      { idempotencyKey: "attempt_1" },
     );
   });
 

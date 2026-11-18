@@ -4,6 +4,7 @@ import Stripe from "stripe";
 export type CheckoutInput = {
   taskId: string;
   paymentId: string;
+  idempotencyKey: string;
   amountCents: number;
   currency: string;
   description: string;
@@ -29,6 +30,8 @@ export type ProviderEvent = {
 
 export interface PaymentProvider {
   name: string;
+  /** Whether repeated checkout calls with the same key are provider-deduplicated. */
+  checkoutIdempotent: boolean;
   createCheckout(input: CheckoutInput): Promise<CheckoutSession>;
   parseWebhook(headers: Headers, rawBody: string): Promise<ProviderEvent | null>;
   getPaymentStatus?(reference: string): Promise<ProviderEvent | null>;
@@ -41,10 +44,11 @@ export interface PaymentProvider {
 export function fakeProvider(): PaymentProvider {
   return {
     name: "fake",
+    checkoutIdempotent: true,
     async createCheckout(input) {
       return {
         provider: "fake",
-        reference: `fake_cs_${input.paymentId}`,
+        reference: `fake_cs_${input.idempotencyKey}`,
         url: `/preview?checkout=${input.paymentId}`,
       };
     },
@@ -111,6 +115,7 @@ export function mayaProvider(input: {
 
   return {
     name: "maya",
+    checkoutIdempotent: false,
     async createCheckout(checkout) {
       const response = await fetch(`${baseUrl}/checkout/v1/checkouts`, {
         method: "POST",
@@ -125,7 +130,7 @@ export function mayaProvider(input: {
             failure: checkout.cancelUrl,
             cancel: checkout.cancelUrl,
           },
-          requestReferenceNumber: checkout.paymentId,
+          requestReferenceNumber: checkout.idempotencyKey,
           metadata: { taskId: checkout.taskId, paymentId: checkout.paymentId },
         }),
       });
@@ -230,18 +235,20 @@ export function paymongoProvider(input: {
 }): PaymentProvider {
   return {
     name: "paymongo",
+    checkoutIdempotent: true,
     async createCheckout(checkout) {
       const response = await fetch(`${paymongoApi}/checkout_sessions`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           authorization: `Basic ${Buffer.from(`${input.secretKey}:`).toString("base64")}`,
+          "Idempotency-Key": checkout.idempotencyKey,
         },
         body: JSON.stringify({
           data: {
             attributes: {
               description: checkout.description,
-              reference_number: checkout.paymentId,
+              reference_number: checkout.idempotencyKey,
               line_items: [
                 {
                   currency: checkout.currency,
@@ -364,6 +371,7 @@ export function stripeProvider(input: {
 
   return {
     name: "stripe",
+    checkoutIdempotent: true,
     async createCheckout(checkout) {
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -387,7 +395,7 @@ export function stripeProvider(input: {
           taskId: checkout.taskId,
           paymentId: checkout.paymentId,
         },
-      });
+      }, { idempotencyKey: checkout.idempotencyKey });
 
       const reference = session.id;
       const url = session.url ?? checkout.successUrl;
@@ -504,6 +512,7 @@ export function verifyPaymongoSignature(
 function disabledProvider(): PaymentProvider {
   return {
     name: "disabled",
+    checkoutIdempotent: false,
     async createCheckout() {
       throw new Error("No payment provider is configured for production.");
     },

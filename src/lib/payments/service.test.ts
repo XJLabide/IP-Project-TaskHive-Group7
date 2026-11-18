@@ -16,9 +16,16 @@ const {
       updateMany: vi.fn(),
       findUnique: vi.fn(),
     },
-    payment: { updateMany: vi.fn() },
+    payment: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    paymentAttempt: {
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     payout: { upsert: vi.fn() },
-    paymentEvent: { create: vi.fn(), update: vi.fn() },
+    paymentEvent: { create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     notification: { upsert: vi.fn() },
   };
 
@@ -34,7 +41,13 @@ const {
       update: vi.fn(),
       updateMany: vi.fn(),
     },
-    paymentEvent: { create: vi.fn() },
+    paymentAttempt: {
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    paymentEvent: { findMany: vi.fn() },
     payout: { upsert: vi.fn() },
     $transaction: vi.fn(),
   };
@@ -106,6 +119,20 @@ beforeEach(() => {
   prismaMock.payment.findFirst.mockResolvedValue(null);
   prismaMock.payment.upsert.mockResolvedValue({ id: "payment_1" });
   prismaMock.payment.update.mockResolvedValue({});
+  prismaMock.paymentAttempt.findFirst.mockResolvedValue(null);
+  prismaMock.paymentAttempt.create.mockResolvedValue({
+    id: "attempt_1",
+    paymentId: "payment_1",
+    provider: "fake",
+    idempotencyKey: "taskhive:payment_1:key_1",
+    providerCheckoutId: null,
+    checkoutUrl: null,
+    amountCents: 45000,
+    status: "CREATING",
+  });
+  prismaMock.paymentAttempt.update.mockResolvedValue({});
+  prismaMock.paymentAttempt.updateMany.mockResolvedValue({ count: 1 });
+  prismaMock.paymentEvent.findMany.mockResolvedValue([]);
 
   txMock.task.updateMany.mockResolvedValue({ count: 1 });
   txMock.bid.updateMany.mockResolvedValue({ count: 1 });
@@ -124,8 +151,28 @@ beforeEach(() => {
     holdExpiresAt,
   });
   txMock.payment.updateMany.mockResolvedValue({ count: 1 });
+  txMock.payment.update.mockResolvedValue({});
+  txMock.payment.findUnique.mockResolvedValue({ status: "CHECKOUT_STARTED" });
+  txMock.paymentAttempt.create.mockResolvedValue({
+    id: "attempt_1",
+    paymentId: "payment_1",
+    provider: "fake",
+    idempotencyKey: "taskhive:payment_1:key_1",
+    providerCheckoutId: null,
+    checkoutUrl: null,
+    amountCents: 45000,
+    status: "CREATING",
+  });
+  txMock.paymentAttempt.update.mockResolvedValue({});
+  txMock.paymentAttempt.updateMany.mockResolvedValue({ count: 1 });
+  txMock.paymentAttempt.findUnique.mockResolvedValue({ status: "CHECKOUT_STARTED" });
   txMock.payout.upsert.mockResolvedValue({});
   txMock.paymentEvent.create.mockResolvedValue({ id: "event_1" });
+  txMock.paymentEvent.upsert.mockImplementation(async (input: { create: Record<string, unknown> }) => ({
+    id: "event_1",
+    processedAt: null,
+    ...input.create,
+  }));
   txMock.paymentEvent.update.mockResolvedValue({});
   txMock.notification.upsert.mockResolvedValue({ id: "notification_1" });
   queueNotificationEmailMock.mockResolvedValue(true);
@@ -234,16 +281,222 @@ describe("starting checkout", () => {
         create: expect.objectContaining({
           amountCents: 45000,
           platformFeeCents: 2250,
-          status: "CHECKOUT_STARTED",
-          attemptCount: 1,
+          status: "UNPAID",
+          attemptCount: 0,
         }),
       }),
     );
-    expect(prismaMock.payment.update).toHaveBeenCalledWith(
+    expect(txMock.payment.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ providerCheckoutId: "fake_cs_payment_1" }),
+        data: expect.objectContaining({ providerCheckoutId: "fake_cs_taskhive:payment_1:key_1" }),
       }),
     );
+    expect(txMock.paymentAttempt.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          paymentId: "payment_1",
+          provider: "fake",
+          idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/i),
+          status: "CREATING",
+        }),
+      }),
+    );
+  });
+
+  it("shares one persisted idempotency key across concurrent checkout requests", async () => {
+    const attempt = {
+      id: "attempt_1",
+      paymentId: "payment_1",
+      provider: "fake",
+      idempotencyKey: "taskhive:payment_1:stable-key",
+      providerCheckoutId: null,
+      checkoutUrl: null,
+      amountCents: 45000,
+      status: "CREATING",
+    };
+    prismaMock.paymentAttempt.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(attempt);
+    txMock.paymentAttempt.create
+      .mockResolvedValueOnce(attempt)
+      .mockRejectedValueOnce({ code: "P2002" });
+    const provider = fakeProvider();
+    const createCheckout = vi.spyOn(provider, "createCheckout");
+
+    const results = await Promise.all([
+      startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }),
+      startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }),
+    ]);
+
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(createCheckout).toHaveBeenCalledTimes(2);
+    expect(createCheckout.mock.calls.map(([input]) => input.idempotencyKey)).toEqual([
+      "taskhive:payment_1:stable-key",
+      "taskhive:payment_1:stable-key",
+    ]);
+  });
+
+  it("reuses the attempt key after an ambiguous provider timeout", async () => {
+    const attempt = {
+      id: "attempt_1",
+      paymentId: "payment_1",
+      provider: "fake",
+      idempotencyKey: "taskhive:payment_1:retry-key",
+      providerCheckoutId: null,
+      checkoutUrl: null,
+      amountCents: 45000,
+      status: "CREATING",
+    };
+    prismaMock.paymentAttempt.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(attempt);
+    txMock.paymentAttempt.create.mockResolvedValueOnce(attempt);
+    const provider = fakeProvider();
+    const createCheckout = vi.spyOn(provider, "createCheckout")
+      .mockRejectedValueOnce(new Error("response timed out"))
+      .mockResolvedValueOnce({
+        provider: "fake",
+        reference: "fake_cs_taskhive:payment_1:retry-key",
+        url: "/preview?checkout=payment_1",
+      });
+
+    expect(await startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }))
+      .toMatchObject({ ok: false, code: "provider_error" });
+    expect(await startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }))
+      .toMatchObject({ ok: true, checkoutUrl: "/preview?checkout=payment_1" });
+    expect(createCheckout.mock.calls.map(([input]) => input.idempotencyKey)).toEqual([
+      "taskhive:payment_1:retry-key",
+      "taskhive:payment_1:retry-key",
+    ]);
+  });
+
+  it("requires reconciliation instead of retrying an ambiguous non-idempotent provider request", async () => {
+    const attempt = {
+      id: "attempt_1",
+      paymentId: "payment_1",
+      provider: "maya",
+      idempotencyKey: "a-provider-reference",
+      providerCheckoutId: null,
+      checkoutUrl: null,
+      amountCents: 45000,
+      status: "CREATING",
+    };
+    prismaMock.paymentAttempt.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ...attempt, status: "RECONCILIATION_REQUIRED" });
+    txMock.paymentAttempt.create.mockResolvedValueOnce(attempt);
+    const provider = fakeProvider();
+    provider.name = "maya";
+    provider.checkoutIdempotent = false;
+    const createCheckout = vi.spyOn(provider, "createCheckout").mockRejectedValue(new Error("timeout"));
+
+    expect(await startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }))
+      .toMatchObject({ ok: false, code: "reconciliation_required" });
+    expect(prismaMock.paymentAttempt.update).toHaveBeenCalledWith({
+      where: { id: "attempt_1" },
+      data: { status: "RECONCILIATION_REQUIRED" },
+    });
+    expect(await startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }))
+      .toMatchObject({ ok: false, code: "reconciliation_required" });
+    expect(createCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  it("claims a non-idempotent provider call once across concurrent requests", async () => {
+    const attempt = {
+      id: "attempt_1",
+      paymentId: "payment_1",
+      provider: "maya",
+      idempotencyKey: "a-provider-reference",
+      providerCheckoutId: null,
+      checkoutUrl: null,
+      amountCents: 45000,
+      status: "CREATING",
+      providerCallStarted: false,
+    };
+    prismaMock.paymentAttempt.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(attempt);
+    txMock.paymentAttempt.create
+      .mockResolvedValueOnce(attempt)
+      .mockRejectedValueOnce({ code: "P2002" });
+    prismaMock.paymentAttempt.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+    const provider = fakeProvider();
+    provider.name = "maya";
+    provider.checkoutIdempotent = false;
+    const createCheckout = vi.spyOn(provider, "createCheckout");
+
+    const results = await Promise.all([
+      startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }),
+      startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider }),
+    ]);
+
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.filter((result) => !result.ok && result.code === "reconciliation_required")).toHaveLength(1);
+    expect(createCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles a successful webhook that arrives before checkout creation returns", async () => {
+    const provider = fakeProvider();
+    provider.createCheckout = async (checkout) => {
+      const callback = await handleProviderEvent({
+        headers: new Headers(),
+        rawBody: JSON.stringify({
+          id: "evt_early",
+          type: "succeeded",
+          reference: `fake_cs_${checkout.idempotencyKey}`,
+        }),
+        now,
+        provider,
+      });
+      expect(callback).toMatchObject({ ok: true });
+      return {
+        provider: provider.name,
+        reference: `fake_cs_${checkout.idempotencyKey}`,
+        url: `/preview?checkout=${checkout.paymentId}`,
+      };
+    };
+    prismaMock.paymentAttempt.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "attempt_1",
+        paymentId: "payment_1",
+        provider: "fake",
+        idempotencyKey: "taskhive:payment_1:key_1",
+        providerCheckoutId: "fake_cs_taskhive:payment_1:key_1",
+        checkoutUrl: "/preview?checkout=payment_1",
+        amountCents: 45000,
+        status: "CHECKOUT_STARTED",
+        payment: {
+          id: "payment_1",
+          taskId: "task_1",
+          posterId: "poster_1",
+          amountCents: 45000,
+          platformFeeCents: 2250,
+          status: "CHECKOUT_STARTED",
+        },
+      });
+    prismaMock.paymentEvent.findMany.mockResolvedValue([{
+      eventId: "evt_early",
+      type: "succeeded",
+      providerReference: "fake_cs_taskhive:payment_1:key_1",
+      amountCents: null,
+    }]);
+
+    await startCheckout({ posterId: "poster_1", taskId: "task_1", now, provider });
+
+    expect(txMock.payment.updateMany).toHaveBeenCalledWith({
+      where: { id: "payment_1", status: { in: ["UNPAID", "CHECKOUT_STARTED"] } },
+      data: { status: "PAID_PENDING_COMPLETION" },
+    });
+    expect(txMock.assignment.updateMany).toHaveBeenCalledWith({
+      where: { taskId: "task_1", status: "PENDING_PAYMENT" },
+      data: { status: "ACTIVE", activatedAt: now },
+    });
   });
 
   it("uses the accepted bid amount on bidding tasks", async () => {
@@ -309,7 +562,12 @@ describe("provider callbacks", () => {
   }
 
   beforeEach(() => {
-    prismaMock.payment.findFirst.mockResolvedValue(payment);
+    prismaMock.paymentAttempt.findFirst.mockResolvedValue({
+      id: "attempt_1",
+      paymentId: payment.id,
+      status: "CHECKOUT_STARTED",
+      payment,
+    });
   });
 
   it("activates the assignment and records the net payout once", async () => {
@@ -388,8 +646,43 @@ describe("provider callbacks", () => {
     expect(txMock.payout.upsert).not.toHaveBeenCalled();
   });
 
+  it("flags a second successful checkout attempt after another attempt paid", async () => {
+    txMock.payment.updateMany.mockResolvedValue({ count: 0 });
+    txMock.payment.findUnique.mockResolvedValue({ status: "PAID_PENDING_COMPLETION" });
+
+    const result = await fakeEvent({
+      id: "evt_second_capture",
+      type: "succeeded",
+      reference: "fake_cs_attempt_2",
+    });
+
+    expect(result).toEqual({ ok: true, outcome: "late" });
+    expect(txMock.paymentAttempt.update).toHaveBeenCalledWith({
+      where: { id: "attempt_1" },
+      data: { status: "LATE" },
+    });
+  });
+
+  it("keeps a duplicate success event for the same attempt out of LATE", async () => {
+    txMock.payment.updateMany.mockResolvedValue({ count: 0 });
+    txMock.paymentAttempt.findUnique.mockResolvedValue({ status: "SUCCEEDED" });
+    txMock.payment.findUnique.mockResolvedValue({ status: "PAID_PENDING_COMPLETION" });
+
+    const result = await fakeEvent({
+      id: "evt_same_attempt_again",
+      type: "succeeded",
+      reference: "fake_cs_attempt_1",
+    });
+
+    expect(result).toEqual({ ok: true, outcome: "duplicate" });
+    expect(txMock.paymentAttempt.update).not.toHaveBeenCalledWith({
+      where: { id: "attempt_1" },
+      data: { status: "LATE" },
+    });
+  });
+
   it("treats a repeated event id as a duplicate", async () => {
-    txMock.paymentEvent.create.mockRejectedValue({ code: "P2002" });
+    txMock.paymentEvent.upsert.mockRejectedValue({ code: "P2002" });
 
     const result = await fakeEvent({
       id: "evt_1",
@@ -421,10 +714,10 @@ describe("provider callbacks", () => {
       await fakeEvent({ id: "evt_refund", type: "refunded", reference: "fake_cs_payment_1" }),
     ).toEqual({ ok: true, outcome: "refunded" });
 
-    prismaMock.payment.findFirst.mockResolvedValue(null);
+    prismaMock.paymentAttempt.findFirst.mockResolvedValue(null);
     expect(
       await fakeEvent({ id: "evt_unknown", type: "succeeded", reference: "cs_unknown" }),
-    ).toEqual({ ok: true, outcome: "ignored" });
+    ).toEqual({ ok: true, outcome: "pending_reconciliation" });
   });
 
   it("ignores a refund for a payment that was never captured", async () => {

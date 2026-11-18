@@ -3,8 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { prismaMock, txMock } = vi.hoisted(() => {
   const txMock = {
-    paymentEvent: { create: vi.fn().mockResolvedValue({ id: "event_record" }), update: vi.fn().mockResolvedValue({}) },
+    paymentEvent: {
+      upsert: vi.fn(async (input: { create: Record<string, unknown> }) => ({ id: "event_record", processedAt: null, ...input.create })),
+      update: vi.fn().mockResolvedValue({}),
+    },
     payment: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    paymentAttempt: { update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     assignment: { findUnique: vi.fn().mockResolvedValue({ id: "assignment_1", taskerId: "tasker_1", status: "PENDING_PAYMENT", holdExpiresAt: new Date("2100-01-01") }), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     task: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     payout: { upsert: vi.fn().mockResolvedValue({}) },
@@ -13,7 +17,10 @@ const { prismaMock, txMock } = vi.hoisted(() => {
   return {
     txMock,
     prismaMock: {
-      payment: { findFirst: vi.fn().mockResolvedValue({ id: "payment_1", taskId: "task_1", posterId: "poster_1", amountCents: 1000, platformFeeCents: 50, status: "CHECKOUT_STARTED" }) },
+      paymentAttempt: { findFirst: vi.fn().mockResolvedValue({
+        id: "attempt_1", paymentId: "payment_1", provider: "stripe", providerCheckoutId: "cs_1", status: "CHECKOUT_STARTED",
+        payment: { id: "payment_1", taskId: "task_1", posterId: "poster_1", amountCents: 1000, platformFeeCents: 50, status: "CHECKOUT_STARTED" },
+      }) },
       $transaction: vi.fn(async (callback: (tx: typeof txMock) => unknown) => callback(txMock)),
     },
   };
@@ -53,7 +60,7 @@ describe("payment webhook", () => {
     const request = () => new Request("https://example.com/api/payments/webhook", { method: "POST", body, headers: { "stripe-signature": `t=${timestamp},v1=${signature}` } });
     const first = await POST(request());
     expect(await first.json()).toEqual({ data: { received: true, outcome: "activated" } });
-    txMock.paymentEvent.create.mockRejectedValueOnce({ code: "P2002" });
+    txMock.paymentEvent.upsert.mockRejectedValueOnce({ code: "P2002" });
     const duplicate = await POST(request());
     expect(await duplicate.json()).toEqual({ data: { received: true, outcome: "duplicate" } });
     expect(txMock.assignment.updateMany).toHaveBeenCalledTimes(1);
@@ -66,7 +73,7 @@ describe("payment webhook", () => {
     const body = JSON.stringify({ id: "evt_bad", type: "checkout.session.completed" });
     const response = await POST(new Request("https://example.com/api/payments/webhook", { method: "POST", body, headers: { "stripe-signature": `t=${Math.floor(Date.now() / 1000)},v1=invalid` } }));
     expect(response.status).toBe(400);
-    expect(prismaMock.payment.findFirst).not.toHaveBeenCalled();
+    expect(prismaMock.paymentAttempt.findFirst).not.toHaveBeenCalled();
   });
 
 

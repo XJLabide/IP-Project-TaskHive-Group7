@@ -19,9 +19,10 @@ const {
       updateMany: vi.fn(),
       findUnique: vi.fn(),
     },
-    payment: { updateMany: vi.fn() },
+    payment: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    paymentAttempt: { create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     payout: { upsert: vi.fn() },
-    paymentEvent: { create: vi.fn(), update: vi.fn() },
+    paymentEvent: { create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     notification: { upsert: vi.fn() },
   };
 
@@ -37,7 +38,8 @@ const {
       update: vi.fn(),
       updateMany: vi.fn(),
     },
-    paymentEvent: { create: vi.fn() },
+    paymentAttempt: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    paymentEvent: { create: vi.fn(), findMany: vi.fn() },
     payout: { upsert: vi.fn() },
     $transaction: vi.fn(),
   };
@@ -101,9 +103,22 @@ describe("Payment Gateway Integration - Stripe", () => {
       holdExpiresAt: new Date(now.getTime() + 86400000),
     });
     txMock.payment.updateMany.mockResolvedValue({ count: 1 });
+    txMock.payment.update.mockResolvedValue({});
+    txMock.paymentAttempt.create.mockResolvedValue({
+      id: "attempt_1", paymentId: "payment_stripe_1", provider: "stripe",
+      idempotencyKey: "attempt-key-1", providerCheckoutId: null, checkoutUrl: null,
+      amountCents: 150000, status: "CREATING",
+    });
+    txMock.paymentAttempt.update.mockResolvedValue({});
+    txMock.paymentAttempt.updateMany.mockResolvedValue({ count: 1 });
+    txMock.paymentEvent.upsert.mockImplementation(async (input: { create: Record<string, unknown> }) => ({
+      id: "event_1", processedAt: null, ...input.create,
+    }));
     txMock.payout.upsert.mockResolvedValue({});
     txMock.paymentEvent.create.mockResolvedValue({ id: "event_1" });
     txMock.paymentEvent.update.mockResolvedValue({});
+    prismaMock.paymentAttempt.findFirst.mockResolvedValue(null);
+    prismaMock.paymentEvent.findMany.mockResolvedValue([]);
     txMock.notification.upsert.mockResolvedValue({ id: "notification_1" });
     queueNotificationEmailMock.mockResolvedValue(true);
   });
@@ -143,6 +158,8 @@ describe("Payment Gateway Integration - Stripe", () => {
       provider,
     });
 
+    expect(txMock.paymentAttempt.create).toHaveBeenCalled();
+
     expect(checkoutResult.ok).toBe(true);
     if (!checkoutResult.ok) return;
 
@@ -159,16 +176,24 @@ describe("Payment Gateway Integration - Stripe", () => {
         mode: "payment",
         metadata: { taskId: "task_1", paymentId: "payment_stripe_1" },
       }),
+      { idempotencyKey: "attempt-key-1" },
     );
 
     // 3. Receive Stripe Webhook for successful payment
-    prismaMock.payment.findFirst.mockResolvedValue({
-      id: "payment_stripe_1",
-      taskId: "task_1",
-      posterId: "poster_1",
-      amountCents: 150000,
-      platformFeeCents: 7500,
+    prismaMock.paymentAttempt.findFirst.mockResolvedValue({
+      id: "attempt_1",
+      paymentId: "payment_stripe_1",
+      provider: "stripe",
+      providerCheckoutId: "cs_stripe_12345",
       status: "CHECKOUT_STARTED",
+      payment: {
+        id: "payment_stripe_1",
+        taskId: "task_1",
+        posterId: "poster_1",
+        amountCents: 150000,
+        platformFeeCents: 7500,
+        status: "CHECKOUT_STARTED",
+      },
     });
 
     txMock.assignment.findUnique.mockResolvedValue({
@@ -237,13 +262,20 @@ describe("Payment Gateway Integration - Stripe", () => {
   });
 
   it("handles payment failure webhook properly without activating assignment", async () => {
-    prismaMock.payment.findFirst.mockResolvedValue({
-      id: "payment_stripe_1",
-      taskId: "task_1",
-      posterId: "poster_1",
-      amountCents: 150000,
-      platformFeeCents: 7500,
+    prismaMock.paymentAttempt.findFirst.mockResolvedValue({
+      id: "attempt_1",
+      paymentId: "payment_stripe_1",
+      provider: "stripe",
+      providerCheckoutId: "cs_stripe_12345",
       status: "CHECKOUT_STARTED",
+      payment: {
+        id: "payment_stripe_1",
+        taskId: "task_1",
+        posterId: "poster_1",
+        amountCents: 150000,
+        platformFeeCents: 7500,
+        status: "CHECKOUT_STARTED",
+      },
     });
 
     mockStripeClient.webhooks.constructEvent.mockReturnValue({
@@ -309,9 +341,22 @@ describe("Payment Gateway Integration - PayMongo", () => {
       holdExpiresAt: new Date(now.getTime() + 86400000),
     });
     txMock.payment.updateMany.mockResolvedValue({ count: 1 });
+    txMock.payment.update.mockResolvedValue({});
+    txMock.paymentAttempt.create.mockResolvedValue({
+      id: "attempt_1", paymentId: "payment_paymongo_2", provider: "paymongo",
+      idempotencyKey: "attempt-key-paymongo", providerCheckoutId: null, checkoutUrl: null,
+      amountCents: 60000, status: "CREATING",
+    });
+    txMock.paymentAttempt.update.mockResolvedValue({});
+    txMock.paymentAttempt.updateMany.mockResolvedValue({ count: 1 });
+    txMock.paymentEvent.upsert.mockImplementation(async (input: { create: Record<string, unknown> }) => ({
+      id: "event_1", processedAt: null, ...input.create,
+    }));
     txMock.payout.upsert.mockResolvedValue({});
     txMock.paymentEvent.create.mockResolvedValue({ id: "event_1" });
     txMock.paymentEvent.update.mockResolvedValue({});
+    prismaMock.paymentAttempt.findFirst.mockResolvedValue(null);
+    prismaMock.paymentEvent.findMany.mockResolvedValue([]);
     txMock.notification.upsert.mockResolvedValue({ id: "notification_1" });
     queueNotificationEmailMock.mockResolvedValue(true);
   });
@@ -375,6 +420,7 @@ describe("Payment Gateway Integration - PayMongo", () => {
         headers: expect.objectContaining({
           "content-type": "application/json",
           authorization: expect.stringContaining("Basic "),
+          "Idempotency-Key": "attempt-key-paymongo",
         }),
       }),
     );
