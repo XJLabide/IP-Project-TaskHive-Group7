@@ -82,6 +82,16 @@ enum PaymentStatus {
   DISPUTED
 }
 
+enum PaymentAttemptStatus {
+  CREATING
+  CHECKOUT_STARTED
+  FAILED
+  SUCCEEDED
+  LATE
+  REFUNDED
+  RECONCILIATION_REQUIRED
+}
+
 /// The 24-hour payment retry hold after a Poster selects one Tasker.
 enum AssignmentStatus {
   PENDING_PAYMENT
@@ -338,8 +348,29 @@ model Payment {
   updatedAt             DateTime      @updatedAt
   task                  Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
   events                PaymentEvent[]
+  attempts              PaymentAttempt[]
 
   @@index([provider, providerCheckoutId])
+}
+
+/// A durable provider checkout request with an isolated idempotency key.
+model PaymentAttempt {
+  id                 String               @id @default(cuid())
+  paymentId          String
+  provider           String
+  idempotencyKey     String               @unique
+  providerCheckoutId String?
+  checkoutUrl        String?
+  providerCallStarted Boolean              @default(false)
+  amountCents        Int
+  status             PaymentAttemptStatus @default(CREATING)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  payment            Payment              @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  events             PaymentEvent[]
+
+  @@unique([provider, providerCheckoutId])
+  @@index([paymentId, status])
 }
 
 /// Idempotency log for provider callbacks; safe metadata only, never card data.
@@ -349,10 +380,13 @@ model PaymentEvent {
   eventId           String
   type              String
   providerReference String?
+  amountCents       Int?
   paymentId         String?
+  attemptId         String?
   receivedAt        DateTime @default(now())
   processedAt       DateTime?
   payment           Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  attempt           PaymentAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
 
   @@unique([provider, eventId])
   @@index([paymentId])
