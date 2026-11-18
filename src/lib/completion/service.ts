@@ -99,6 +99,18 @@ function failure(
   return { ok: false, code, reason };
 }
 
+/** Throwing from Prisma's interactive transaction guarantees every prior write rolls back. */
+class CompletionInvariantError extends Error {
+  constructor(readonly step: string) {
+    super(`Completion transition invariant failed at ${step}.`);
+    this.name = "CompletionInvariantError";
+  }
+}
+
+function requireSingleTransition(count: number, step: string): void {
+  if (count !== 1) throw new CompletionInvariantError(step);
+}
+
 /**
  * Stores fulfillment evidence and starts the 48-hour confirmation clock.
  * Local work needs a note; remote work needs the deliverable link.
@@ -236,7 +248,14 @@ export async function confirmCompletion(input: {
       })
     : null;
 
-  if (payment?.status === "RELEASED") {
+  if (!payment) {
+    return failure("payout_missing", "This task has no payment to release.");
+  }
+
+  if (payment.status === "RELEASED") {
+    if (!payout) {
+      return failure("payout_missing", "This task has no payout for its released payment.");
+    }
     return {
       ok: true,
       taskId: task.id,
@@ -245,8 +264,12 @@ export async function confirmCompletion(input: {
     };
   }
 
-  if (payment && payment.status !== "PAID_PENDING_COMPLETION") {
+  if (payment.status !== "PAID_PENDING_COMPLETION") {
     return failure("invalid_state", "This payment is not releasable.");
+  }
+
+  if (!payout) {
+    return failure("payout_missing", "This task has no payout to release.");
   }
 
   const decision = canConfirmCompletion({
@@ -270,39 +293,46 @@ export async function confirmCompletion(input: {
     return failure(decision.code, decision.reason);
   }
 
-  if (!payment) {
-    return failure("payout_missing", "This task has no payment to release.");
+  let released: boolean;
+  try {
+    released = await prisma.$transaction(async (tx) => {
+      const paymentUpdate = await tx.payment.updateMany({
+        where: { id: payment.id, status: "PAID_PENDING_COMPLETION" },
+        data: { status: "RELEASED" },
+      });
+      requireSingleTransition(paymentUpdate.count, "payment update");
+
+      const taskUpdate = await tx.task.updateMany({
+        where: { id: task.id, status: "AWAITING_CONFIRMATION" },
+        data: { status: "COMPLETED" },
+      });
+      requireSingleTransition(taskUpdate.count, "task update");
+
+      const payoutUpdate = await tx.payout.updateMany({
+        where: { paymentId: payment.id, releasedAt: null },
+        data: { releasedAt: now },
+      });
+      requireSingleTransition(payoutUpdate.count, "payout update");
+
+      const assignmentUpdate = await tx.assignment.updateMany({
+        where: { taskId: task.id, status: "ACTIVE" },
+        data: { status: "COMPLETED", confirmedAt: now },
+      });
+      requireSingleTransition(assignmentUpdate.count, "assignment update");
+
+      return true;
+    });
+  } catch (error) {
+    if (error instanceof CompletionInvariantError) {
+      console.warn("[completion] Confirmation transaction rolled back", {
+        taskId: task.id,
+        paymentId: payment.id,
+        invariant: error.step,
+      });
+      return failure("invalid_state", "The payment, task, payout, or assignment changed before release.");
+    }
+    throw error;
   }
-
-  const released = await prisma.$transaction(async (tx) => {
-    const paymentUpdate = await tx.payment.updateMany({
-      where: { id: payment.id, status: "PAID_PENDING_COMPLETION" },
-      data: { status: "RELEASED" },
-    });
-
-    if (paymentUpdate.count === 0) return false;
-
-    const taskUpdate = await tx.task.updateMany({
-      where: { id: task.id, status: "AWAITING_CONFIRMATION" },
-      data: { status: "COMPLETED" },
-    });
-
-    if (taskUpdate.count === 0) return false;
-
-    const payoutUpdate = await tx.payout.updateMany({
-      where: { paymentId: payment.id, releasedAt: null },
-      data: { releasedAt: now },
-    });
-
-    if (payoutUpdate.count === 0) return false;
-
-    await tx.assignment.updateMany({
-      where: { taskId: task.id, status: "ACTIVE" },
-      data: { status: "COMPLETED", confirmedAt: now },
-    });
-
-    return true;
-  });
 
   if (!released) {
     return failure("invalid_state", "The payment or task state changed before release.");
@@ -535,42 +565,53 @@ export async function autoReleaseCompletions(input: {
     const payment = assignment.task.payments[0];
     if (!payment) continue;
 
-    const didRelease = await prisma.$transaction(async (tx) => {
-      const openDispute = await tx.dispute.findFirst({
-        where: { taskId: assignment.taskId, status: "OPEN" },
-        select: { id: true },
+    let didRelease: boolean;
+    try {
+      didRelease = await prisma.$transaction(async (tx) => {
+        const openDispute = await tx.dispute.findFirst({
+          where: { taskId: assignment.taskId, status: "OPEN" },
+          select: { id: true },
+        });
+
+        if (openDispute) return false;
+
+        const paymentUpdate = await tx.payment.updateMany({
+          where: { id: payment.id, status: "PAID_PENDING_COMPLETION" },
+          data: { status: "RELEASED" },
+        });
+        requireSingleTransition(paymentUpdate.count, "payment update");
+
+        const taskUpdate = await tx.task.updateMany({
+          where: { id: assignment.taskId, status: "AWAITING_CONFIRMATION" },
+          data: { status: "COMPLETED" },
+        });
+        requireSingleTransition(taskUpdate.count, "task update");
+
+        const payoutUpdate = await tx.payout.updateMany({
+          where: { paymentId: payment.id, releasedAt: null },
+          data: { releasedAt: now },
+        });
+        requireSingleTransition(payoutUpdate.count, "payout update");
+
+        const assignmentUpdate = await tx.assignment.updateMany({
+          where: { id: assignment.id, status: "ACTIVE" },
+          data: { status: "COMPLETED", confirmedAt: now },
+        });
+        requireSingleTransition(assignmentUpdate.count, "assignment update");
+
+        return true;
       });
-
-      if (openDispute) return false;
-
-      const paymentUpdate = await tx.payment.updateMany({
-        where: { id: payment.id, status: "PAID_PENDING_COMPLETION" },
-        data: { status: "RELEASED" },
-      });
-
-      if (paymentUpdate.count === 0) return false;
-
-      const taskUpdate = await tx.task.updateMany({
-        where: { id: assignment.taskId, status: "AWAITING_CONFIRMATION" },
-        data: { status: "COMPLETED" },
-      });
-
-      if (taskUpdate.count === 0) return false;
-
-      const payoutUpdate = await tx.payout.updateMany({
-        where: { paymentId: payment.id, releasedAt: null },
-        data: { releasedAt: now },
-      });
-
-      if (payoutUpdate.count === 0) return false;
-
-      await tx.assignment.updateMany({
-        where: { id: assignment.id, status: "ACTIVE" },
-        data: { status: "COMPLETED", confirmedAt: now },
-      });
-
-      return true;
-    });
+    } catch (error) {
+      if (error instanceof CompletionInvariantError) {
+        console.warn("[completion] Automatic release transaction rolled back", {
+          taskId: assignment.taskId,
+          assignmentId: assignment.id,
+          invariant: error.step,
+        });
+        continue;
+      }
+      throw error;
+    }
 
     if (!didRelease) continue;
     released += 1;

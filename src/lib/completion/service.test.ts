@@ -228,6 +228,51 @@ describe("confirming completion", () => {
     expect(result).toMatchObject({ ok: false, code: "dispute_open" });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
+
+  it("returns payout_missing before starting a release transaction when the payout row is absent", async () => {
+    prismaMock.task.findUnique.mockResolvedValue(submittedTask);
+    prismaMock.payout.findUnique.mockResolvedValue(null);
+
+    const result = await confirmCompletion({ posterId: "poster_1", taskId: "task_1", now });
+
+    expect(result).toMatchObject({ ok: false, code: "payout_missing" });
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(txMock.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not report an already-released payment as consistent when its payout row is missing", async () => {
+    prismaMock.task.findUnique.mockResolvedValue({
+      ...submittedTask,
+      payments: [{ id: "payment_1", status: "RELEASED" }],
+    });
+    prismaMock.payout.findUnique.mockResolvedValue(null);
+
+    const result = await confirmCompletion({ posterId: "poster_1", taskId: "task_1", now });
+
+    expect(result).toMatchObject({ ok: false, code: "payout_missing" });
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("aborts release writes if the task changes after the payment update", async () => {
+    prismaMock.task.findUnique.mockResolvedValue(submittedTask);
+    prismaMock.payout.findUnique.mockResolvedValue({ releasedAt: null });
+    txMock.task.updateMany.mockResolvedValueOnce({ count: 0 });
+    let transactionAborted = false;
+    prismaMock.$transaction.mockImplementationOnce(async (callback: (tx: typeof txMock) => unknown) => {
+      try {
+        return await callback(txMock);
+      } catch (error) {
+        transactionAborted = true;
+        throw error;
+      }
+    });
+
+    const result = await confirmCompletion({ posterId: "poster_1", taskId: "task_1", now });
+
+    expect(transactionAborted).toBe(true);
+    expect(result).toMatchObject({ ok: false, code: "invalid_state" });
+    expect(notifyUserMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("disputing completion", () => {
@@ -412,6 +457,87 @@ describe("completion timers", () => {
 
     const result = await autoReleaseCompletions({ now });
 
+    expect(result).toEqual({ released: 0 });
+    expect(notifyUserMock).not.toHaveBeenCalled();
+  });
+
+  it("aborts automatic release if the payout row disappeared after the payment update", async () => {
+    prismaMock.assignment.findMany.mockResolvedValue([
+      {
+        id: "assignment_1",
+        taskId: "task_1",
+        taskerId: "tasker_1",
+        task: { posterId: "poster_1", title: "Pick up groceries", payments: [{ id: "payment_1" }] },
+      },
+    ]);
+    txMock.payout.updateMany.mockResolvedValueOnce({ count: 0 });
+    let transactionAborted = false;
+    prismaMock.$transaction.mockImplementationOnce(async (callback: (tx: typeof txMock) => unknown) => {
+      try {
+        return await callback(txMock);
+      } catch (error) {
+        transactionAborted = true;
+        throw error;
+      }
+    });
+
+    const result = await autoReleaseCompletions({ now });
+
+    expect(transactionAborted).toBe(true);
+    expect(result).toEqual({ released: 0 });
+    expect(notifyUserMock).not.toHaveBeenCalled();
+  });
+
+  it("aborts automatic release if the task transition loses a concurrent race", async () => {
+    prismaMock.assignment.findMany.mockResolvedValue([
+      {
+        id: "assignment_1",
+        taskId: "task_1",
+        taskerId: "tasker_1",
+        task: { posterId: "poster_1", title: "Pick up groceries", payments: [{ id: "payment_1" }] },
+      },
+    ]);
+    txMock.task.updateMany.mockResolvedValueOnce({ count: 0 });
+    let transactionAborted = false;
+    prismaMock.$transaction.mockImplementationOnce(async (callback: (tx: typeof txMock) => unknown) => {
+      try {
+        return await callback(txMock);
+      } catch (error) {
+        transactionAborted = true;
+        throw error;
+      }
+    });
+
+    const result = await autoReleaseCompletions({ now });
+
+    expect(transactionAborted).toBe(true);
+    expect(result).toEqual({ released: 0 });
+    expect(notifyUserMock).not.toHaveBeenCalled();
+  });
+
+  it("aborts automatic release if the assignment transition loses a race", async () => {
+    prismaMock.assignment.findMany.mockResolvedValue([
+      {
+        id: "assignment_1",
+        taskId: "task_1",
+        taskerId: "tasker_1",
+        task: { posterId: "poster_1", title: "Pick up groceries", payments: [{ id: "payment_1" }] },
+      },
+    ]);
+    txMock.assignment.updateMany.mockResolvedValueOnce({ count: 0 });
+    let transactionAborted = false;
+    prismaMock.$transaction.mockImplementationOnce(async (callback: (tx: typeof txMock) => unknown) => {
+      try {
+        return await callback(txMock);
+      } catch (error) {
+        transactionAborted = true;
+        throw error;
+      }
+    });
+
+    const result = await autoReleaseCompletions({ now });
+
+    expect(transactionAborted).toBe(true);
     expect(result).toEqual({ released: 0 });
     expect(notifyUserMock).not.toHaveBeenCalled();
   });
