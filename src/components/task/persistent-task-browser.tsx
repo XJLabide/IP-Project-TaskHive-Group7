@@ -22,10 +22,6 @@ type PublicTaskListResponse = {
 type TaskType = "all" | "local" | "remote" | "bidding" | "fixed_price";
 type BudgetRange = "any" | "under-500" | "500-1000" | "over-1000";
 
-function toOwnedTask(task: TaskSummary): TaskSummary {
-  return task;
-}
-
 function buildDiscoveryQuery(input: {
   search: string;
   category: string;
@@ -161,7 +157,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
         )}
         {pagination && pagination.page < pagination.totalPages ? <div className="flex justify-center"><Button disabled={loadingMore || isLoading} onClick={() => void loadMore()} type="button" variant="outline">{loadingMore ? "Loading…" : "Load more tasks"}</Button></div> : null}
 
-        {viewer.signedIn && managedTasks.length > 0 ? <section className="mt-8 grid gap-4"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-xl font-bold">Your tasks</h2><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Drafts, payment holds, assignments, and retained task history.</p></div><Button asChild size="sm" variant="outline"><Link href="/tasks/new">Create task</Link></Button></div>{ownedError ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{ownedError}</p> : null}<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{managedTasks.map((task) => <TaskCard applicationCount={task.applications} key={task.id} task={toOwnedTask(task)} />)}</div></section> : null}
+        {viewer.signedIn && managedTasks.length > 0 ? <section className="mt-8 grid gap-4"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-xl font-bold">Your tasks</h2><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Drafts, payment holds, assignments, and retained task history.</p></div><Button asChild size="sm" variant="outline"><Link href="/tasks/new">Create task</Link></Button></div>{ownedError ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{ownedError}</p> : null}<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{managedTasks.map((task) => <TaskCard applicationCount={task.applications} key={task.id} task={task} />)}</div></section> : null}
       </div>
     </Shell>
   );

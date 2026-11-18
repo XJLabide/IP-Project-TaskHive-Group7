@@ -146,7 +146,7 @@ export type PublicTaskSummary = {
   approximateCoordinates: { latitude: number; longitude: number } | null;
 };
 
-/** The public view of a task: no exact address and no coordinates. */
+/** Public task data hides the exact address and returns only a coarse map pin. */
 export function toPublicTaskSummary(
   task: DiscoverableTask,
   distance: number | null,

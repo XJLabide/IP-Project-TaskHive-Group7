@@ -1,7 +1,7 @@
 import type { FulfillmentMode, HiringMode } from "./policy";
 import type { TaskFieldErrors } from "./validation";
 
-/** The authoring states the mock UI can show. */
+/** Lifecycle states shared by persistent task APIs and their UI projection. */
 export type UiTaskStatus =
   | "draft"
   | "open"

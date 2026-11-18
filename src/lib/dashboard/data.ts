@@ -142,6 +142,25 @@ export type DashboardData = {
   actions: DashboardAction[];
 };
 
+/** Shared empty state for server and client projections of the dashboard. */
+export function emptyDashboardData(input: {
+  signedIn: boolean;
+  displayName: string | null;
+}): DashboardData {
+  return {
+    scope: input.signedIn ? "empty" : "signed_out",
+    displayName: input.signedIn ? input.displayName?.trim() || null : null,
+    summary: input.signedIn
+      ? { openTasks: 0, awaitingReview: 0, activeAssignments: 0, paymentActions: 0 }
+      : null,
+    postedTasks: [],
+    awaitingReview: [],
+    activeAssignments: [],
+    activity: [],
+    actions: [],
+  };
+}
+
 export type DashboardInput = {
   viewer: DashboardViewer;
   tasks: readonly TaskSummary[];

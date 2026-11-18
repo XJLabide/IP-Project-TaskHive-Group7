@@ -4,10 +4,10 @@ import { listApplicationsForTasker } from "@/lib/applications/service";
 import { listChats } from "@/lib/chat/service";
 import { toDomainStatus } from "@/lib/verification/mapping";
 import { isHoldExpired } from "@/lib/payments/hold";
-import type { DashboardData, DashboardActivity, DashboardAction, DashboardApplication } from "./data";
+import { emptyDashboardData, type DashboardData, type DashboardActivity, type DashboardAction, type DashboardApplication } from "./data";
 import type { TaskSummary } from "@/lib/tasks/types";
 
-/** Builds the signed-in workspace from rows owned by or shared with this account. */
+
 export async function getDashboardData(userId: string): Promise<DashboardData> {
   const [user, ownedTasks, applications, chats, activeRows, holdRows] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
@@ -50,7 +50,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
   ]);
 
   if (!user) {
-    return emptyDashboard(null);
+    return emptyDashboardData({ signedIn: true, displayName: null });
   }
 
   const liveTaskIds = ownedTasks.filter((task) => task.status === "open").map((task) => task.id);
@@ -241,7 +241,6 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
     actions,
   };
 }
-
 function dashboardTask(
   task: TaskSummary,
   reviewCounts: ReadonlyMap<string, number>,
@@ -256,18 +255,5 @@ function dashboardTask(
     awaitingReview: reviewCounts.get(task.id) ?? 0,
     assignmentStatus: assignmentStatus.get(task.id) ?? null,
     href: `/tasks/${encodeURIComponent(task.id)}`,
-  };
-}
-
-function emptyDashboard(displayName: string | null): DashboardData {
-  return {
-    scope: "empty",
-    displayName,
-    summary: { openTasks: 0, awaitingReview: 0, activeAssignments: 0, paymentActions: 0 },
-    postedTasks: [],
-    awaitingReview: [],
-    activeAssignments: [],
-    activity: [],
-    actions: [],
   };
 }
