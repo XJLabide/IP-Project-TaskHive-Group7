@@ -51,11 +51,13 @@ export function TaskDiscovery({
   applications,
   loading = false,
   error = false,
+  persistentCounts = false,
 }: {
   tasks: TaskSummary[];
   applications: DemoApplication[];
   loading?: boolean;
   error?: boolean;
+  persistentCounts?: boolean;
 }) {
   const [selected, setSelected] = useState(ALL_TASKS);
   const [origin, setOrigin] = useState<Coordinates | null>(null);
@@ -93,7 +95,9 @@ export function TaskDiscovery({
       ).tasks,
     [activeCategory, openTasks, searchArea],
   );
-  const countFor = (taskId: string) =>
+  const countFor = (taskId: string) => persistentCounts
+    ? openTasks.find((task) => task.id === taskId)?.applications ?? 0
+    :
     applications.filter(
       (application) =>
         application.taskId === taskId &&

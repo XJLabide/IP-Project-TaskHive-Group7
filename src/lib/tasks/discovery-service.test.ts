@@ -113,6 +113,7 @@ describe("public task discovery", () => {
     expect(result.searchArea.source).toBe("nationwide");
     expect(result.tasks[0]).not.toHaveProperty("exactAddress");
     expect(JSON.stringify(result.tasks)).not.toContain("Rizal Street");
+    expect(result.tasks[0]).toHaveProperty("applicationCount", 0);
     expect(prismaMock.profile.findUnique).not.toHaveBeenCalled();
   });
 
@@ -143,6 +144,21 @@ describe("public task detail", () => {
       id: "task_1",
       addressVisible: true,
       exactAddress: "1234 Rizal Street, Sampaloc, Manila",
+    });
+  });
+
+  it("returns lifecycle and live application count to the Poster using persistent task data", async () => {
+    prismaMock.task.findFirst.mockResolvedValue(
+      row({ status: "OPEN", _count: { bids: 2, taskRequests: 1 } }),
+    );
+
+    const detail = await getPublicTaskDetail("task_1", "poster_1");
+
+    expect(detail).toMatchObject({
+      taskStatus: "open",
+      isPoster: true,
+      isAssignedTasker: false,
+      applicationCount: 3,
     });
   });
 

@@ -39,6 +39,12 @@ const previewListeners = new Set<() => void>();
 function readPreview(): PreviewKind | null {
   if (typeof window === "undefined") return null;
 
+  if (process.env.NODE_ENV === "production") {
+    previewInitialized = true;
+    currentPreview = null;
+    return null;
+  }
+
   if (!previewInitialized) {
     previewInitialized = true;
     try {
@@ -64,6 +70,7 @@ function subscribePreview(listener: () => void) {
 }
 
 function writePreview(kind: PreviewKind | null) {
+  if (process.env.NODE_ENV === "production") return;
   currentPreview = kind;
   previewInitialized = true;
   try {

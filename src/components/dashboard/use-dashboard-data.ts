@@ -6,8 +6,8 @@ import { buildDashboard, dashboardViewState } from "@/lib/dashboard/data";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
 
-/** Shared viewer-scoped data for Dashboard and My Work. */
-export function useDashboardData() {
+/** Local preview dashboard sourced from the explicit demo stores. */
+export function useDemoDashboardData() {
   const { tasks, ready, error } = useMockTasks();
   const { applications, assignments, chats } = useMarketplace();
   const { viewer } = useViewer();
@@ -19,22 +19,10 @@ export function useDashboardData() {
   }, []);
 
   const data = useMemo(
-    () =>
-      buildDashboard({
-        viewer,
-        tasks,
-        applications,
-        assignments,
-        chats,
-        now,
-      }),
+    () => buildDashboard({ viewer, tasks, applications, assignments, chats, now }),
     [viewer, tasks, applications, assignments, chats, now],
   );
-  const state = dashboardViewState({
-    ready,
-    error,
-    scope: data.scope,
-  });
+  const state = dashboardViewState({ ready, error, scope: data.scope });
 
   return { tasks, applications, viewer, data, now, state };
 }

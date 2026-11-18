@@ -47,11 +47,12 @@ export const taskFieldLabels: Record<TaskField, string> = {
 };
 
 export function taskStatusClass(status: UiTaskStatus): string {
-  if (status === "open" || status === "assigned" || status === "completed") {
+  if (status === "open" || status === "assigned" || status === "in_progress" || status === "completed") {
     return "border-[#75D333]/40 bg-[#75D333]/15 text-[#2f6b12] dark:text-[#75D333]";
   }
   if (
     status === "draft" ||
+    status === "pending_approval" ||
     status === "pending_payment" ||
     status === "awaiting_confirmation" ||
     status === "cancellation_review"
@@ -91,7 +92,9 @@ export function taskStatusLabel(status: UiTaskStatus): string {
   if (status === "draft") return "Draft";
   if (status === "cancelled") return "Cancelled";
   if (status === "pending_payment") return "Awaiting payment";
+  if (status === "pending_approval") return "Pending approval";
   if (status === "assigned") return "Assigned";
+  if (status === "in_progress") return "In progress";
   if (status === "awaiting_confirmation") return "Awaiting confirmation";
   if (status === "completed") return "Completed";
   if (status === "cancellation_review") return "Cancellation review";

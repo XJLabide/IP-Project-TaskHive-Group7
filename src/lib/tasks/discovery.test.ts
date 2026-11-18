@@ -273,6 +273,7 @@ describe("public task projection", () => {
     expect(summary).not.toHaveProperty("exactAddress");
     expect(summary).not.toHaveProperty("latitude");
     expect(summary).not.toHaveProperty("longitude");
+    expect(summary).toHaveProperty("approximateCoordinates", { latitude: 14.62, longitude: 121 });
     expect(JSON.stringify(summary)).not.toContain("Rizal Street");
   });
 
@@ -282,7 +283,7 @@ describe("public task projection", () => {
       null,
     );
 
-    expect(summary).toMatchObject({ areaLabel: null, distanceKm: null });
+    expect(summary).toMatchObject({ areaLabel: null, distanceKm: null, approximateCoordinates: null });
   });
 });
 

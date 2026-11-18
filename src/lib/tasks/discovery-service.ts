@@ -56,6 +56,7 @@ type TaskRow = {
   status: DbTaskStatus;
   category: { name: string } | null;
   poster: { name: string } | null;
+  _count?: { bids: number; taskRequests: number };
 };
 
 export type PublicTaskList = {
@@ -88,6 +89,7 @@ function toDiscoverable(row: TaskRow): DiscoverableTask {
     exactAddress: row.addressLine,
     latitude: row.latitude,
     longitude: row.longitude,
+    applicationCount: row._count ? row._count.bids + row._count.taskRequests : 0,
   };
 }
 
@@ -168,6 +170,12 @@ export async function listPublicTasks(
     include: {
       category: { select: { name: true } },
       poster: { select: { name: true } },
+      _count: {
+        select: {
+          bids: { where: { status: { in: ["SUBMITTED", "ACCEPTED"] } } },
+          taskRequests: { where: { status: { in: ["SUBMITTED", "ACCEPTED"] } } },
+        },
+      },
     },
     orderBy: { publishedAt: "desc" },
   });
@@ -203,6 +211,12 @@ export async function getPublicTaskDetail(
       poster: { select: { name: true } },
       assignment: { select: { taskerId: true } },
       payments: { select: { status: true } },
+      _count: {
+        select: {
+          bids: { where: { status: { in: ["SUBMITTED", "ACCEPTED"] } } },
+          taskRequests: { where: { status: { in: ["SUBMITTED", "ACCEPTED"] } } },
+        },
+      },
     },
   });
 
@@ -213,14 +227,19 @@ export async function getPublicTaskDetail(
 
   if (!canViewPublicTask(task, viewerId, assignmentTaskerId)) return null;
 
-  return toPublicTaskDetail(task, {
-    posterId: task.posterId,
-    viewerId,
-    assignmentTaskerId,
+  return {
+    ...toPublicTaskDetail(task, {
+      posterId: task.posterId,
+      viewerId,
+      assignmentTaskerId,
+      taskStatus: task.status,
+      paymentStatuses: row.payments.map(
+        (payment) => toDomainPayment[payment.status] ?? "unpaid",
+      ),
+      hasAddress: Boolean(task.exactAddress),
+    }),
     taskStatus: task.status,
-    paymentStatuses: row.payments.map(
-      (payment) => toDomainPayment[payment.status] ?? "unpaid",
-    ),
-    hasAddress: Boolean(task.exactAddress),
-  });
+    isPoster: viewerId === task.posterId,
+    isAssignedTasker: viewerId !== null && viewerId === assignmentTaskerId,
+  };
 }

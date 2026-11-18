@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -20,7 +20,6 @@ import {
   PHILIPPINES_MAP_CENTER,
 } from "@/components/task/leaflet-location-picker";
 import { useMockTasks, type Task } from "@/lib/mock-task-store";
-import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import type { FulfillmentMode, HiringMode } from "@/lib/tasks/policy";
 import type { Coordinates } from "@/lib/tasks/location";
@@ -35,6 +34,9 @@ import {
   type TaskFormValues,
 } from "@/lib/tasks/ui";
 import type { TaskFieldErrors } from "@/lib/tasks/validation";
+import type { TaskWriteResult, TaskSummary } from "@/lib/tasks/types";
+import { requestData, MarketplaceApiError } from "@/lib/marketplace/http";
+import { shouldUseMarketplacePreview } from "@/lib/marketplace/preview";
 
 const inputClass = "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm outline-none placeholder:text-zinc-400 focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-[#FFD50D]";
 
@@ -75,8 +77,16 @@ const hiringOptions: Array<{
   },
 ];
 
-export function TaskForm({ mode, taskId }: { mode: "create" | "edit"; taskId?: string }) {
-  const { tasks, ready } = useMockTasks();
+export function TaskForm(props: { mode: "create" | "edit"; taskId?: string }) {
+  const { isPreview } = useViewer();
+  return shouldUseMarketplacePreview(isPreview)
+    ? <DemoTaskForm {...props} />
+    : <PersistentTaskForm key={`${props.mode}:${props.taskId ?? "new"}`} {...props} />;
+}
+
+function DemoTaskForm({ mode, taskId }: { mode: "create" | "edit"; taskId?: string }) {
+  const { tasks, ready, createTask, updateTask } = useMockTasks();
+  const { viewer } = useViewer();
   const task = mode === "edit" ? tasks.find((item) => item.id === taskId) : undefined;
   const title = mode === "create" ? "Create Task" : "Edit Task";
 
@@ -124,6 +134,94 @@ export function TaskForm({ mode, taskId }: { mode: "create" | "edit"; taskId?: s
       mode={mode}
       task={task}
       taskId={taskId}
+      persistTask={async (fields, publish) => mode === "edit" && taskId
+        ? updateTask(taskId, fields, { publish })
+        : createTask(fields, publish, { poster: viewer.displayName ?? "You" })}
+    />
+  );
+}
+
+function PersistentTaskForm({ mode, taskId }: { mode: "create" | "edit"; taskId?: string }) {
+  const [task, setTask] = useState<TaskSummary | undefined>();
+  const [loading, setLoading] = useState(mode === "edit");
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    if (mode !== "edit" || !taskId) return;
+    const controller = new AbortController();
+
+    void requestData<TaskSummary[]>("/api/tasks/mine", { signal: controller.signal })
+      .then((tasks) => {
+        const ownedTask = tasks.find((item) => item.id === taskId);
+        if (ownedTask) setTask(ownedTask);
+        else setLoadError("This task is not available in your account.");
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setLoadError(error instanceof Error ? error.message : "Could not load this task.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [mode, taskId]);
+
+  if (loading) {
+    return <AppShell title="Edit Task" description="Loading your saved task."><p>Loading task…</p></AppShell>;
+  }
+
+  if (loadError || (mode === "edit" && !task)) {
+    return (
+      <AppShell title="Task not found" description="Only your account can edit this task.">
+        <Card><CardContent className="grid gap-4 p-6">
+          <p role="alert">{loadError || "This task is not available in your account."}</p>
+          <Button asChild className="w-fit"><Link href="/tasks">Back to Browse Tasks</Link></Button>
+        </CardContent></Card>
+      </AppShell>
+    );
+  }
+
+  if (mode === "edit" && task && task.status !== "draft" && task.status !== "open") {
+    return (
+      <AppShell title="Task cannot be edited" description="This task has moved beyond editing.">
+        <Card><CardContent className="grid gap-4 p-6">
+          <p>Task status is {task.status.replaceAll("_", " ")}. Only drafts and open tasks can be edited.</p>
+          <Button asChild className="w-fit"><Link href={`/tasks/${task.id}`}>View task</Link></Button>
+        </CardContent></Card>
+      </AppShell>
+    );
+  }
+
+  return (
+    <TaskFormFields
+      key={taskId ?? "new-task"}
+      mode={mode}
+      task={task}
+      taskId={taskId}
+      persistTask={async (fields, publish) => {
+        try {
+          const path = mode === "edit" && taskId
+            ? `/api/tasks/${encodeURIComponent(taskId)}`
+            : "/api/tasks";
+          const data = await requestData<{ id: string; status: TaskSummary["status"]; clearedApplications?: number }>(path, {
+            method: mode === "edit" ? "PATCH" : "POST",
+            body: JSON.stringify({ ...fields, publish }),
+          });
+          return { ok: true, taskId: data.id, status: data.status, clearedApplications: data.clearedApplications };
+        } catch (error) {
+          const details = error instanceof MarketplaceApiError ? error.details : {};
+          const errors = details.errors && typeof details.errors === "object"
+            ? details.errors as TaskFieldErrors
+            : undefined;
+          return {
+            ok: false,
+            reason: error instanceof Error ? error.message : "Could not save the task.",
+            errors,
+          };
+        }
+      }}
     />
   );
 }
@@ -132,15 +230,15 @@ function TaskFormFields({
   mode,
   task,
   taskId,
+  persistTask,
 }: {
   mode: "create" | "edit";
   task?: Task;
   taskId?: string;
+  persistTask: (fields: ReturnType<typeof toTaskFields>, publish: boolean) => Promise<TaskWriteResult>;
 }) {
   const router = useRouter();
-  const { viewer } = useViewer();
-  const { createTask, updateTask } = useMockTasks();
-  const { invalidateForTask } = useMarketplace();
+  const { isPreview } = useViewer();
   const [form, setForm] = useState<TaskFormValues>(() =>
     task ? toTaskFormValues(task) : emptyTaskForm(),
   );
@@ -194,7 +292,7 @@ function TaskFormFields({
     setErrors((current) => ({ ...current, latitude: undefined, longitude: undefined }));
   }
 
-  function save(publish: boolean) {
+  async function save(publish: boolean) {
     setFormError("");
     setErrors({});
 
@@ -212,12 +310,14 @@ function TaskFormFields({
     }
 
     setSaving(true);
-    const result =
-      mode === "edit" && taskId
-        ? updateTask(taskId, toTaskFields(form), { publish })
-        : createTask(toTaskFields(form), publish, {
-            poster: viewer.displayName ?? "You",
-          });
+    let result: TaskWriteResult;
+    try {
+      result = await persistTask(toTaskFields(form), publish);
+    } catch (error) {
+      setSaving(false);
+      setFormError(error instanceof Error ? error.message : "Could not save the task.");
+      return;
+    }
 
     if (!result.ok) {
       setSaving(false);
@@ -227,9 +327,7 @@ function TaskFormFields({
     }
 
     const cleared = result.clearedApplications ?? 0;
-    if (mode === "edit" && taskId && cleared > 0) {
-      invalidateForTask(taskId);
-    }
+    // The persistent API invalidates applications server-side as one transaction.
     const notice = publish
       ? "Task published."
       : mode === "edit"
@@ -245,7 +343,7 @@ function TaskFormFields({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    save(false);
+    void save(false);
   }
 
   const fee = Math.round((Number(form.budget) || 0) * 0.05 * 100) / 100;
@@ -281,7 +379,7 @@ function TaskFormFields({
                 {mode === "create" ? "Tell Taskers what you need" : "Update task details"}
               </h2>
               <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                Changes are saved in this browser session only.
+                {shouldUseMarketplacePreview(isPreview) ? "Preview changes stay in this browser session." : "Your task is saved to your TaskHive account."}
               </p>
             </div>
 

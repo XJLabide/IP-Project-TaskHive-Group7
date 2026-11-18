@@ -27,6 +27,8 @@ export type ChatSummary = {
   id: string;
   taskId: string;
   taskTitle: string;
+  posterName: string | null;
+  openerName: string | null;
   posterId: string;
   openerId: string;
   taskStatus: TaskLifecycleStatus;
@@ -68,10 +70,11 @@ type ChatTaskRow = {
   posterId: string;
   title: string;
   status: DbTaskStatus;
+  poster?: { name: string | null } | null;
 };
 
 function summary(input: {
-  chat: { id: string; taskId: string; openerId: string };
+  chat: { id: string; taskId: string; openerId: string; opener?: { name: string | null } | null };
   task: ChatTaskRow;
   lastMessage?: { body: string; senderId: string; createdAt: Date } | null;
 }): ChatSummary {
@@ -81,6 +84,8 @@ function summary(input: {
     id: input.chat.id,
     taskId: input.chat.taskId,
     taskTitle: input.task.title,
+    posterName: input.task.poster?.name ?? null,
+    openerName: input.chat.opener?.name ?? null,
     posterId: input.task.posterId,
     openerId: input.chat.openerId,
     taskStatus,
@@ -96,7 +101,7 @@ export async function openTaskChat(
 ): Promise<OpenChatResult> {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { id: true, posterId: true, title: true, status: true },
+    select: { id: true, posterId: true, title: true, status: true, poster: { select: { name: true } } },
   });
 
   if (!task) return failure("not_found", "Task not found.");
@@ -111,7 +116,7 @@ export async function openTaskChat(
     where: { taskId_openerId: { taskId, openerId: actorId } },
     update: {},
     create: { taskId, openerId: actorId },
-    select: { id: true, taskId: true, openerId: true },
+    select: { id: true, taskId: true, openerId: true, opener: { select: { name: true } } },
   });
 
   return { ok: true, chat: summary({ chat, task }) };
@@ -124,7 +129,8 @@ export async function listChats(userId: string): Promise<ChatSummary[]> {
       OR: [{ openerId: userId }, { task: { posterId: userId } }],
     },
     include: {
-      task: { select: { id: true, posterId: true, title: true, status: true } },
+      task: { select: { id: true, posterId: true, title: true, status: true, poster: { select: { name: true } } } },
+      opener: { select: { name: true } },
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -147,6 +153,7 @@ type ChatRecord = {
   id: string;
   taskId: string;
   openerId: string;
+  opener?: { name: string | null } | null;
   task: ChatTaskRow;
 };
 
@@ -157,7 +164,7 @@ async function loadChat(chatId: string): Promise<ChatRecord | null> {
       id: true,
       taskId: true,
       openerId: true,
-      task: { select: { id: true, posterId: true, title: true, status: true } },
+      task: { select: { id: true, posterId: true, title: true, status: true, poster: { select: { name: true } } } },
     },
   });
 }
@@ -170,7 +177,8 @@ export async function getChatMessages(
   const chat = await prisma.taskChat.findUnique({
     where: { id: chatId },
     include: {
-      task: { select: { id: true, posterId: true, title: true, status: true } },
+      task: { select: { id: true, posterId: true, title: true, status: true, poster: { select: { name: true } } } },
+      opener: { select: { name: true } },
       messages: {
         orderBy: { createdAt: "asc" },
         select: {
