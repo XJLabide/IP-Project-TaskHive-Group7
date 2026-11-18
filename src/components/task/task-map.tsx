@@ -183,6 +183,11 @@ export function TaskMap({ tasks }: { tasks: TaskSummary[] }) {
           ref={containerRef}
           role="application"
         />
+        {mappedTasks.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400" role="status">
+            No task pins to display. The map stays centered on the Philippines.
+          </p>
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <button
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition-colors hover:border-[#D19300] hover:bg-[#FFFDF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] disabled:cursor-wait disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-[#FFD50D] dark:hover:bg-zinc-800"
