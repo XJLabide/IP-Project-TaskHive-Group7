@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { EyeOff, LockKeyhole, Star } from "lucide-react";
 import { Stars } from "@/components/reviews/stars";
 import { AppShell } from "@/components/layout/app-shell";
@@ -7,7 +6,7 @@ import { ReviewForm } from "@/components/reviews/review-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { loadActorFromHeaders } from "@/lib/auth/actor";
+import { loadCurrentActor } from "@/lib/auth/current-actor";
 import { guardPage } from "@/lib/auth/guard";
 import { formatChatTime } from "@/lib/chat/demo";
 import { getReviewOverview } from "@/lib/completion/service";
@@ -20,7 +19,7 @@ function formatDate(value: Date | null): string {
 
 export default async function ReviewsPage() {
   await guardPage("view_private_account");
-  const actor = await loadActorFromHeaders(await headers());
+  const actor = await loadCurrentActor();
 
   if (!actor) {
     return (

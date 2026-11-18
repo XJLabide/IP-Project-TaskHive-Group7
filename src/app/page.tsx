@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArrowRight, ShieldCheck, Star, MapPin } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
-import { loadActorFromHeaders } from "@/lib/auth/actor";
+import { loadCurrentActor } from "@/lib/auth/current-actor";
 
 const steps = [
   {
@@ -36,7 +35,7 @@ const questions = [
 
 export default async function Home() {
   // Signed-in members skip the marketing page; the landing page is for guests.
-  const actor = await loadActorFromHeaders(await headers());
+  const actor = await loadCurrentActor();
   if (actor?.signedIn) redirect("/dashboard");
 
   return (
