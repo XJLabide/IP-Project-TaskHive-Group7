@@ -52,6 +52,17 @@ function failure(code: SupportFailureCode, reason: string): SupportFailure {
   return { ok: false, code, reason };
 }
 
+function timedQueueRead<T>(
+  timings: Record<string, number>,
+  name: string,
+  read: () => Promise<T>,
+): Promise<T> {
+  const startedAt = performance.now();
+  return read().finally(() => {
+    timings[name] = Math.round(performance.now() - startedAt);
+  });
+}
+
 async function payoutTotals(taskId: string): Promise<{
   paymentId: string | null;
   amountCents: number;
@@ -644,6 +655,8 @@ export type SupportQueue = {
 
 /** One queue for Admin v1: reports, disputes, cancellations, and appeals. */
 export async function listSupportQueue(): Promise<SupportQueue> {
+  const queryStartedAt = performance.now();
+  const queryDurations: Record<string, number> = {};
   const [
     reports,
     disputes,
@@ -653,10 +666,9 @@ export async function listSupportQueue(): Promise<SupportQueue> {
     recentUsers,
     recentDecisions,
     users,
-    tasks,
-    completed,
+    taskStatusCounts,
   ] = await Promise.all([
-      prisma.report.findMany({
+      timedQueueRead(queryDurations, "reports", () => prisma.report.findMany({
         where: { status: { in: ["OPEN", "REVIEWING"] } },
         select: {
           id: true,
@@ -669,8 +681,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           message: { select: { body: true } },
         },
         orderBy: { createdAt: "asc" },
-      }),
-      prisma.dispute.findMany({
+      })),
+      timedQueueRead(queryDurations, "disputes", () => prisma.dispute.findMany({
         where: { status: { in: ["OPEN", "REVIEWING"] } },
         select: {
           id: true,
@@ -690,8 +702,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           },
         },
         orderBy: { createdAt: "asc" },
-      }),
-      prisma.cancellationRequest.findMany({
+      })),
+      timedQueueRead(queryDurations, "cancellations", () => prisma.cancellationRequest.findMany({
         where: { status: { in: ["OPEN", "REVIEWING"] } },
         select: {
           id: true,
@@ -711,8 +723,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           },
         },
         orderBy: { createdAt: "asc" },
-      }),
-      prisma.taskerVerification.findMany({
+      })),
+      timedQueueRead(queryDurations, "appeals", () => prisma.taskerVerification.findMany({
         where: { appealStatus: "PENDING" },
         select: {
           userId: true,
@@ -721,8 +733,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
           user: { select: { name: true } },
         },
         orderBy: { appealedAt: "asc" },
-      }),
-      prisma.task.findMany({
+      })),
+      timedQueueRead(queryDurations, "recentTasks", () => prisma.task.findMany({
         select: {
           id: true,
           title: true,
@@ -732,8 +744,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
         },
         orderBy: { updatedAt: "desc" },
         take: 20,
-      }),
-      prisma.user.findMany({
+      })),
+      timedQueueRead(queryDurations, "recentUsers", () => prisma.user.findMany({
         where: { isAdmin: false },
         select: {
           id: true,
@@ -744,8 +756,8 @@ export async function listSupportQueue(): Promise<SupportQueue> {
         },
         orderBy: { updatedAt: "desc" },
         take: 20,
-      }),
-      prisma.adminAction.findMany({
+      })),
+      timedQueueRead(queryDurations, "recentDecisions", () => prisma.adminAction.findMany({
         select: {
           id: true,
           action: true,
@@ -758,11 +770,27 @@ export async function listSupportQueue(): Promise<SupportQueue> {
         },
         orderBy: { createdAt: "desc" },
         take: 10,
-      }),
-      prisma.user.count(),
-      prisma.task.count(),
-      prisma.task.count({ where: { status: "COMPLETED" } }),
+      })),
+      timedQueueRead(queryDurations, "userCount", () => prisma.user.count()),
+      timedQueueRead(queryDurations, "taskCounts", () => prisma.task.groupBy({ by: ["status"], _count: { _all: true } })),
     ]);
+
+  const taskCounts = new Map(
+    taskStatusCounts.map((row) => [row.status, row._count._all]),
+  );
+  const tasks = [...taskCounts.values()].reduce((total, count) => total + count, 0);
+  const completed = taskCounts.get("COMPLETED") ?? 0;
+  const queryDurationMs = Math.round(performance.now() - queryStartedAt);
+  if (queryDurationMs >= 1_000) {
+    console.warn("[admin-performance] Support queue query batch was slow", {
+      durationMs: queryDurationMs,
+      queryDurationsMs: queryDurations,
+      reports: reports.length,
+      disputes: disputes.length,
+      cancellations: cancellations.length,
+      appeals: appeals.length,
+    });
+  }
 
   return {
     reviewTargetBusinessDays: REVIEW_TARGET_BUSINESS_DAYS,

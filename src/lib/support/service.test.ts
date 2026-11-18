@@ -19,6 +19,7 @@ const { prismaMock, txMock, notifyUserMock } = vi.hoisted(() => {
       findMany: vi.fn(),
       updateMany: vi.fn(),
       count: vi.fn(),
+      groupBy: vi.fn(),
     },
     assignment: { updateMany: vi.fn() },
     payment: { findUnique: vi.fn(), updateMany: vi.fn() },
@@ -468,7 +469,9 @@ describe("support queue", () => {
       },
     ]);
     prismaMock.user.count.mockResolvedValue(10);
-    prismaMock.task.count.mockResolvedValue(4);
+    prismaMock.task.groupBy.mockResolvedValue([
+      { status: "COMPLETED", _count: { _all: 4 } },
+    ]);
 
     const queue = await listSupportQueue();
 
@@ -481,6 +484,11 @@ describe("support queue", () => {
       openCancellations: 1,
       pendingVerificationAppeals: 1,
     });
+    expect(prismaMock.task.groupBy).toHaveBeenCalledWith({
+      by: ["status"],
+      _count: { _all: true },
+    });
+    expect(prismaMock.task.count).not.toHaveBeenCalled();
     expect(queue.disputes[0].dueAt).toEqual(
       new Date("2026-11-03T09:00:00.000Z"),
     );

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import { ViewerProvider } from "@/components/viewer/viewer-provider";
-import { loadActorFromHeaders } from "@/lib/auth/actor";
+import { loadCurrentActor } from "@/lib/auth/current-actor";
 import { viewerSnapshot } from "@/lib/viewer/presentation";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
@@ -28,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const actor = await loadActorFromHeaders(await headers());
+  const actor = await loadCurrentActor();
 
   return (
     <html lang="en" suppressHydrationWarning className="h-full antialiased">

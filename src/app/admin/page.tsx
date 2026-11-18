@@ -3,6 +3,7 @@ import { ResolutionForm } from "@/components/admin/resolution-form";
 import { UserStatusForm } from "@/components/admin/user-status-form";
 import { StatusChip } from "@/components/dashboard/status-chip";
 import { formatChatTime } from "@/lib/chat/demo";
+import { guardPage } from "@/lib/auth/guard";
 import { listSupportQueue } from "@/lib/support/service";
 import type { SupportOutcome } from "@/lib/support/rules";
 import {
@@ -49,6 +50,7 @@ function EmptyQueue({ children }: { children: React.ReactNode }) {
 }
 
 export default async function AdminPage() {
+  await guardPage("review_verification_appeal");
   const queue = await listSupportQueue();
   const now = new Date();
 
