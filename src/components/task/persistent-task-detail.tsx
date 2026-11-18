@@ -15,26 +15,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { requestData } from "@/lib/marketplace/http";
 import type { PublicTaskDetail } from "@/lib/tasks/discovery";
-import type { TaskSummary } from "@/lib/tasks/types";
+import { publicTaskToSummary } from "@/lib/tasks/public-ui";
 import { formatTaskDeadline, taskStatusClass, taskStatusLabel } from "@/lib/tasks/ui";
-
-function toTaskSummary(detail: PublicTaskDetail): TaskSummary {
-  return {
-    id: detail.id,
-    title: detail.title,
-    description: detail.description,
-    category: detail.category ?? "",
-    fulfillmentMode: detail.fulfillmentMode,
-    hiringMode: detail.hiringMode,
-    budget: detail.budgetCents / 100,
-    location: detail.areaLabel,
-    addressLine: detail.exactAddress,
-    deadline: detail.deadline ?? "",
-    status: detail.taskStatus,
-    poster: detail.posterName ?? "Task Poster",
-    applications: detail.applicationCount,
-  };
-}
 
 export function PersistentTaskDetail() {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +47,9 @@ export function PersistentTaskDetail() {
 
   const paymentReturn = searchParams.get("payment");
   const notice = searchParams.get("notice");
-  const task = detail ? toTaskSummary(detail) : null;
+  const task = detail
+    ? publicTaskToSummary(detail, { status: detail.taskStatus, exactAddress: detail.exactAddress })
+    : null;
   const loading = loadedId !== id;
   const isOwner = detail?.isPoster ?? false;
   const isOpen = detail?.taskStatus === "open";

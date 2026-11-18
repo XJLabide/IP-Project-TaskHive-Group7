@@ -142,6 +142,8 @@ export type PublicTaskSummary = {
   /** Whole kilometres only, so the distance cannot be used to pin an address. */
   distanceKm: number | null;
   applicationCount: number;
+  /** Rounded public map pin; the stored service point is never returned. */
+  approximateCoordinates: { latitude: number; longitude: number } | null;
 };
 
 /** The public view of a task: no exact address and no coordinates. */
@@ -165,6 +167,13 @@ export function toPublicTaskSummary(
     distanceKm:
       distance === null ? null : Math.max(1, Math.round(distance)),
     applicationCount: task.applicationCount ?? 0,
+    approximateCoordinates:
+      task.fulfillmentMode === "local" && task.latitude !== null && task.longitude !== null
+        ? {
+            latitude: Math.round(task.latitude * 100) / 100,
+            longitude: Math.round(task.longitude * 100) / 100,
+          }
+        : null,
   };
 }
 

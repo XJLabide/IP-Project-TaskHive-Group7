@@ -6,7 +6,9 @@ import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { DashboardError, DashboardLoading, DashboardSignedOut } from "@/components/dashboard/states";
 import { StatusChip } from "@/components/dashboard/status-chip";
-import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
+import { useDemoDashboardData } from "@/components/dashboard/use-dashboard-data";
+import { usePersistentDashboardData } from "@/components/dashboard/use-persistent-dashboard-data";
+import { useViewer } from "@/components/viewer/viewer-provider";
 import { Button } from "@/components/ui/button";
 import { verificationLabel } from "@/lib/applications/ui";
 import { formatChatTime } from "@/lib/chat/demo";
@@ -18,6 +20,7 @@ import type {
 } from "@/lib/dashboard/data";
 import { formatMoney, taskStatusTone, verificationTone } from "@/lib/dashboard/ui";
 import { taskStatusLabel } from "@/lib/tasks/ui";
+import { shouldUseMarketplacePreview } from "@/lib/marketplace/preview";
 
 type WorkTab = "tasks" | "review" | "assignments";
 
@@ -222,7 +225,20 @@ function WorkTable({ rows, tab, canPost }: { rows: WorkRow[]; tab: WorkTab; canP
 }
 
 export default function MyWorkPage() {
-  const { viewer, data, state } = useDashboardData();
+  const { isPreview } = useViewer();
+  return shouldUseMarketplacePreview(isPreview) ? <DemoMyWorkPage /> : <PersistentMyWorkPage />;
+}
+
+function DemoMyWorkPage() {
+  return <MyWorkContent data={useDemoDashboardData()} />;
+}
+
+function PersistentMyWorkPage() {
+  return <MyWorkContent data={usePersistentDashboardData()} />;
+}
+
+function MyWorkContent({ data: dashboardData }: { data: ReturnType<typeof useDemoDashboardData> }) {
+  const { viewer, data, state } = dashboardData;
   const [activeTab, setActiveTab] = useState<WorkTab>("tasks");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const counts: Record<WorkTab, number> = {

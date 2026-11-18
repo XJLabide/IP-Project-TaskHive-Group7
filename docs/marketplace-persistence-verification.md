@@ -2,7 +2,7 @@
 
 ## Data boundary
 
-Outside local development preview mode, marketplace screens use same-origin authenticated APIs backed by Prisma/Postgres. The `?as=` viewer switch may preview the demo UI during local development only; it cannot route a production build to browser-local demo stores. Task lists and application/chat records are scoped on the server to the public task set or authenticated account. The public task projection contains no exact address or raw coordinates. Exact addresses are returned only when the address-access policy allows the current Poster or paid, active Tasker to see them.
+Outside local development preview mode, marketplace screens use same-origin authenticated APIs backed by Prisma/Postgres. The `?as=` viewer switch may preview the demo UI during local development only; it cannot route a production build to browser-local demo stores. Task lists and application/chat records are scoped on the server to the public task set or authenticated account. Public map pins are rounded to two decimal places; the raw stored coordinates and exact address are not returned in browse results. Exact addresses are returned only when the address-access policy allows the current Poster or paid, active Tasker to see them.
 
 ## Automated coverage
 
@@ -23,3 +23,5 @@ Use two distinct, verified accounts in separate browser profiles against the sam
 6. Restart the app or use a fresh browser profile. Tasks, applications, conversations, and confirmed payment state should still come from the database.
 
 Do not use real payment credentials for this exercise. Maya sandbox transactions do not move real funds. The checkout API intentionally returns unavailable when the deployment is not configured for a non-production sandbox.
+
+The automated suite verifies API and service behavior with isolated fixtures. The full two-account exercise above was not run during this implementation; it requires two authenticated accounts connected to the same database environment.

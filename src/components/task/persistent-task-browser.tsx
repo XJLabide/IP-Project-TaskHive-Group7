@@ -5,12 +5,14 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { PublicShell } from "@/components/layout/public-shell";
 import { TaskCard } from "@/components/task/task-card";
+import { TaskMap } from "@/components/task/task-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { requestData } from "@/lib/marketplace/http";
 import type { PublicTaskSummary } from "@/lib/tasks/discovery";
 import type { TaskSummary } from "@/lib/tasks/types";
+import { publicTaskToSummary } from "@/lib/tasks/public-ui";
 import { launchCategories } from "@/lib/tasks/policy";
 
 type PublicTaskListResponse = {
@@ -19,23 +21,6 @@ type PublicTaskListResponse = {
 };
 type TaskType = "all" | "local" | "remote" | "bidding" | "fixed_price";
 type BudgetRange = "any" | "under-500" | "500-1000" | "over-1000";
-
-function toTaskSummary(task: PublicTaskSummary): TaskSummary {
-  return {
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    category: task.category ?? "",
-    fulfillmentMode: task.fulfillmentMode,
-    hiringMode: task.hiringMode,
-    budget: task.budgetCents / 100,
-    location: task.areaLabel,
-    deadline: task.deadline ?? "",
-    status: "open",
-    poster: task.posterName ?? "Task Poster",
-    applications: task.applicationCount,
-  };
-}
 
 function toOwnedTask(task: TaskSummary): TaskSummary {
   return task;
@@ -83,6 +68,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
   const [budget, setBudget] = useState<BudgetRange>("any");
   const [deadlineDays, setDeadlineDays] = useState("any");
   const [sort, setSort] = useState("recommended");
+  const [view, setView] = useState<"list" | "map">(initialParams.view === "map" ? "map" : "list");
   const [publicTasks, setPublicTasks] = useState<Array<{ task: TaskSummary; distanceKm: number | null }>>([]);
   const [ownedTasks, setOwnedTasks] = useState<TaskSummary[]>([]);
   const [pagination, setPagination] = useState<PublicTaskListResponse["pagination"] | null>(null);
@@ -103,7 +89,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
       setError("");
       void requestData<PublicTaskListResponse>(`/api/tasks?${query}`, { signal: controller.signal })
         .then((result) => {
-          setPublicTasks(result.tasks.map((task) => ({ task: toTaskSummary(task), distanceKm: task.distanceKm })));
+          setPublicTasks(result.tasks.map((task) => ({ task: publicTaskToSummary(task), distanceKm: task.distanceKm })));
           setPagination(result.pagination);
           setLoadedQuery(query);
         })
@@ -138,7 +124,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
       const nextQuery = new URLSearchParams(query);
       nextQuery.set("page", String(pagination.page + 1));
       const result = await requestData<PublicTaskListResponse>(`/api/tasks?${nextQuery}`);
-      setPublicTasks((current) => [...current, ...result.tasks.map((task) => ({ task: toTaskSummary(task), distanceKm: task.distanceKm }))]);
+      setPublicTasks((current) => [...current, ...result.tasks.map((task) => ({ task: publicTaskToSummary(task), distanceKm: task.distanceKm }))]);
       setPagination(result.pagination);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load more tasks.");
@@ -161,13 +147,16 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
             {([ ["all", "All tasks"], ["local", "Local"], ["remote", "Remote"], ["bidding", "Bidding"], ["fixed_price", "Fixed price"] ] as const).map(([value, label]) => <Button aria-pressed={type === value} key={value} onClick={() => setType(value)} size="sm" type="button" variant={type === value ? "default" : "outline"}>{label}</Button>)}
             <select aria-label="Budget" className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setBudget(event.target.value as BudgetRange)} value={budget}><option value="any">Any budget</option><option value="under-500">Under PHP 500</option><option value="500-1000">PHP 500–1,000</option><option value="over-1000">Over PHP 1,000</option></select>
             <select aria-label="Deadline" className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setDeadlineDays(event.target.value)} value={deadlineDays}><option value="any">Any deadline</option><option value="3">Within 3 days</option><option value="7">Within 7 days</option><option value="30">Within 30 days</option></select>
+            <div aria-label="Task view" className="ml-auto flex gap-2"><Button aria-pressed={view === "list"} onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "outline"}>List</Button><Button aria-pressed={view === "map"} onClick={() => setView("map")} size="sm" type="button" variant={view === "map" ? "default" : "outline"}>Map</Button></div>
           </div>
         </CardContent></Card>
 
         {!viewer.signedIn ? <p className="text-sm text-zinc-500 dark:text-zinc-400">Sign in to apply or message. <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFD50D]" href="/login">Sign in</Link></p> : null}
         {error ? <Card><CardContent className="p-5"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p></CardContent></Card> : null}
         <div aria-live="polite" className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400"><span>{isLoading ? "Loading tasks…" : `${pagination?.total ?? publicTasks.length} tasks`}</span>{viewer.canPost ? <Button asChild size="sm" variant="outline"><Link href="/tasks/new">Create task</Link></Button> : null}</div>
-        {isLoading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((item) => <div aria-hidden="true" className="h-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" key={item} />)}</div> : publicTasks.length === 0 && !error ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No open tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try a wider search or clear a filter.</p></div></CardContent></Card> : (
+        {isLoading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((item) => <div aria-hidden="true" className="h-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" key={item} />)}</div> : publicTasks.length === 0 && !error ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No open tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try a wider search or clear a filter.</p></div></CardContent></Card> : view === "map" ? (
+          <TaskMap tasks={publicTasks.map(({ task }) => task)} />
+        ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{publicTasks.map(({ task, distanceKm }) => <TaskCard applicationCount={task.applications} distanceKm={distanceKm} key={task.id} task={task} variant="browse" />)}</div>
         )}
         {pagination && pagination.page < pagination.totalPages ? <div className="flex justify-center"><Button disabled={loadingMore || isLoading} onClick={() => void loadMore()} type="button" variant="outline">{loadingMore ? "Loading…" : "Load more tasks"}</Button></div> : null}

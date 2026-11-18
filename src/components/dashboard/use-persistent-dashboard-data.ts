@@ -1,0 +1,67 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useViewer } from "@/components/viewer/viewer-provider";
+import { dashboardViewState, type DashboardData } from "@/lib/dashboard/data";
+import { requestData } from "@/lib/marketplace/http";
+import type { PublicTaskSummary } from "@/lib/tasks/discovery";
+import type { TaskSummary } from "@/lib/tasks/types";
+import { publicTaskToSummary } from "@/lib/tasks/public-ui";
+
+type DashboardPayload = { data: DashboardData; tasks: TaskSummary[] };
+type PublicTaskListResponse = { tasks: PublicTaskSummary[] };
+
+function emptyDashboard(signedIn: boolean, displayName: string | null): DashboardData {
+  return {
+    scope: signedIn ? "empty" : "signed_out",
+    displayName: signedIn ? displayName : null,
+    summary: signedIn ? { openTasks: 0, awaitingReview: 0, activeAssignments: 0, paymentActions: 0 } : null,
+    postedTasks: [],
+    awaitingReview: [],
+    activeAssignments: [],
+    activity: [],
+    actions: [],
+  };
+}
+
+/** Production dashboard reads persistent account data and public discovery data. */
+export function usePersistentDashboardData() {
+  const { viewer } = useViewer();
+  const [payload, setPayload] = useState<DashboardPayload | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const dashboard = viewer.signedIn
+      ? requestData<DashboardData>("/api/dashboard", { signal: controller.signal })
+      : Promise.resolve(emptyDashboard(false, null));
+    void Promise.all([
+      dashboard,
+      requestData<PublicTaskListResponse>("/api/tasks?page=1&pageSize=50", { signal: controller.signal }),
+    ])
+      .then(([data, result]) => {
+        setPayload({ data, tasks: result.tasks.map((task) => publicTaskToSummary(task)) });
+        setError(false);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setError(true);
+      });
+    return () => controller.abort();
+  }, [viewer.displayName, viewer.signedIn]);
+
+  const data = payload?.data ?? emptyDashboard(viewer.signedIn, viewer.displayName);
+  const state = dashboardViewState({
+    ready: payload !== null || error,
+    error,
+    scope: data.scope,
+  });
+
+  return {
+    tasks: payload?.tasks ?? [],
+    applications: [],
+    viewer,
+    data,
+    now: new Date(),
+    state,
+  };
+}
