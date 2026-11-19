@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   if (authResult.response) return authResult.response;
 
   const userId = authResult.session.user.id;
-  const [notifications, unreadCount] = await Promise.all([
+  const [notifications, unreadCount, unreadMessageCount] = await Promise.all([
     prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
       },
     }),
     prisma.notification.count({ where: { userId, readAt: null } }),
+    prisma.notification.count({ where: { userId, readAt: null, type: "chat.message" } }),
   ]);
 
   return ok({
@@ -33,5 +34,6 @@ export async function GET(request: Request) {
       href: safeNotificationHref(notification.href),
     })),
     unreadCount,
+    unreadMessageCount,
   });
 }

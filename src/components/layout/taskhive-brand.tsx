@@ -7,9 +7,11 @@ import taskHiveMark from "@/logos/Golden Folded Cube Emblem.png";
 export function TaskHiveBrand({
   className,
   iconClassName,
+  showName = true,
 }: {
   className?: string;
   iconClassName?: string;
+  showName?: boolean;
 }) {
   return (
     <Link
@@ -19,13 +21,13 @@ export function TaskHiveBrand({
     >
       <Image
         alt=""
-        className={cn("object-contain", iconClassName)}
-        height={1200}
+        className={cn("aspect-square h-8 w-8 object-contain", iconClassName)}
+        height={32}
         priority
         src={taskHiveMark}
-        width={1310}
+        width={32}
       />
-      <span><span className="text-[#FFC800]">Task</span>Hive</span>
+      {showName && <span><span className="text-[#FFC800]">Task</span>Hive</span>}
     </Link>
   );
 }
