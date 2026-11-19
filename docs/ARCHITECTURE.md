@@ -97,6 +97,7 @@ Route Handlers expose the custom API:
 - `/api/disputes`
 - `/api/admin/dashboard`
 - `/api/admin/reports`
+- `/api/admin/jobs`
 - `/api/uploads/signature`
 - `/api/jobs`
 
@@ -107,6 +108,18 @@ Use Next.js full-stack instead of Vite + NestJS + Render. This reduces deploymen
 Marketplace notification events are persisted with a stable event key before Next.js schedules QStash publishing after the response. The job carries only the notification ID, verifies the QStash signature, sends only to a user with a verified email, and uses the notification ID as Resend's idempotency key. Per-event email preferences are not modeled yet; verified email is the current contact gate. QStash retries failed deliveries; the notification row records sent, skipped, or failed status, while exhausted queue retries remain visible in QStash's failure queue. Email links point to the signed-in My Work area so destination data is still loaded through the user's authenticated session. The inbox API scopes reads and mark-read actions to the authenticated user.
 
 Configure `QSTASH_TOKEN`, `QSTASH_DESTINATION_URL`, `QSTASH_CURRENT_SIGNING_KEY`, and `QSTASH_NEXT_SIGNING_KEY` for queued delivery. Configure `RESEND_API_KEY` and an `EMAIL_FROM` address on a verified sender domain for real user email. Without those values, notification email is not delivered; in-app records remain available to the account APIs.
+
+## Scheduled job delivery
+Four recurring marketplace jobs run through the same signed `POST /api/jobs` endpoint. Their QStash schedules are declared in `src/lib/queue/schedules.ts` and provisioned with an admin-only `POST /api/admin/jobs`, which reconciles missing schedules and reports cron drift instead of silently replacing QStash schedules (QStash has no update operation):
+
+| Job | Cadence | Purpose |
+| --- | --- | --- |
+| `assignments.expire_holds` | every 5 minutes | Reopen tasks whose 24-hour payment hold expired unpaid. |
+| `completions.send_reminders` | hourly | Send the single 24-hour Poster confirmation reminder. |
+| `completions.auto_release` | every 15 minutes | Release undisputed payouts 48 hours after completion. |
+| `reviews.publish_due` | daily | Publish reviews whose 14-day blind window elapsed. |
+
+`GET /api/admin/jobs` reports schedule health (provisioned cron, paused state, last success/failure states, next run) and the per-job backlog from PostgreSQL, so operators can confirm the scheduler is keeping up. See `docs/scheduled-jobs-verification.md` for the end-to-end exercise. Until the schedules are provisioned in an environment, the jobs are still invocable manually by an operator with the QStash signing keys; each handler is idempotent or advances a bounded cursor.
 
 ## Marketplace integration constraints
 - Payment must be provider-managed: Poster checkout at hire, then provider-routed Tasker payout after completion. This is not legal escrow.
