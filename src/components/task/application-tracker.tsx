@@ -185,8 +185,8 @@ function PersistentApplicationTracker() {
   useEffect(() => {
     if (!viewer.signedIn) return;
     const controller = new AbortController();
-    void requestData<{ role: string; applications: ApplicationView[] }>("/api/applications", { signal: controller.signal })
-      .then((result) => setApplications(result.applications))
+    void requestData<ApplicationView[]>("/api/applications", { signal: controller.signal })
+      .then((result) => setApplications(result))
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Could not load your applications.");
       });
