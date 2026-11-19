@@ -1,55 +1,74 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "taskhive-theme";
+type ThemeMode = "light" | "dark" | "system";
 
-type ThemeMode = "light" | "dark" | "auto";
-
-function getAutoTheme() {
-  const hour = new Date().getHours();
-  return hour >= 18 || hour < 6 ? "dark" : "light";
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme-mode"],
+  });
+  return () => observer.disconnect();
 }
 
-export function ThemeToggle() {
-  const [isDark, setIsDark] = useState(false);
+function getThemeMode(): ThemeMode {
+  const mode = document.documentElement.dataset.themeMode;
+  return mode === "light" || mode === "dark" ? mode : "system";
+}
 
-  useEffect(() => {
-    const syncTheme = () => {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      const resolvedMode: ThemeMode = saved === "light" || saved === "dark" ? saved : "auto";
-      const activeTheme = resolvedMode === "auto" ? getAutoTheme() : resolvedMode;
+function getServerThemeMode(): ThemeMode {
+  return "system";
+}
 
-      document.documentElement.classList.toggle("dark", activeTheme === "dark");
-      setIsDark(activeTheme === "dark");
-    };
+function setThemeMode(mode: ThemeMode) {
+  const root = document.documentElement;
+  root.dataset.themeMode = mode;
+  root.classList.toggle(
+    "dark",
+    mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches),
+  );
 
-    syncTheme();
-    const interval = window.setInterval(syncTheme, 60_000);
+  try {
+    window.localStorage.setItem("taskhive-theme", mode);
+  } catch {
+    // The selection still applies for the current page session.
+  }
+}
 
-    return () => window.clearInterval(interval);
-  }, []);
+const themeIcons = { light: Sun, dark: Moon, system: Monitor };
 
-  const handleToggle = () => {
-    const nextTheme: ThemeMode = isDark ? "light" : "dark";
-    window.localStorage.setItem(STORAGE_KEY, nextTheme);
-    document.documentElement.classList.toggle("dark", isDark === false);
-    setIsDark(!isDark);
-  };
+export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
+  const mode = useSyncExternalStore(subscribe, getThemeMode, getServerThemeMode);
+  const Icon = themeIcons[mode];
+
+  const select = (
+    <select
+      aria-label="Color theme"
+      value={mode}
+      onChange={(event) => setThemeMode(event.target.value as ThemeMode)}
+      className={cn(
+        "cursor-pointer text-sm font-medium dark:[color-scheme:dark]",
+        iconOnly
+          ? "absolute inset-0 size-full opacity-0"
+          : "h-9 shrink-0 rounded-lg border border-zinc-300 bg-white px-2 text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100",
+      )}
+    >
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="system">System</option>
+    </select>
+  );
+
+  if (!iconOnly) return select;
 
   return (
-    <button
-      type="button"
-      onClick={handleToggle}
-      role="switch"
-      aria-checked={isDark}
-      aria-label="Dark mode"
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900 ${isDark ? "bg-[#FFC800]" : "bg-zinc-300 dark:bg-zinc-700"}`}
-    >
-      <span className={`grid h-5 w-5 place-items-center rounded-full bg-white text-zinc-800 shadow-sm transition-transform ${isDark ? "translate-x-6" : "translate-x-1"}`}>
-        {isDark ? <Moon aria-hidden="true" className="h-3 w-3" /> : <Sun aria-hidden="true" className="h-3 w-3" />}
-      </span>
-    </button>
+    <div className="relative grid size-9 shrink-0 place-items-center rounded-xl border border-zinc-300 bg-white text-zinc-800 hover:border-[#D19300] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+      <Icon aria-hidden="true" className="size-[18px]" />
+      {select}
+    </div>
   );
 }

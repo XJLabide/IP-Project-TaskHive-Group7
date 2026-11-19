@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, ShieldCheck, Star, MapPin } from "lucide-react";
+import { ArrowRight, ShieldCheck, Star, MapPin, ShoppingBasket, Wrench, Sparkles, Package, Truck, BookOpen } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { loadCurrentActor } from "@/lib/auth/current-actor";
+import FaultyTerminal from "./faulty-terminal";
+import heroStyles from "./home-hero.module.css";
 
 const steps = [
   {
@@ -24,7 +26,25 @@ const steps = [
   },
 ];
 
-const categories = ["Groceries & errands", "Home repairs", "Cleaning", "Delivery", "Moving help", "Tutoring"];
+const categories = [
+  { title: "Groceries & errands", icon: ShoppingBasket },
+  { title: "Home repairs", icon: Wrench },
+  { title: "Cleaning", icon: Sparkles },
+  { title: "Delivery", icon: Package },
+  { title: "Moving help", icon: Truck },
+  { title: "Tutoring", icon: BookOpen },
+];
+
+const benefits = [
+  { title: "Profiles you can trust", text: "Get to know the people in your community.", icon: ShieldCheck },
+  { title: "Real reviews", text: "Build confidence with ratings after a job.", icon: Star },
+  { title: "Help nearby", text: "Find people who work in your area.", icon: MapPin },
+];
+
+const contentFrame = "mx-auto w-full max-w-7xl px-6 sm:px-8 lg:px-10";
+const panel = "rounded-[clamp(1rem,2.5vw,2rem)] border border-[#E3E7ED] px-[clamp(1rem,4vw,4rem)] py-[clamp(2rem,5vw,5rem)] dark:border-zinc-800";
+const surface = "bg-white dark:bg-[#18181B]";
+const sectionHeading = "text-[clamp(2rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-tight";
 
 const questions = [
   ["How does TaskHive work?", "Post a task, review offers from local Taskers, and hire the person who suits your needs."],
@@ -39,108 +59,122 @@ export default async function Home() {
   if (actor?.signedIn) redirect("/dashboard");
 
   return (
-    <main className="h-dvh overflow-y-auto overscroll-y-none bg-white text-zinc-950 transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50">
-      <SiteHeader active="home" />
+    <div data-page-scroll className="h-dvh overflow-y-auto bg-[#F7F8FA] text-[#17191D] dark:bg-[#09090B] dark:text-[#FAFAFA]">
+      <div className={heroStyles.landing}>
+        <div aria-hidden="true" className={heroStyles.backdrop}>
+          <div className={heroStyles.fade}>
+            <FaultyTerminal
+              aria-hidden="true"
+              tint="#FFC800"
+              glyphs="hexagons"
+              scale={2.5}
+              digitSize={1.65}
+              timeScale={0.5}
+              brightness={1.2}
+              glow={0.8}
+              persistence={0.51}
+              mouseStrength={0.5}
+              mouseGlow={0.6}
+              curvature={0.15}
+              vignette={0}
+              clickEffect="degauss"
+              glitchAmount={0}
+              flickerAmount={0}
+              noiseAmp={0.5}
+              dpr={1}
+            />
+            <div aria-hidden="true" className={heroStyles.scrim} />
+          </div>
+        </div>
 
-      <section>
-        <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1600px] items-center gap-10 px-4 py-10 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:px-12">
-          <div className="max-w-xl">
-            <h1 className="text-[3.2rem] font-light leading-[0.98] tracking-tight text-zinc-950 dark:text-zinc-50 sm:text-[4.5rem] lg:text-[5.2rem]">
-              CAN YOUR <span className="font-semibold">TASKS</span> GET DONE?
-            </h1>
-            <p className="mt-6 max-w-lg text-base leading-7 text-zinc-600 dark:text-zinc-300 lg:text-lg">
-              When digital tools fall short, TaskHive brings real help to your doorstep. Post a task, pick a hero, and get it done.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Button asChild className="min-w-52" size="lg"><Link href="/tasks/new">Post a Task</Link></Button>
-              <Button asChild className="min-w-56" size="lg" variant="outline"><Link href="/tasks">Become a Tasker</Link></Button>
+        <SiteHeader active="home" />
+
+        <main>
+          <section aria-labelledby="hero-title" className="grid min-h-svh content-end pt-32 pb-[clamp(2.5rem,9svh,7rem)] text-white md:pt-24 md:pb-[clamp(3rem,10svh,7rem)]">
+            <div className={contentFrame}>
+              <h1 id="hero-title" className="text-[clamp(2.25rem,7.5vw,7.5rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
+                <span className="block">CAN YOUR</span>{" "}
+                <span className="text-[#FFC800]">TASKS</span> GET DONE?
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-200 sm:text-lg">
+                When digital tools fall short, TaskHive brings real help to your doorstep. Post a task, pick a hero, and get it done.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Button asChild size="lg"><Link href="/tasks/new">Post a task <ArrowRight aria-hidden="true" className="size-4" /></Link></Button>
+                <Button asChild size="lg" variant="outline" className="border-zinc-500 bg-transparent text-white hover:bg-zinc-800 hover:text-white dark:border-zinc-500 dark:bg-transparent dark:text-white"><Link href="/tasks">Browse tasks</Link></Button>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div aria-label="Illustration placeholder" className="relative w-full min-h-[320px] overflow-hidden bg-zinc-200 dark:bg-zinc-900 lg:min-h-[480px]">
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sm font-medium text-zinc-600 dark:text-zinc-300">Local help, right around the corner</span>
-            <span className="absolute inset-0 overflow-hidden" aria-hidden="true">
-              <span className="absolute left-1/2 top-1/2 h-[140%] w-px origin-center -translate-x-1/2 -translate-y-1/2 rotate-[52deg] bg-black dark:bg-white" />
-              <span className="absolute left-1/2 top-1/2 h-[140%] w-px origin-center -translate-x-1/2 -translate-y-1/2 -rotate-[52deg] bg-black dark:bg-white" />
-            </span>
-          </div>
-        </div>
-      </section>
+          <div className={`${contentFrame} flex flex-col gap-[clamp(1rem,2.5vw,2rem)] pb-[clamp(1rem,2.5vw,2rem)] pt-3 sm:pt-5`}>
+            <section aria-labelledby="categories-title" className={`${panel} ${surface}`}>
+              <h2 id="categories-title" className={sectionHeading}>What can we help you with?</h2>
+              <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {categories.map(({ title, icon: Icon }) => (
+                  <Link
+                    className="group flex items-center gap-3 rounded-2xl border border-[#E3E7ED] bg-white p-4 font-semibold hover:border-[#D19300] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D19300] sm:p-5 dark:border-zinc-800 dark:bg-[#18181B] dark:hover:border-[#FFC800]"
+                    href="/tasks"
+                    key={title}
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#FFC800]/25 text-[#674900] dark:text-[#FFC800]">
+                      <Icon aria-hidden="true" className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">{title}</span>
+                    <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-zinc-500 group-hover:text-current dark:text-zinc-400" />
+                  </Link>
+                ))}
+              </div>
+            </section>
 
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto w-full max-w-[1600px] px-4 md:px-8 lg:px-12">
-          <h2 className="text-center text-4xl font-light tracking-tight text-zinc-950 dark:text-zinc-50 sm:text-[50px]"><strong className="font-bold">3</strong> Steps. <strong className="font-bold">Zero</strong> Hassle.</h2>
-          <div className="mt-12 grid gap-5 md:grid-cols-[1.4fr_1fr_0.9fr]">
-            {steps.map((step) => (
-              <article className="min-h-[250px] bg-zinc-100 p-7 sm:p-9 dark:bg-zinc-900" key={step.number}>
-                <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{step.number}</p>
-                <h3 className="mt-10 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">{step.title}</h3>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-700 dark:text-zinc-300">{step.text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
+            <section aria-labelledby="steps-title" className={`${panel} bg-[#FFFDF7] dark:bg-[#18181B]`}>
+              <h2 id="steps-title" className={sectionHeading}>How it works</h2>
+              <ol className="mt-7 grid gap-4 md:grid-cols-3">
+                {steps.map((step) => (
+                  <li className="rounded-2xl border border-[#E3E7ED] bg-white p-5 sm:p-6 dark:border-zinc-800 dark:bg-[#09090B]" key={step.number}>
+                    <span aria-hidden="true" className="inline-flex rounded-lg bg-[#FFC800] px-3 py-1 text-sm font-bold text-zinc-950">{step.number}</span>
+                    <h3 className="mt-4 text-xl font-bold">{step.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-[#5D6571] dark:text-zinc-300">{step.text}</p>
+                  </li>
+                ))}
+              </ol>
+            </section>
 
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto w-full max-w-[1600px] px-4 md:px-8 lg:px-12">
-          <h2 className="text-center text-3xl font-light tracking-tight text-zinc-950 dark:text-zinc-50 sm:text-[42px]">What Can We Help You Cross Off Today?</h2>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((category) => (
-              <Link className="flex min-h-[50px] items-center justify-between bg-zinc-100 px-5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800" href="/tasks" key={category}>
-                {category}<ArrowRight className="h-4 w-4" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+            <section aria-labelledby="benefits-title" className={`${panel} ${surface}`}>
+              <h2 id="benefits-title" className={sectionHeading}>Why TaskHive?</h2>
+              <div className="mt-7 grid gap-4 md:grid-cols-3">
+                {benefits.map(({ title, text, icon: Icon }) => (
+                  <article className="rounded-2xl border border-[#E3E7ED] bg-white p-5 sm:p-6 dark:border-zinc-800 dark:bg-[#18181B]" key={title}>
+                    <Icon aria-hidden="true" className="size-6 text-[#805A00] dark:text-[#FFC800]" />
+                    <h3 className="mt-4 text-xl font-bold">{title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-[#5D6571] dark:text-zinc-300">{text}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
 
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto w-full max-w-[1600px] px-4 md:px-8 lg:px-12">
-          <h2 className="text-center text-3xl font-light tracking-tight text-zinc-950 dark:text-zinc-50 sm:text-[42px]">Got <strong className="font-bold">Questions</strong>? We’ve Got <strong className="font-bold">Answers</strong></h2>
-          <div className="mx-auto mt-12 max-w-4xl">
-            {questions.map(([question, answer]) => (
-              <details className="group border-b border-zinc-200 py-5 last:border-b-0 dark:border-zinc-700" key={question}>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-medium text-zinc-950 dark:text-zinc-50 marker:hidden">
-                  {question}<span aria-hidden="true" className="text-xl text-zinc-500 group-open:rotate-45 dark:text-zinc-400">+</span>
-                </summary>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-300">{answer}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+            <section aria-labelledby="faq-title" className={`${panel} ${surface} grid gap-6 lg:grid-cols-[1fr_1.6fr] lg:gap-12`}>
+              <h2 id="faq-title" className={sectionHeading}>Frequently asked questions</h2>
+              <div className="divide-y divide-[#E3E7ED] border-y border-[#E3E7ED] dark:divide-zinc-700 dark:border-zinc-700">
+                {questions.map(([question, answer]) => (
+                  <details className="group py-4" key={question}>
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D19300] [&::-webkit-details-marker]:hidden">
+                      {question}<span aria-hidden="true" className="text-xl leading-none text-zinc-500 group-open:rotate-45 dark:text-zinc-400">+</span>
+                    </summary>
+                    <p className="mt-3 text-sm leading-relaxed text-[#5D6571] dark:text-zinc-300">{answer}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
 
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto grid w-full max-w-[1600px] items-center gap-9 px-4 md:px-8 lg:grid-cols-[0.9fr_2.1fr] lg:px-12">
-          <div>
-            <h2 className="text-4xl font-light tracking-tight text-zinc-950 dark:text-zinc-50">Why <strong className="font-bold">TaskHive</strong>?</h2>
-            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Built for local trust.</p>
+            <section aria-labelledby="join-title" className={`${panel} flex flex-col items-center gap-6 border-[#FFC800] bg-[#FFC800] text-center text-zinc-950 dark:border-[#FFC800]`}>
+              <h2 id="join-title" className={sectionHeading}>Ready to get started?</h2>
+              <Button asChild size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 focus-visible:ring-zinc-950"><Link href="/signup">Join the Hive <ArrowRight aria-hidden="true" className="size-4" /></Link></Button>
+            </section>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <article className="min-h-[210px] bg-zinc-100 p-6 dark:bg-zinc-900">
-              <ShieldCheck className="h-7 w-7 text-zinc-950 dark:text-zinc-50" /><h3 className="mt-8 font-semibold text-zinc-950 dark:text-zinc-50">Profiles you can trust</h3><p className="mt-2 text-sm leading-5 text-zinc-700 dark:text-zinc-300">Get to know the people in your community.</p>
-            </article>
-            <article className="min-h-[210px] bg-zinc-100 p-6 dark:bg-zinc-900">
-              <Star className="h-7 w-7 text-zinc-950 dark:text-zinc-50" /><h3 className="mt-8 font-semibold text-zinc-950 dark:text-zinc-50">Real reviews</h3><p className="mt-2 text-sm leading-5 text-zinc-700 dark:text-zinc-300">Build confidence with ratings after a job.</p>
-            </article>
-            <article className="min-h-[210px] bg-zinc-100 p-6 dark:bg-zinc-900">
-              <MapPin className="h-7 w-7 text-zinc-950 dark:text-zinc-50" /><h3 className="mt-8 font-semibold text-zinc-950 dark:text-zinc-50">Help nearby</h3><p className="mt-2 text-sm leading-5 text-zinc-700 dark:text-zinc-300">Find people who work in your area.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 lg:py-24">
-        <div className="mx-auto flex min-h-[400px] w-full max-w-[1600px] flex-col items-center justify-center px-4 text-center md:px-8 lg:px-12">
-          <h2 className="max-w-4xl text-4xl font-light leading-tight tracking-tight text-zinc-950 dark:text-zinc-50 sm:text-[48px]">
-            Got an <strong className="font-bold">endless to-do list</strong>? Or free time to <strong className="font-bold">earn extra cash</strong>?
-          </h2>
-          <Button asChild className="mt-9 min-w-52" size="lg"><Link href="/signup">Join the Hive</Link></Button>
-        </div>
-      </section>
+        </main>
+      </div>
 
       <SiteFooter />
-    </main>
+    </div>
   );
 }

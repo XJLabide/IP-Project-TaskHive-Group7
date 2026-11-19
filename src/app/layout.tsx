@@ -9,15 +9,25 @@ import "./globals.css";
 
 const themeScript = `
   (function() {
-    try {
-      const storedTheme = localStorage.getItem('taskhive-theme');
-      const hour = new Date().getHours();
-      const autoTheme = hour >= 18 || hour < 6 ? 'dark' : 'light';
-      const theme = storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : autoTheme;
-      document.documentElement.classList.toggle('dark', theme === 'dark');
-    } catch (error) {
-      document.documentElement.classList.remove('dark');
-    }
+    const root = document.documentElement;
+    const system = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const mode = root.dataset.themeMode;
+      root.classList.toggle('dark', mode === 'dark' || (mode === 'system' && system.matches));
+    };
+    const syncPreference = () => {
+      let storedTheme;
+      try {
+        storedTheme = localStorage.getItem('taskhive-theme');
+      } catch {}
+      root.dataset.themeMode = storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'system';
+      applyTheme();
+    };
+    syncPreference();
+    system.addEventListener('change', applyTheme);
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'taskhive-theme' || event.key === null) syncPreference();
+    });
   })();
 `;
 
