@@ -1,0 +1,20 @@
+.header {
+  max-width: 75rem;
+  transition: max-width 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 48rem) {
+  .header[data-compact] {
+    max-width: 55rem;
+  }
+}
+
+.brand > img {
+  margin-inline: 0.375rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header {
+    transition: none;
+  }
+}
