@@ -68,6 +68,7 @@ export type EventOutcome =
   | "activated"
   | "failed"
   | "refunded"
+  | "partially_refunded"
   | "ignored"
   | "duplicate"
   | "late"
@@ -440,6 +441,8 @@ export async function startCheckout(input: {
       where: { id: attempt.id },
       data: {
         providerCheckoutId: session.reference,
+        providerPaymentIntentId: session.paymentIntentId,
+        providerChargeId: session.chargeId,
         checkoutUrl: session.url,
         status: "CHECKOUT_STARTED",
       },
@@ -454,7 +457,7 @@ export async function startCheckout(input: {
     });
   });
 
-  await reconcileUnmatchedProviderEvents(provider.name, session.reference, now);
+  await reconcileUnmatchedProviderEvents(provider.name, session.reference, now, session);
 
   return {
     ok: true,
@@ -473,10 +476,15 @@ export async function startCheckout(input: {
  * received before that point remain unprocessed and are replayed when the
  * reference is attached to its durable attempt.
  */
-async function reconcileUnmatchedProviderEvents(provider: string, reference: string, now: Date) {
+async function reconcileUnmatchedProviderEvents(provider: string, reference: string, now: Date, ids?: Pick<ProviderEvent, "paymentIntentId" | "chargeId">) {
+  const references = [reference, ids?.paymentIntentId, ids?.chargeId].filter((id): id is string => Boolean(id));
   const events = await prisma.paymentEvent.findMany({
-    where: { provider, providerReference: reference, paymentId: null, processedAt: null },
-    select: { eventId: true, type: true, providerReference: true, amountCents: true },
+    where: { provider, processedAt: null, OR: [
+      { providerReference: { in: references } },
+      { providerPaymentIntentId: { in: references } },
+      { providerChargeId: { in: references } },
+    ] },
+    select: { eventId: true, type: true, providerReference: true, amountCents: true, providerPaymentIntentId: true, providerChargeId: true },
   });
   for (const event of events) {
     if (
@@ -488,6 +496,8 @@ async function reconcileUnmatchedProviderEvents(provider: string, reference: str
         type: event.type,
         reference: event.providerReference,
         amountCents: event.amountCents,
+        paymentIntentId: event.providerPaymentIntentId ?? undefined,
+        chargeId: event.providerChargeId ?? undefined,
       }, provider, now);
     }
   }
@@ -603,7 +613,11 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
   let payment;
   try {
     attempt = await prisma.paymentAttempt.findFirst({
-      where: { provider: providerName, providerCheckoutId: event.reference },
+      where: { provider: providerName, OR: [
+        { providerCheckoutId: event.reference },
+        ...(event.paymentIntentId ? [{ providerPaymentIntentId: event.paymentIntentId }] : []),
+        ...(event.chargeId ? [{ providerChargeId: event.chargeId }] : []),
+      ] },
       select: {
         id: true,
         paymentId: true,
@@ -637,6 +651,8 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
           eventId: event.id,
           type: event.type,
           providerReference: event.reference,
+          providerPaymentIntentId: event.paymentIntentId,
+          providerChargeId: event.chargeId,
           amountCents: event.amountCents,
           paymentId: payment?.id ?? null,
           attemptId: attempt?.id ?? null,
@@ -644,6 +660,13 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
         update: {},
         select: { id: true, processedAt: true },
       });
+
+      if (attempt && (event.paymentIntentId || event.chargeId)) {
+        await tx.paymentAttempt.update({
+          where: { id: attempt.id },
+          data: { providerPaymentIntentId: event.paymentIntentId, providerChargeId: event.chargeId },
+        });
+      }
 
       if (recorded.processedAt) return { outcome: "duplicate" as const, notificationId: undefined };
 
@@ -655,7 +678,7 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
       } else if (event.type === "pending") {
         result = "ignored";
       } else if (event.type === "succeeded") {
-        if (attempt?.status === "SUCCEEDED") {
+        if (attempt?.status === "SUCCEEDED" || attempt?.status === "REFUNDED") {
           result = "duplicate";
         } else {
           const applied = await applySucceededEvent(tx, event, payment, now);
@@ -667,7 +690,7 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
                   select: { status: true },
                 })
               : null;
-            if (currentAttempt?.status !== "SUCCEEDED") {
+            if (currentAttempt?.status !== "SUCCEEDED" && currentAttempt?.status !== "REFUNDED") {
               const currentPayment = await tx.payment.findUnique({
                 where: { id: payment.id },
                 select: { status: true },
@@ -688,6 +711,35 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
           data: { status: "UNPAID" },
         });
         result = "failed";
+      } else if (providerName === "stripe") {
+        // Stripe reports the cumulative charge refund, not a per-event delta.
+        const total = event.amountCents;
+        if (total === null || !Number.isSafeInteger(total) || total <= 0 || total > payment.amountCents) {
+          result = "pending_reconciliation";
+        } else {
+          const full = total === payment.amountCents;
+          const refunded = await tx.payment.updateMany({
+            where: {
+              id: payment.id,
+              status: { in: ["PAID_PENDING_COMPLETION", "RELEASED", "DISPUTED"] },
+              refundedCents: { lt: total },
+            },
+            data: {
+              refundedCents: total,
+              refundedAt: now,
+              // Hold remaining funds for support review after a partial refund.
+              status: full ? "REFUNDED" : "DISPUTED",
+            },
+          });
+          if (refunded.count > 0) {
+            result = full ? "refunded" : "partially_refunded";
+          } else {
+            const current = await tx.payment.findUnique({
+              where: { id: payment.id }, select: { refundedCents: true },
+            });
+            result = current && current.refundedCents >= total ? "ignored" : "pending_reconciliation";
+          }
+        }
       } else {
         const refunded = await tx.payment.updateMany({
           where: {
@@ -699,7 +751,7 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
         result = refunded.count > 0 ? "refunded" : "ignored";
       }
 
-      if (payment) {
+      if (payment && result !== "pending_reconciliation") {
         await tx.paymentEvent.update({
           where: { id: recorded.id },
           data: { processedAt: now, paymentId: payment.id, attemptId: attempt?.id ?? null },
@@ -730,6 +782,9 @@ async function applyProviderEvent(event: ProviderEvent, providerName: string, no
       await queueNotificationEmail(eventOutcome.notificationId);
     }
 
+    if (payment && providerName === "stripe" && event.type !== "refunded" && (event.paymentIntentId || event.chargeId)) {
+      await reconcileUnmatchedProviderEvents(providerName, event.reference, now, event);
+    }
     return { ok: true, outcome: eventOutcome.outcome };
   } catch (error) {
     if (isUniqueViolation(error)) return { ok: true, outcome: "duplicate" };
