@@ -1,6 +1,9 @@
 import "server-only";
 
+import { cache } from "react";
 import type { DecodedIdToken } from "firebase-admin/auth";
+import type { MarketplaceActor } from "@/lib/domain/access";
+import { actorUserSelect, toMarketplaceActor } from "./actor-mapping";
 import { prisma } from "@/lib/prisma";
 import { getFirebaseAdminAuth } from "./firebase-admin";
 
@@ -39,12 +42,9 @@ async function resolveDomainUser(decoded: DecodedIdToken) {
     const user = await prisma.user.findUnique({
       where: { firebaseUid: decoded.uid },
       select: {
-        id: true,
+        ...actorUserSelect,
         email: true,
-        name: true,
         image: true,
-        emailVerified: true,
-        isAdmin: true,
       },
     });
 
@@ -68,6 +68,8 @@ async function resolveDomainUser(decoded: DecodedIdToken) {
       const name = decoded.name?.trim() || email.split("@")[0] || "TaskHive member";
       return {
         id: `user_${decoded.uid}`,
+        ageAttestedAt: new Date(0),
+        taskerVerification: { status: "VERIFIED" as const, appealCount: 0 },
         email,
         name,
         image: null,
@@ -79,18 +81,44 @@ async function resolveDomainUser(decoded: DecodedIdToken) {
   }
 }
 
-export async function getAuthSession(headers: Headers): Promise<AuthSession | null> {
-  const sessionCookie = readCookie(headers, FIREBASE_SESSION_COOKIE);
-  if (!sessionCookie) return null;
+type AuthContext = { session: AuthSession; actor: MarketplaceActor };
 
+// React.cache is scoped to a Server Component render, never shared between
+// requests. Key by the cookie value so different Headers wrappers still share
+// verification. Outside a render (e.g. Route Handlers), React does not memoize.
+const resolveAuthContext = cache(async (sessionCookie: string): Promise<AuthContext | null> => {
   try {
     const decoded = await getFirebaseAdminAuth().verifySessionCookie(sessionCookie, true);
     const user = await resolveDomainUser(decoded);
-    return user ? { user } : null;
+    if (!user) return null;
+
+    return {
+      session: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          emailVerified: user.emailVerified,
+          isAdmin: user.isAdmin,
+        },
+      },
+      actor: toMarketplaceActor(user),
+    };
   } catch {
     // Invalid, expired, revoked, or misconfigured sessions fail closed.
     return null;
   }
+});
+
+/** One verified account snapshot for both identity and authorization readers. */
+export async function getAuthContext(headers: Headers): Promise<AuthContext | null> {
+  const sessionCookie = readCookie(headers, FIREBASE_SESSION_COOKIE);
+  return sessionCookie ? resolveAuthContext(sessionCookie) : null;
+}
+
+export async function getAuthSession(headers: Headers): Promise<AuthSession | null> {
+  return (await getAuthContext(headers))?.session ?? null;
 }
 
 export async function createDomainUser(decoded: DecodedIdToken) {
