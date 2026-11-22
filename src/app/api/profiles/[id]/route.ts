@@ -1,4 +1,5 @@
-import { ok } from "@/lib/api/response";
+import { ok, problem } from "@/lib/api/response";
+import { getPublicProfile } from "@/lib/profiles/public-profile";
 
 export const runtime = "nodejs";
 
@@ -7,15 +8,11 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-
-  return ok({
-    id,
-    name: "Maria Santos",
-    verificationStatus: "verified",
-    taskerRating: 4.8,
-    posterRating: 4.9,
-    completedTasks: 18,
-    postedTasks: 12,
-    skills: ["Delivery", "Cleaning", "Tutoring"],
-  });
+  try {
+    const profile = await getPublicProfile(id);
+    if (!profile) return problem("Profile not found", 404);
+    return ok(profile, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return problem("Profile information is temporarily unavailable.", 503);
+  }
 }
