@@ -209,8 +209,8 @@ export async function getPublicTaskDetail(
     include: {
       category: { select: { name: true } },
       poster: { select: { name: true } },
-      assignment: { select: { taskerId: true } },
-      payments: { select: { status: true } },
+      assignment: { select: { taskerId: true, holdExpiresAt: true } },
+      payments: { select: { status: true, amountCents: true, platformFeeCents: true }, take: 1 },
       _count: {
         select: {
           bids: { where: { status: { in: ["SUBMITTED", "ACCEPTED"] } } },
@@ -241,5 +241,14 @@ export async function getPublicTaskDetail(
     taskStatus: task.status,
     isPoster: viewerId === task.posterId,
     isAssignedTasker: viewerId !== null && viewerId === assignmentTaskerId,
+    paymentSummary: viewerId !== null && (viewerId === task.posterId || viewerId === assignmentTaskerId) && row.payments[0]
+      ? {
+          amountCents: row.payments[0].amountCents,
+          platformFeeCents: row.payments[0].platformFeeCents,
+          payoutCents: row.payments[0].amountCents - row.payments[0].platformFeeCents,
+          holdExpiresAt: row.assignment?.holdExpiresAt?.toISOString() ?? null,
+          status: row.payments[0].status,
+        }
+      : null,
   };
 }

@@ -343,8 +343,16 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
 
         <dl className="grid gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
           <div className="flex justify-between gap-4">
-            <dt className="text-zinc-500 dark:text-zinc-400">Payout</dt>
-            <dd className="font-semibold">
+            <dt className="text-zinc-500 dark:text-zinc-400">Held for this task</dt>
+            <dd className="font-semibold tabular-nums">{money(assignment.amountCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-zinc-500 dark:text-zinc-400">Platform fee</dt>
+            <dd className="tabular-nums">− {money(assignment.platformFeeCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-zinc-500 dark:text-zinc-400">Tasker receives</dt>
+            <dd className="font-semibold tabular-nums">
               {money(assignment.payoutCents)}
             </dd>
           </div>
@@ -363,6 +371,7 @@ export function TaskCompletionPanel({ task }: { task: TaskSummary }) {
             </dd>
           </div>
         </dl>
+        <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">The Poster pays the held task amount; the fee is deducted from the Tasker payout. Funds release when completion is confirmed, or automatically after 48 hours unless a dispute is opened.</p>
 
         {feedback ? (
           <p

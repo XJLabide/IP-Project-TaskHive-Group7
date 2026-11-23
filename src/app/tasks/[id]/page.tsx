@@ -26,6 +26,7 @@ import { TaskApplicationPanel } from "@/components/task/task-application-panel";
 import { TaskApplications } from "@/components/task/task-applications";
 import { TaskChat } from "@/components/task/task-chat";
 import { TaskCompletionPanel } from "@/components/task/task-completion-panel";
+import { TaskProgress } from "@/components/task/task-progress";
 import { useViewer } from "@/components/viewer/viewer-provider";
 import { useMarketplace } from "@/lib/mock-marketplace-store";
 import { useMockTasks } from "@/lib/mock-task-store";
@@ -479,6 +480,8 @@ function DemoTaskDetailContent() {
           </Card>
         </aside>
       </div>
+
+      <section className="mt-6 max-w-3xl"><TaskProgress status={task.status} /></section>
 
       {isOwner && (isOpen || isPendingPayment || hasAssignment || isCancelled) ? (
         <section className="mt-6 max-w-3xl">

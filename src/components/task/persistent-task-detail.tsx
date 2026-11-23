@@ -17,6 +17,7 @@ import { requestData } from "@/lib/marketplace/http";
 import type { PublicTaskDetail } from "@/lib/tasks/discovery";
 import { publicTaskToSummary } from "@/lib/tasks/public-ui";
 import { formatTaskDeadline, taskStatusClass, taskStatusLabel } from "@/lib/tasks/ui";
+import { TaskProgress } from "@/components/task/task-progress";
 
 export function PersistentTaskDetail() {
   const { id } = useParams<{ id: string }>();
@@ -132,6 +133,11 @@ export function PersistentTaskDetail() {
           {!isDraft && !["pending_payment", "assigned", "in_progress"].includes(detail.taskStatus) ? <TaskApplicationPanel task={task} /> : null}
         </aside>
       </div>
+
+      <section className="mt-6 grid max-w-3xl gap-4">
+        <TaskProgress status={detail.taskStatus} />
+        {detail.paymentSummary ? <Card><CardContent className="grid gap-3 p-5"><div><h2 className="font-bold">Payment breakdown</h2><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">The Poster pays the agreed task amount. The platform fee comes out of the Tasker payout.</p></div><dl className="grid gap-2 text-sm"><div className="flex justify-between gap-4"><dt className="text-zinc-500 dark:text-zinc-400">Held for this task</dt><dd className="font-semibold tabular-nums">PHP {(detail.paymentSummary.amountCents / 100).toFixed(2)}</dd></div><div className="flex justify-between gap-4"><dt className="text-zinc-500 dark:text-zinc-400">Platform fee</dt><dd className="tabular-nums">− PHP {(detail.paymentSummary.platformFeeCents / 100).toFixed(2)}</dd></div><div className="flex justify-between gap-4 border-t border-zinc-100 pt-2 font-semibold dark:border-zinc-800"><dt>Tasker receives</dt><dd className="tabular-nums">PHP {(detail.paymentSummary.payoutCents / 100).toFixed(2)}</dd></div></dl><p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">Funds are released when the Poster confirms completion, or automatically 48 hours after the Tasker submits completion unless a dispute is opened.{detail.paymentSummary.holdExpiresAt ? ` The payment hold expires ${new Date(detail.paymentSummary.holdExpiresAt).toLocaleString()}.` : ""}</p></CardContent></Card> : null}
+      </section>
 
       {isOwner && (isOpen || detail.taskStatus === "pending_payment" || hasAssignment || detail.taskStatus === "cancelled") ? <section className="mt-6 max-w-3xl"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">{detail.taskStatus === "cancelled" ? "Retained applications" : "Applications"}</p><h2 className="mt-1 text-xl font-bold">{detail.taskStatus === "cancelled" ? "Kept for history" : "Compare applicants"}</h2><p className="mb-4 mt-1 text-sm text-zinc-500 dark:text-zinc-400">Pending-verification Taskers are visible, but cannot be selected until their identity check is complete.</p><TaskApplications readOnly={!isOpen} task={task} /></section> : null}
       {!isDraft ? <section className="mt-6 max-w-3xl"><TaskChat task={task} /></section> : null}
