@@ -72,6 +72,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
   const [error, setError] = useState("");
   const [ownedError, setOwnedError] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
 
   const query = useMemo(() => buildDiscoveryQuery({ search, category, type, budget, deadlineDays, sort, initialParams }), [
     search, category, type, budget, deadlineDays, sort, initialParams,
@@ -117,7 +118,16 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query]);
+  }, [query, reloadCount]);
+
+  function clearFilters() {
+    setSearch("");
+    setCategory("All categories");
+    setType("all");
+    setBudget("any");
+    setDeadlineDays("any");
+    setSort("recommended");
+  }
 
   useEffect(() => {
     if (!viewer.signedIn) return;
@@ -162,11 +172,11 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
         </CardContent></Card>
 
         {!viewer.signedIn ? <p className="text-sm text-zinc-500 dark:text-zinc-400">Sign in to apply or message. <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFD50D]" href="/login">Sign in</Link></p> : null}
-        {error ? <Card><CardContent className="p-5"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p></CardContent></Card> : null}
+        {error ? <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p><Button onClick={() => setReloadCount((count) => count + 1)} size="sm" type="button" variant="outline">Try again</Button></CardContent></Card> : null}
         <div aria-live="polite" className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400"><span>{isLoading ? "Loading tasks…" : `${pagination?.total ?? publicTasks.length} tasks`}</span></div>
         {view === "map" ? (
           <TaskMap tasks={publicTasks.map(({ task }) => task)} />
-        ) : isLoading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((item) => <div aria-hidden="true" className="h-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" key={item} />)}</div> : publicTasks.length === 0 && !error ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No open tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try a wider search or clear a filter.</p></div></CardContent></Card> : (
+        ) : isLoading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((item) => <div aria-hidden="true" className="h-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" key={item} />)}</div> : publicTasks.length === 0 && !error ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No open tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try another location or clear your filters to see more nearby work.</p><Button className="mt-4" onClick={clearFilters} size="sm" type="button" variant="outline">Clear filters</Button></div></CardContent></Card> : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{publicTasks.map(({ task, distanceKm }) => <TaskCard applicationCount={task.applications} distanceKm={distanceKm} key={task.id} task={task} variant="browse" />)}</div>
         )}
         {pagination && pagination.page < pagination.totalPages ? <div className="flex justify-center"><Button disabled={loadingMore || isLoading} onClick={() => void loadMore()} type="button" variant="outline">{loadingMore ? "Loading…" : "Load more tasks"}</Button></div> : null}

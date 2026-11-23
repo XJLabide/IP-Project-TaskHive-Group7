@@ -189,6 +189,7 @@ function PersistentTaskApplications({
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -207,7 +208,7 @@ function PersistentTaskApplications({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [task.id]);
+  }, [task.id, reloadCount]);
 
   async function selectTasker(application: ApplicationView) {
     if (!window.confirm(`Select ${application.taskerName ?? "this Tasker"}? The Tasker is reserved while you complete payment.`)) return;
@@ -226,9 +227,9 @@ function PersistentTaskApplications({
   }
 
   if (loading) return <p role="status" className="text-sm text-zinc-500">Loading applications…</p>;
-  if (error && applications.length === 0) return <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>;
+  if (error && applications.length === 0) return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30"><p role="alert" className="text-sm text-red-700 dark:text-red-400">Could not load the offers for this task. Please try again.</p><Button onClick={() => { setError(""); setLoading(true); setReloadCount((count) => count + 1); }} size="sm" type="button" variant="outline">Try again</Button></div>;
   if (applications.length === 0) {
-    return <Card><CardContent className="p-5"><p className="text-sm text-zinc-500 dark:text-zinc-400">No applications yet. Taskers can apply while the task is open.</p></CardContent></Card>;
+    return <Card><CardContent className="grid gap-2 p-5"><p className="font-semibold">No offers yet</p><p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">Taskers can still apply while this task is open. You can share the task or check back later.</p></CardContent></Card>;
   }
 
   return (

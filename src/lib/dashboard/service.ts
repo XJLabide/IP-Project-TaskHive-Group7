@@ -6,6 +6,7 @@ import { toDomainStatus } from "@/lib/verification/mapping";
 import { isHoldExpired } from "@/lib/payments/hold";
 import { emptyDashboardData, type DashboardData, type DashboardActivity, type DashboardAction, type DashboardApplication } from "./data";
 import type { TaskSummary } from "@/lib/tasks/types";
+import { toDomainTaskStatus } from "@/lib/tasks/mapping";
 
 
 export async function getDashboardData(userId: string): Promise<DashboardData> {
@@ -29,6 +30,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
           select: {
             id: true,
             title: true,
+            status: true,
             posterId: true,
             poster: { select: { name: true } },
             payments: { select: { amountCents: true, platformFeeCents: true }, take: 1 },
@@ -120,6 +122,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       amountCents,
       payoutCents: amountCents - (payment?.platformFeeCents ?? 0),
       paidAt: assignment.activatedAt?.toISOString() ?? null,
+      taskStatus: toDomainTaskStatus[assignment.task.status],
       href: `/tasks/${encodeURIComponent(assignment.taskId)}`,
     };
   });
@@ -133,7 +136,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       taskId: assignment.taskId,
       taskTitle: assignment.task.title,
       label: kind === "hold_expired" ? "Review task" : "Complete payment",
-      href: `/tasks/${encodeURIComponent(assignment.taskId)}`,
+      href: kind === "hold_expired" ? `/tasks/${encodeURIComponent(assignment.taskId)}` : `/checkout?taskId=${encodeURIComponent(assignment.taskId)}`,
       dueAt: assignment.holdExpiresAt?.toISOString() ?? null,
       tone: expired ? "negative" : "pending",
     };

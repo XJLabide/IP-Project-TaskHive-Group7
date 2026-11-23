@@ -33,7 +33,7 @@ function PersistentDashboard() {
   return <DashboardContent data={usePersistentDashboardData()} />;
 }
 
-function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardData> }) {
+function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardData> & { retry?: () => void } }) {
   const { viewer, data: dashboard, state } = data;
   const [role, setRole] = useState<Role>("all");
   const canSwitchRole = viewer.isAdmin || (viewer.canPost && viewer.canApply && viewer.canChat && viewer.canBeAssigned);
@@ -87,7 +87,7 @@ function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardDa
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(18rem,1fr)]">
           <section aria-labelledby="task-feed-title" className="min-w-0" id="task-feed">
             <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-xl font-bold tracking-tight" id="task-feed-title">Your task feed</h2><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">The next action for each task is ready when you are.</p></div><Link className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-700 hover:text-[#B77900] dark:text-zinc-300" href="/my-work">All work<ArrowUpRight aria-hidden="true" className="h-4 w-4" /></Link></div>
-            {state === "loading" ? <FeedSkeleton /> : state === "error" ? <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm dark:border-zinc-800 dark:bg-zinc-900" role="alert">Your task feed could not load. Refresh to try again.</div> : feed.length === 0 ? <TaskFeedEmpty hasAnyActivity={dashboard.scope === "ready"} role={activeRole} viewer={viewer} /> : <ul className="grid gap-3">{feed.map((item) => <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5" key={item.id}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold"><Link className="hover:underline" href={item.href}>{item.title}</Link></h3><StatusChip tone={item.tone}>{item.status}</StatusChip>{item.role && <span className="text-xs text-zinc-500 dark:text-zinc-400">As {item.role === "poster" ? "Poster" : "Worker"}</span>}</div><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{item.detail}</p></div><Button asChild size="sm" variant={item.primary ? "default" : "outline"}><Link href={item.href}>{item.action}</Link></Button></div></li>)}</ul>}
+            {state === "loading" ? <FeedSkeleton /> : state === "error" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-5 text-sm dark:border-zinc-800 dark:bg-zinc-900" role="alert"><p>Your dashboard data could not load. Check your connection and try again.</p><Button onClick={() => data.retry ? data.retry() : window.location.reload()} size="sm" type="button" variant="outline">Try again</Button></div> : feed.length === 0 ? <TaskFeedEmpty hasAnyActivity={dashboard.scope === "ready"} role={activeRole} viewer={viewer} /> : <ul className="grid gap-3">{feed.map((item) => <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5" key={item.id}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold"><Link className="hover:underline" href={item.href}>{item.title}</Link></h3><StatusChip tone={item.tone}>{item.status}</StatusChip>{item.role && <span className="text-xs text-zinc-500 dark:text-zinc-400">As {item.role === "poster" ? "Poster" : "Worker"}</span>}</div><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{item.detail}</p></div><Button asChild size="sm" variant={item.primary ? "default" : "outline"}><Link href={item.href}>{item.action}</Link></Button></div></li>)}</ul>}
           </section>
 
           <aside aria-label="Trust and recent messages" className="grid gap-4">
@@ -117,16 +117,33 @@ type FeedItem = { id: string; title: string; href: string; status: string; tone:
 
 function buildFeed(tasks: DashboardTask[], assignments: DashboardAssignment[], actions: ReturnType<typeof useDemoDashboardData>["data"]["actions"], applications: ReturnType<typeof useDemoDashboardData>["data"]["awaitingReview"], activity: DashboardActivity[]): FeedItem[] {
   const items: FeedItem[] = [];
-  for (const action of actions) items.push({ id: `action-${action.id}`, title: action.taskTitle, href: action.href, status: "Awaiting Payment", tone: "pending", detail: action.label, action: action.label, primary: true, role: "poster" });
+  for (const action of actions) items.push({ id: `action-${action.id}`, title: action.taskTitle, href: action.href, status: action.kind === "hold_expired" ? "Payment hold expired" : "Awaiting Payment", tone: action.tone, detail: action.kind === "hold_expired" ? "The payment window ended. Review this task and choose what to do next." : "The selected Tasker is reserved. Complete payment to activate the assignment.", action: action.kind === "hold_expired" ? "Review task" : "Pay now", primary: true, role: "poster" });
   for (const task of tasks) {
     const hasAssignment = assignments.some((item) => item.taskId === task.id);
     if (hasAssignment || actions.some((item) => item.taskId === task.id)) continue;
     const taskApplications = applications.filter((item) => item.taskId === task.id).length;
-    const status = task.assignmentStatus === "pending_payment" ? "Awaiting Payment" : task.status === "assigned" ? "In Progress" : taskStatusLabel(task.status);
+    const awaitingConfirmation = task.status === "awaiting_confirmation";
+    const status = task.assignmentStatus === "pending_payment" ? "Awaiting Payment" : awaitingConfirmation ? "Review Completion" : task.status === "assigned" || task.status === "in_progress" ? "In Progress" : taskStatusLabel(task.status);
     const tone = task.assignmentStatus === "pending_payment" ? "pending" : taskStatusTone(task.status);
-    items.push({ id: `task-${task.id}`, title: task.title, href: task.href, status, tone, detail: `${task.category} · ${formatMoney(task.budgetCents)}${taskApplications ? ` · ${taskApplications} offers to review` : ""}`, action: taskApplications ? `Review ${taskApplications} ${taskApplications === 1 ? "Bid" : "Bids"}` : hasAssignment ? "Message Worker" : "Open task", primary: Boolean(taskApplications || hasAssignment), role: "poster" });
+    const href = task.assignmentStatus === "pending_payment" ? `/checkout?taskId=${encodeURIComponent(task.id)}` : task.href;
+    const nextStep = task.assignmentStatus === "pending_payment" ? "Payment is needed to activate the assignment." : awaitingConfirmation ? "The Tasker submitted completion. Review it to release payout." : task.status === "assigned" || task.status === "in_progress" ? "Your Tasker is working. Message them if you need an update." : task.status === "completed" ? "Task complete. Review the payout and leave feedback." : taskApplications ? `${taskApplications} offer${taskApplications === 1 ? "" : "s"} ready for your review.` : task.status === "open" ? "Waiting for offers. You can review or update the task." : `${task.category} · ${formatMoney(task.budgetCents)}`;
+    const action = task.assignmentStatus === "pending_payment" ? "Pay now" : awaitingConfirmation ? "Review completion" : task.status === "assigned" || task.status === "in_progress" ? "Message Worker" : task.status === "completed" ? "View payout" : taskApplications ? `Review ${taskApplications} ${taskApplications === 1 ? "Bid" : "Bids"}` : task.status === "open" ? "Manage task" : "View task";
+    items.push({ id: `task-${task.id}`, title: task.title, href, status, tone, detail: nextStep, action, primary: Boolean(taskApplications || hasAssignment || task.assignmentStatus === "pending_payment" || awaitingConfirmation), role: "poster" });
   }
-  for (const assignment of assignments) items.push({ id: `assignment-${assignment.id}`, title: assignment.taskTitle, href: assignment.href, status: "In Progress", tone: "positive", detail: assignment.role === "poster" ? `${assignment.tasker} is working on this task` : `Your earnings: ${formatMoney(assignment.payoutCents)}`, action: assignment.role === "poster" ? "Message Worker" : "View task", primary: true, role: assignment.role });
+  for (const assignment of assignments) {
+    const awaitingConfirmation = assignment.taskStatus === "awaiting_confirmation";
+    const completed = assignment.taskStatus === "completed";
+    const status = taskStatusLabel(assignment.taskStatus);
+    const detail = awaitingConfirmation
+      ? assignment.role === "poster" ? "The Tasker submitted completion. Review the work to release payout." : "Your completion was submitted. The Poster is reviewing it; payout remains held."
+      : completed
+        ? `Task complete. ${assignment.role === "tasker" ? `Payout: ${formatMoney(assignment.payoutCents)}.` : "Review the payout and leave feedback."}`
+        : assignment.role === "poster"
+          ? `${assignment.tasker} is working on this task. Message them with questions or updates.`
+          : `Your work is active. Expected payout: ${formatMoney(assignment.payoutCents)}.`;
+    const action = awaitingConfirmation ? assignment.role === "poster" ? "Review completion" : "View submission" : completed ? "View payout" : assignment.role === "poster" ? "Message Worker" : "Open task";
+    items.push({ id: `assignment-${assignment.id}`, title: assignment.taskTitle, href: assignment.href, status, tone: completed ? "positive" : awaitingConfirmation ? "pending" : "positive", detail, action, primary: true, role: assignment.role });
+  }
   for (const item of activity) {
     if (item.kind !== "application_submitted" || item.role !== "tasker") continue;
     items.push({ id: `application-${item.id}`, title: item.taskTitle, href: item.href, status: "Application sent", tone: "pending", detail: "You’re waiting for the Poster to review your offer.", action: "View task", role: "tasker" });

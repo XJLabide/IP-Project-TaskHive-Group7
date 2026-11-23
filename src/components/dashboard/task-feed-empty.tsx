@@ -21,6 +21,9 @@ export function TaskFeedEmpty({
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           {viewer.canPost ? "Use Post a Task above to get started." : "Complete your profile above to unlock posting."}
         </p>
+        <Button asChild className="mt-4" size="sm">
+          <Link href={viewer.canPost ? "/tasks/new" : "/profile"}>{viewer.canPost ? "Post a Task" : "Complete profile"}</Link>
+        </Button>
       </EmptyPanel>
     );
   }
@@ -58,7 +61,7 @@ export function TaskFeedEmpty({
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <p className="font-semibold">Need a hand?</p>
           <p className="mt-1 text-sm leading-5 text-zinc-500 dark:text-zinc-400">Describe an errand or task and local Taskers can send offers.</p>
-          <p className="mt-3 text-xs font-semibold text-zinc-600 dark:text-zinc-300">{viewer.canPost ? "Use Post a Task above to start." : "Complete your account setup above to post."}</p>
+          <Button asChild className="mt-3" size="sm" variant="outline"><Link href={viewer.canPost ? "/tasks/new" : "/profile"}>{viewer.canPost ? "Post a Task" : "Complete profile"}</Link></Button>
         </div>
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <p className="font-semibold">Looking for work?</p>

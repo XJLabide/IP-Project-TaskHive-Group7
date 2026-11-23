@@ -180,6 +180,7 @@ function PersistentApplicationTracker() {
   const [applications, setApplications] = useState<ApplicationView[] | null>(null);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [reloadCount, setReloadCount] = useState(0);
   const Shell = viewer.signedIn ? AppShell : PublicShell;
 
   useEffect(() => {
@@ -191,7 +192,7 @@ function PersistentApplicationTracker() {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Could not load your applications.");
       });
     return () => controller.abort();
-  }, [viewer.signedIn]);
+  }, [viewer.signedIn, reloadCount]);
 
   async function withdraw(applicationId: string) {
     if (!window.confirm("Withdraw this application? You can apply again while the task is open.")) return;
@@ -209,7 +210,7 @@ function PersistentApplicationTracker() {
 
   return (
     <Shell title="My applications" description="Every bid and fixed-price request you have sent, with its current state.">
-      {!viewer.signedIn ? <Card><CardContent className="grid gap-3 p-6"><p className="font-semibold">Sign in to track your applications.</p><p className="text-sm text-zinc-500 dark:text-zinc-400">Applications are private to you and the Poster.</p><Button asChild className="w-fit" size="sm" variant="outline"><Link href="/login">Sign in</Link></Button></CardContent></Card> : error ? <Card><CardContent className="p-6"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p></CardContent></Card> : applications === null ? <p role="status" className="text-sm text-zinc-500">Loading your applications…</p> : applications.length === 0 ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No applications yet.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Bid on a task or request fixed-price work to see it here.</p><Button asChild className="mt-4" size="sm" variant="outline"><Link href="/tasks">Browse tasks</Link></Button></div></CardContent></Card> : (
+      {!viewer.signedIn ? <Card><CardContent className="grid gap-3 p-6"><p className="font-semibold">Sign in to track your applications.</p><p className="text-sm text-zinc-500 dark:text-zinc-400">Applications are private to you and the Poster.</p><Button asChild className="w-fit" size="sm" variant="outline"><Link href="/login">Sign in</Link></Button></CardContent></Card> : error ? <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-6"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p><Button onClick={() => { setError(""); setApplications(null); setReloadCount((count) => count + 1); }} size="sm" type="button" variant="outline">Try again</Button></CardContent></Card> : applications === null ? <p role="status" className="text-sm text-zinc-500">Loading your applications…</p> : applications.length === 0 ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No applications yet</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Browse open tasks and send a bid or fixed-price request. Your offers and their status will show up here.</p><Button asChild className="mt-4" size="sm"><Link href="/tasks">Browse open tasks</Link></Button></div></CardContent></Card> : (
         <>
           {feedback ? <p aria-live="polite" role="status" className="mb-4 rounded-xl bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">{feedback}</p> : null}
           <div className="grid gap-4">{applications.map((application) => {
