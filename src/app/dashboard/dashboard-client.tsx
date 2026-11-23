@@ -10,6 +10,8 @@ import { usePersistentDashboardData } from "@/components/dashboard/use-persisten
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { StatusChip } from "@/components/dashboard/status-chip";
 import { VerificationCard } from "@/components/viewer/verification-card";
+import { GettingStarted } from "@/components/dashboard/getting-started";
+import { TaskFeedEmpty } from "@/components/dashboard/task-feed-empty";
 import { Button } from "@/components/ui/button";
 import { formatMoney, taskStatusTone } from "@/lib/dashboard/ui";
 import { taskStatusLabel } from "@/lib/tasks/ui";
@@ -34,6 +36,8 @@ function PersistentDashboard() {
 function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardData> }) {
   const { viewer, data: dashboard, state } = data;
   const [role, setRole] = useState<Role>("all");
+  const canSwitchRole = viewer.isAdmin || (viewer.canPost && viewer.canApply && viewer.canChat && viewer.canBeAssigned);
+  const activeRole = canSwitchRole ? role : "all";
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadLoaded, setUnreadLoaded] = useState(false);
   const { startVerification, submitAppeal } = useViewer();
@@ -53,14 +57,14 @@ function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardDa
 
   const posterTasks = dashboard.postedTasks;
   const workerAssignments = dashboard.activeAssignments.filter((item) => item.role === "tasker");
-  const visibleTasks = role === "poster" ? posterTasks : role === "worker" ? [] : posterTasks;
-  const visibleAssignments = role === "poster" ? dashboard.activeAssignments.filter((item) => item.role === "poster") : role === "worker" ? workerAssignments : dashboard.activeAssignments;
-  const visibleActions = role === "worker" ? [] : dashboard.actions;
-  const visibleApplications = role === "worker" ? [] : dashboard.awaitingReview;
+  const visibleTasks = activeRole === "poster" ? posterTasks : activeRole === "worker" ? [] : posterTasks;
+  const visibleAssignments = activeRole === "poster" ? dashboard.activeAssignments.filter((item) => item.role === "poster") : activeRole === "worker" ? workerAssignments : dashboard.activeAssignments;
+  const visibleActions = activeRole === "worker" ? [] : dashboard.actions;
+  const visibleApplications = activeRole === "worker" ? [] : dashboard.awaitingReview;
   const messages = dashboard.activity.filter((item) => item.kind === "message").slice(0, 4);
-  const activeCount = (role === "worker" ? workerAssignments.length : posterTasks.filter((task) => task.status === "open" || task.status === "assigned" || task.status === "pending_payment").length) + (role === "poster" ? 0 : workerAssignments.length);
-  const pendingCount = (role === "worker" ? 0 : dashboard.awaitingReview.length) + (role === "poster" ? 0 : dashboard.activity.filter((item) => item.kind === "application_submitted" && item.role === "tasker").length);
-  const earningsCents = (role === "poster" ? [] : workerAssignments).reduce((sum, item) => sum + item.payoutCents, 0);
+  const activeCount = (activeRole === "worker" ? workerAssignments.length : posterTasks.filter((task) => task.status === "open" || task.status === "assigned" || task.status === "pending_payment").length) + (activeRole === "poster" ? 0 : workerAssignments.length);
+  const pendingCount = (activeRole === "worker" ? 0 : dashboard.awaitingReview.length) + (activeRole === "poster" ? 0 : dashboard.activity.filter((item) => item.kind === "application_submitted" && item.role === "tasker").length);
+  const earningsCents = (activeRole === "poster" ? [] : workerAssignments).reduce((sum, item) => sum + item.payoutCents, 0);
   const feed = buildFeed(visibleTasks, visibleAssignments, visibleActions, visibleApplications, dashboard.activity);
 
   return (
@@ -68,8 +72,10 @@ function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardDa
       <div className="grid gap-6 sm:gap-8">
         <header className="flex flex-col gap-5 border-b border-zinc-200 pb-6 dark:border-zinc-800 sm:flex-row sm:items-end sm:justify-between">
           <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#B77900] dark:text-[#FFD50D]">Your workspace</p><h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Good to see you, {viewer.displayName?.split(" ")[0] ?? "there"}.</h1><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Keep your local work moving from one clear view.</p></div>
-          <div className="flex flex-col gap-3 sm:items-end"><Button asChild><Link href={viewer.canPost ? "/tasks/new" : "/profile"}><span aria-hidden="true" className="text-lg leading-none">+</span>{viewer.canPost ? "Post a Task" : "Complete your profile"}</Link></Button><div aria-label="Dashboard role filter" className="inline-flex w-fit rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900" role="group">{([ ["all", "All Activity"], ["poster", "As Poster"], ["worker", "As Worker"] ] as const).map(([value, label]) => <button aria-pressed={role === value} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm ${role === value ? "bg-[#FFC800] text-zinc-950" : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"}`} key={value} onClick={() => setRole(value)} type="button">{label}</button>)}</div></div>
+          <div className="flex flex-col gap-3 sm:items-end"><Button asChild><Link href={viewer.canPost ? "/tasks/new" : "/profile"}><span aria-hidden="true" className="text-lg leading-none">+</span>{viewer.canPost ? "Post a Task" : "Complete your profile"}</Link></Button>{canSwitchRole && <div aria-label="Dashboard role filter" className="inline-flex w-fit rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900" role="group">{([ ["all", "All Activity"], ["poster", "As Poster"], ["worker", "As Worker"] ] as const).map(([value, label]) => <button aria-pressed={activeRole === value} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm ${activeRole === value ? "bg-[#FFC800] text-zinc-950" : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"}`} key={value} onClick={() => setRole(value)} type="button">{label}</button>)}</div>}</div>
         </header>
+
+        <GettingStarted viewer={viewer} />
 
         <section aria-label="Dashboard summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Metric icon={ClipboardList} label="Active tasks" value={String(activeCount)} detail="Posted and in progress" href="#task-feed" />
@@ -81,7 +87,7 @@ function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardDa
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(18rem,1fr)]">
           <section aria-labelledby="task-feed-title" className="min-w-0" id="task-feed">
             <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-xl font-bold tracking-tight" id="task-feed-title">Your task feed</h2><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">The next action for each task is ready when you are.</p></div><Link className="inline-flex items-center gap-1 text-sm font-semibold text-zinc-700 hover:text-[#B77900] dark:text-zinc-300" href="/my-work">All work<ArrowUpRight aria-hidden="true" className="h-4 w-4" /></Link></div>
-            {state === "loading" ? <FeedSkeleton /> : state === "error" ? <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm dark:border-zinc-800 dark:bg-zinc-900" role="alert">Your task feed could not load. Refresh to try again.</div> : feed.length === 0 ? <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-900"><p className="font-semibold">Nothing in this view yet</p><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Browse nearby tasks or post one to get started.</p><div className="mt-4 flex justify-center"><Button asChild size="sm" variant="outline"><Link href="/tasks">Browse tasks</Link></Button></div></div> : <ul className="grid gap-3">{feed.map((item) => <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5" key={item.id}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold"><Link className="hover:underline" href={item.href}>{item.title}</Link></h3><StatusChip tone={item.tone}>{item.status}</StatusChip>{item.role && <span className="text-xs text-zinc-500 dark:text-zinc-400">As {item.role === "poster" ? "Poster" : "Worker"}</span>}</div><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{item.detail}</p></div><Button asChild size="sm" variant={item.primary ? "default" : "outline"}><Link href={item.href}>{item.action}</Link></Button></div></li>)}</ul>}
+            {state === "loading" ? <FeedSkeleton /> : state === "error" ? <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm dark:border-zinc-800 dark:bg-zinc-900" role="alert">Your task feed could not load. Refresh to try again.</div> : feed.length === 0 ? <TaskFeedEmpty hasAnyActivity={dashboard.scope === "ready"} role={activeRole} viewer={viewer} /> : <ul className="grid gap-3">{feed.map((item) => <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5" key={item.id}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold"><Link className="hover:underline" href={item.href}>{item.title}</Link></h3><StatusChip tone={item.tone}>{item.status}</StatusChip>{item.role && <span className="text-xs text-zinc-500 dark:text-zinc-400">As {item.role === "poster" ? "Poster" : "Worker"}</span>}</div><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{item.detail}</p></div><Button asChild size="sm" variant={item.primary ? "default" : "outline"}><Link href={item.href}>{item.action}</Link></Button></div></li>)}</ul>}
           </section>
 
           <aside aria-label="Trust and recent messages" className="grid gap-4">
@@ -124,6 +130,10 @@ function buildFeed(tasks: DashboardTask[], assignments: DashboardAssignment[], a
   for (const item of activity) {
     if (item.kind !== "application_submitted" || item.role !== "tasker") continue;
     items.push({ id: `application-${item.id}`, title: item.taskTitle, href: item.href, status: "Application sent", tone: "pending", detail: "You’re waiting for the Poster to review your offer.", action: "View task", role: "tasker" });
+  }
+  for (const item of activity) {
+    if (item.kind !== "message") continue;
+    items.push({ id: `message-${item.id}`, title: item.taskTitle, href: item.href, status: "Conversation", tone: "neutral", detail: item.description, action: "Open chat", role: item.role });
   }
   return items.slice(0, 8);
 }

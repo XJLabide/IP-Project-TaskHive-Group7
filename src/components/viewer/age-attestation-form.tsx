@@ -39,7 +39,7 @@ export function AgeAttestationForm() {
   }
 
   return (
-    <Card>
+    <Card id="age-attestation">
       <CardContent className="grid gap-4 p-5 sm:p-6">
         <div>
           <h2 className="text-lg font-bold">Confirm you’re 18 or older</h2>
