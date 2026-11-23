@@ -324,40 +324,18 @@ describe("Stripe provider", () => {
     });
   });
 
-  it("parses refunded charge webhook", async () => {
-    const mockConstructEvent = vi.fn().mockReturnValue({
-      id: "evt_refund_1",
-      type: "charge.refunded",
-      data: {
-        object: {
-          id: "ch_123",
-          payment_intent: "pi_123",
-          amount_refunded: 50000,
-          metadata: { checkoutSessionId: "cs_test_session_123" },
-        },
-      },
-    });
-
-    const mockStripe = {
-      webhooks: {
-        constructEvent: mockConstructEvent,
-      },
-    } as unknown as Stripe;
-
+  it.each(["pi_123", { id: "pi_123" }, null])("parses native refund IDs without metadata (%j)", async (paymentIntent) => {
     const provider = stripeProvider({
       secretKey,
       webhookSecret,
-      stripeClient: mockStripe,
+      stripeClient: { webhooks: { constructEvent: vi.fn().mockReturnValue({
+        id: "evt_refund_1", type: "charge.refunded",
+        data: { object: { id: "ch_123", payment_intent: paymentIntent, amount_refunded: 12500, metadata: {} } },
+      }) } } as unknown as Stripe,
     });
-
-    const headers = new Headers({ "stripe-signature": "t=123,v1=test" });
-    const event = await provider.parseWebhook(headers, "{}");
-
-    expect(event).toEqual({
-      id: "evt_refund_1",
-      type: "refunded",
-      reference: "cs_test_session_123",
-      amountCents: 50000,
+    expect(await provider.parseWebhook(new Headers({ "stripe-signature": "valid" }), "{}")).toEqual({
+      id: "evt_refund_1", type: "refunded", reference: paymentIntent ? "pi_123" : "ch_123",
+      paymentIntentId: paymentIntent ? "pi_123" : undefined, chargeId: "ch_123", amountCents: 12500,
     });
   });
 
