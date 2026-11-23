@@ -16,6 +16,8 @@ export type CheckoutSession = {
   provider: string;
   reference: string;
   url: string;
+  paymentIntentId?: string;
+  chargeId?: string;
 };
 
 export type ProviderEventType = "succeeded" | "failed" | "refunded" | "pending";
@@ -23,9 +25,11 @@ export type ProviderEventType = "succeeded" | "failed" | "refunded" | "pending";
 export type ProviderEvent = {
   id: string;
   type: ProviderEventType;
-  /** The provider checkout/payment reference stored on the Payment row. */
+  /** Checkout, Payment Intent, or Charge reference supplied by the provider. */
   reference: string;
   amountCents: number | null;
+  paymentIntentId?: string;
+  chargeId?: string;
 };
 
 export interface PaymentProvider {
@@ -356,6 +360,18 @@ export function verifyStripeSignature(
   });
 }
 
+function stripeObjectId(value: string | { id: string } | null | undefined): string | undefined {
+  return typeof value === "string" ? value : value?.id;
+}
+
+function stripeSessionIds(session: Stripe.Checkout.Session) {
+  const intent = session.payment_intent;
+  return {
+    paymentIntentId: stripeObjectId(intent),
+    chargeId: typeof intent === "object" && intent ? stripeObjectId(intent.latest_charge) : undefined,
+  };
+}
+
 /**
  * Stripe Checkout adapter for international and card payments.
  * Selected when PAYMENT_PROVIDER=stripe and both secretKey and webhookSecret are set.
@@ -401,7 +417,7 @@ export function stripeProvider(input: {
       const url = session.url ?? checkout.successUrl;
       if (!reference) throw new Error("Stripe checkout response is incomplete.");
 
-      return { provider: "stripe", reference, url };
+      return { provider: "stripe", reference, url, ...stripeSessionIds(session) };
     },
     async parseWebhook(headers, rawBody) {
       const signature = headers.get("stripe-signature");
@@ -425,6 +441,7 @@ export function stripeProvider(input: {
           id: eventId,
           type: session.payment_status === "paid" ? "succeeded" : "pending",
           reference: session.id,
+          ...stripeSessionIds(session),
           amountCents: session.amount_total ?? null,
         };
       }
@@ -438,6 +455,7 @@ export function stripeProvider(input: {
           id: eventId,
           type: "failed",
           reference: session.id,
+          ...stripeSessionIds(session),
           amountCents: session.amount_total ?? null,
         };
       }
@@ -452,6 +470,8 @@ export function stripeProvider(input: {
           id: eventId,
           type: "failed",
           reference,
+          paymentIntentId: pi.id,
+          chargeId: stripeObjectId(pi.latest_charge),
           amountCents: pi.amount ?? null,
         };
       }
@@ -461,13 +481,15 @@ export function stripeProvider(input: {
         const reference =
           (charge.metadata?.paymentReference as string | undefined) ||
           (charge.metadata?.checkoutSessionId as string | undefined) ||
-          (charge.payment_intent as string | undefined) ||
+          stripeObjectId(charge.payment_intent) ||
           charge.id;
         return {
           id: eventId,
           type: "refunded",
           reference,
-          amountCents: charge.amount_refunded ?? null,
+          paymentIntentId: stripeObjectId(charge.payment_intent),
+          chargeId: charge.id,
+          amountCents: Number.isSafeInteger(charge.amount_refunded) ? charge.amount_refunded : null,
         };
       }
 

@@ -181,6 +181,7 @@ describe("admin resolution", () => {
     expect(txMock.payment.updateMany).toHaveBeenCalledWith({
       where: {
         id: "payment_1",
+        refundedCents: 0,
         status: { in: ["PAID_PENDING_COMPLETION", "DISPUTED"] },
       },
       data: {
@@ -207,6 +208,16 @@ describe("admin resolution", () => {
       }),
     );
     expect(notifyUserMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rolls back resolution when a provider refund races the initial read", async () => {
+    prismaMock.cancellationRequest.findUnique.mockResolvedValue(cancellationCase);
+    prismaMock.payment.findUnique.mockResolvedValue({ id: "payment_1", amountCents: 1000, platformFeeCents: 50, refundedCents: 0 });
+    txMock.payment.updateMany.mockResolvedValueOnce({ count: 0 });
+    expect(await resolveCancellation({ adminId: "admin_1", caseId: "request_1", outcome: "FULL_PAYOUT" })).toMatchObject({ ok: false, code: "invalid_state" });
+    await expect(prismaMock.$transaction.mock.results[0].value).rejects.toBeInstanceOf(Error);
+    expect(txMock.payout.updateMany).not.toHaveBeenCalled();
+    expect(notifyUserMock).not.toHaveBeenCalled();
   });
 
   it("refuses a payout resolution when the payment is missing", async () => {
