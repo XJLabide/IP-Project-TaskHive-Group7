@@ -10,6 +10,14 @@ import { renderToReadableStream } from 'next/dist/compiled/react-server-dom-webp
 // Source modules are loaded only after registering the boundary substitutions.
 const loadSource = createRequire(import.meta.url);
 const requests = new AsyncLocalStorage();
+// Capture only the structured auth event, never silence unrelated test errors.
+for (const level of ['warn', 'info']) {
+  const original = console[level].bind(console);
+  console[level] = (...args) => {
+    if (args[0] === '[auth-diagnostics]' && requests.getStore()) requests.getStore().diagnostics.push(args[1]);
+    else original(...args);
+  };
+}
 function count(key) { requests.getStore().counts[key]++; }
 let revoked = false;
 let databaseFailed = false;
@@ -24,14 +32,14 @@ const mocks = {
     count('verify');
     verificationChecks.push(checkRevoked);
     await new Promise((done) => setTimeout(done, 5));
-    if (revoked || cookie === 'invalid') throw new Error('auth/session-cookie-revoked');
+    if (revoked || cookie === 'invalid') throw Object.assign(new Error('Sensitive provider detail: private-token'), { code: revoked ? 'auth/session-cookie-revoked' : 'auth/invalid-session-cookie' });
     return { uid: cookie === 'user_2' ? 'uid_2' : 'uid_1', email: 'member@example.test', email_verified: true };
   } }) },
   '@/lib/prisma': { prisma: { user: {
     findUnique: async ({ where }) => {
       count('reads');
       await new Promise((done) => setTimeout(done, 5));
-      if (databaseFailed) throw new Error('Database unavailable');
+      if (databaseFailed) throw Object.assign(new Error('Database unavailable: private-database-url'), { code: 'P1001' });
       if (!user) return null;
       if (where.firebaseUid === 'uid_2' || where.id === 'user_2') return { ...user, id: 'user_2', isAdmin: true };
       return { ...user };
@@ -69,6 +77,7 @@ async function render(cookie = 'valid', includeSession = false) {
   const sessions = [];
   const errors = [];
   const counts = { verify: 0, reads: 0, updates: 0 };
+  const diagnostics = [];
   const started = performance.now();
   async function Page() {
     const [a, b] = await Promise.all([loadCurrentActor(), loadCurrentActor()]);
@@ -77,12 +86,12 @@ async function render(cookie = 'valid', includeSession = false) {
     await guardPage('view_private_account');
     return React.createElement('p', null, a?.id ?? 'guest');
   }
-  await requests.run({ counts, headers: new Headers(cookie === null ? {} : { cookie: `taskhive_session=${cookie}` }) }, async () => {
+  await requests.run({ counts, diagnostics, headers: new Headers(cookie === null ? {} : { cookie: `taskhive_session=${cookie}` }) }, async () => {
     const tree = React.createElement(RootLayout, null, React.createElement(ProfileLayout, null, React.createElement(Page)));
     const stream = renderToReadableStream(tree, {}, { onError: (error) => { errors.push(error.message); return 'test-error'; } });
     for await (const chunk of stream) void chunk;
   });
-  return { counts, elapsedMs: Math.round((performance.now() - started) * 100) / 100, actors, sessions, errors };
+  return { counts, elapsedMs: Math.round((performance.now() - started) * 100) / 100, actors, sessions, errors, diagnostics };
 }
 (async () => {
   const first = await render();
@@ -112,7 +121,7 @@ async function render(cookie = 'valid', includeSession = false) {
   const malformed = await render('%E0%A4%A');
   // Route Handlers are outside React's render cache. Even the same Headers
   // object must reverify, and explicit post-mutation actor reads must stay fresh.
-  const uncached = await requests.run({ counts: { verify: 0, reads: 0, updates: 0 } }, async () => {
+  const uncached = await requests.run({ counts: { verify: 0, reads: 0, updates: 0 }, diagnostics: [] }, async () => {
     const headers = new Headers({ cookie: 'taskhive_session=valid' });
     const signedIn = await getAuthSession(headers);
     revoked = true;

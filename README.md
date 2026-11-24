@@ -58,6 +58,9 @@ The database security check and PostgreSQL regression suite are documented in
 [Public-table database security](docs/database-security.md). CI runs these against
 a disposable migrated database; integration tests require an explicit test URL.
 
+Authentication correlation IDs, redacted failure categories, and opt-in dependency
+timings are documented in [Authentication diagnostics](docs/auth-diagnostics.md).
+
 ## Important Notes
 - PayMongo is an evaluation candidate, not a confirmed provider. Do not implement provider-managed payout until marketplace eligibility and required capabilities are verified.
 - TaskHive must not describe provider-managed payout as legal escrow.

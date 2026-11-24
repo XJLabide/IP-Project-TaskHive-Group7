@@ -2,6 +2,9 @@
 
 Issue: [#62](https://github.com/XJLabide/IP-Project-TaskHive-Group7/issues/62).
 
+Issue #68 adds [redacted authentication diagnostics](auth-diagnostics.md), request
+correlation, and dependency timings while preserving the cache behavior below.
+
 ## Measurement and change
 
 At base commit `7043437`, root and profile layouts already called the same
