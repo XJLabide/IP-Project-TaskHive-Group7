@@ -1,5 +1,6 @@
 import { createHmac, createVerify, timingSafeEqual } from "node:crypto";
 import Stripe from "stripe";
+import { isProductionDeployment, paymentsReadiness } from "@/lib/providers/readiness.mjs";
 
 export type CheckoutInput = {
   taskId: string;
@@ -548,11 +549,13 @@ function disabledProvider(): PaymentProvider {
 export function selectPaymentProvider(
   env: Record<string, string | undefined> = process.env,
 ): PaymentProvider {
+  if (isProductionDeployment(env) && !paymentsReadiness(env).ready) {
+    return disabledProvider();
+  }
   if (
     env.PAYMENT_PROVIDER === "maya" &&
     env.MAYA_MODE === "sandbox" &&
-    env.VERCEL_ENV !== "production" &&
-    !(env.NODE_ENV === "production" && !env.VERCEL_ENV)
+    !isProductionDeployment(env)
   ) {
     return mayaProvider({
       publicApiKey: env.MAYA_PUBLIC_API_KEY || mayaSharedSandboxApiKey,
@@ -586,7 +589,7 @@ export function selectPaymentProvider(
     });
   }
 
-  if (env.NODE_ENV === "production" || env.VERCEL_ENV === "production") {
+  if (env.NODE_ENV === "production" || isProductionDeployment(env)) {
     return disabledProvider();
   }
 

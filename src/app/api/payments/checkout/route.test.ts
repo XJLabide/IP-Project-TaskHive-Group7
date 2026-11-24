@@ -38,6 +38,18 @@ describe("checkout API", () => {
     expect(startCheckoutMock).not.toHaveBeenCalled();
   });
 
+  it("does not enable live checkout merely because adapter verification is attested", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("PAYMENT_PROVIDER", "stripe");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_synthetic");
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_synthetic");
+    vi.stubEnv("PAYMENT_SANDBOX_VERIFIED", "true");
+    vi.stubEnv("PAYMENT_WEBHOOK_VERIFIED", "true");
+    const response = await POST(new Request("https://example.com/api/payments/checkout", { method: "POST", body: JSON.stringify({ taskId: "task_1" }) }));
+    expect(response.status).toBe(503);
+    expect(startCheckoutMock).not.toHaveBeenCalled();
+  });
+
   it("lists the Poster's pending-payment tasks for checkout", async () => {
     findManyMock.mockResolvedValue([{ id: "task_1", title: "Deliver groceries" }]);
     const response = await GET(new Request("https://example.com/api/payments/checkout"));

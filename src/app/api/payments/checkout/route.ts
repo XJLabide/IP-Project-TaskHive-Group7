@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { refreshMayaSandboxPaymentStatus, startCheckout } from "@/lib/payments/service";
 import { paymentFailureResponse } from "@/lib/payments/http";
 import { getPaymentHistory } from "@/lib/payments/history";
+import { paymentsReadiness } from "@/lib/providers/readiness.mjs";
 
 export const runtime = "nodejs";
 
@@ -73,12 +74,7 @@ export async function POST(request: Request) {
     ? body.taskId.trim() : null;
   if (!taskId) return problem("A taskId is required to start checkout", 422);
 
-  if (
-    process.env.PAYMENT_PROVIDER !== "maya" ||
-    process.env.MAYA_MODE !== "sandbox" ||
-    process.env.VERCEL_ENV === "production" ||
-    (process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV)
-  ) {
+  if (!paymentsReadiness().checkoutEnabled) {
     return problem("Checkout is unavailable outside a configured Maya sandbox.", 503);
   }
 

@@ -1,5 +1,6 @@
 import type { Client, Schedule } from "@upstash/qstash";
 import { qstash } from "./qstash";
+import { jobsReadiness } from "@/lib/providers/readiness.mjs";
 
 export type ScheduleState = "IN_PROGRESS" | "SUCCESS" | "FAIL";
 
@@ -153,6 +154,14 @@ export async function upsertSchedules(input: {
       reason:
         "QStash signing keys are not configured; schedules would be created but every delivery would be rejected.",
     };
+  }
+
+  if (destination !== process.env.QSTASH_DESTINATION_URL) {
+    return { ok: false, reason: "Schedule destination must match the configured QSTASH_DESTINATION_URL receiver." };
+  }
+  const readiness = jobsReadiness();
+  if (!readiness.ready) {
+    return { ok: false, reason: `Background jobs are unavailable: ${readiness.issues.join("; ")}.` };
   }
 
   const client = input.client ?? qstash;

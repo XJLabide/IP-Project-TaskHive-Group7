@@ -23,6 +23,7 @@
     "db:migrate": "prisma migrate deploy",
     "verify": "pnpm lint && pnpm typecheck && pnpm prisma:validate && pnpm test && pnpm build",
     "db:security:check": "node scripts/check-database-security.mjs",
+    "providers:check": "node scripts/check-provider-config.mjs",
     "test:db-security": "vitest run --config vitest.security.config.mts"
   },
   "dependencies": {

@@ -1,5 +1,9 @@
 # Hosted checkout sandbox verification
 
+See [provider readiness](provider-readiness.md) for deployment/startup checks and
+the production evidence attestations required before adapter callbacks are
+enabled. Production checkout remains disabled after those attestations.
+
 Production must use a configured provider; the unsigned fake provider is disabled in production. The checkout page is designed to send only a task ID to TaskHive before opening the provider's hosted checkout. A return from checkout is not payment confirmation: only a verified provider callback can activate an assignment.
 
 Maya sandbox checkout is enabled only for local development and Vercel Preview. Production checkout remains disabled. Each checkout attempt is saved before contacting the provider. Idempotent providers reuse the saved key after a timeout; a database claim permits only one outbound call to a provider without guaranteed idempotency. Such an attempt moves to `RECONCILIATION_REQUIRED` after an ambiguous result and blocks retries. The database permits only one creating or active attempt per payment. Deploy the `20261118120000_payment_attempts` migration before running this version.
