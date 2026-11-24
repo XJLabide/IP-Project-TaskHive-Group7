@@ -58,6 +58,10 @@ The database security check and PostgreSQL regression suite are documented in
 [Public-table database security](docs/database-security.md). CI runs these against
 a disposable migrated database; integration tests require an explicit test URL.
 
+Verification concurrency tests also run against disposable PostgreSQL in CI.
+See [verification concurrency](docs/verification-concurrency.md) for local setup
+and the state-conflict contract.
+
 ## Important Notes
 - PayMongo is an evaluation candidate, not a confirmed provider. Do not implement provider-managed payout until marketplace eligibility and required capabilities are verified.
 - TaskHive must not describe provider-managed payout as legal escrow.

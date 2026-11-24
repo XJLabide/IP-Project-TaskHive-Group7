@@ -112,9 +112,9 @@ async function runEffects(
 
 /**
  * Applies one lifecycle event, persisting only status/reference metadata.
- * Withdrawals, the appeal claim, and persistence share one transaction so a
- * duplicate appeal or a mid-flight bid cannot slip through; notifications run
- * after commit.
+ * Claim the observed lifecycle state before applying withdrawals or audit
+ * writes. A competing decision must not overwrite it or emit losing effects.
+ * Notifications run only after the winning transaction commits.
  */
 export async function applyVerificationEvent(
   userId: string,
@@ -138,18 +138,6 @@ export async function applyVerificationEvent(
 
   const committed = await prisma.$transaction(async (tx) => {
     let affectedPosters: string[] = [];
-
-    if (withdraws) {
-      affectedPosters = await collectAffectedPosters(tx, userId);
-      await tx.bid.updateMany({
-        where: { taskerId: userId, status: "SUBMITTED" },
-        data: { status: "WITHDRAWN" },
-      });
-      await tx.taskRequest.updateMany({
-        where: { taskerId: userId, status: "SUBMITTED" },
-        data: { status: "WITHDRAWN" },
-      });
-    }
 
     if (event.type === "appeal_submitted") {
       // Claim the single appeal atomically: the guard and the write are one statement.
@@ -178,11 +166,40 @@ export async function applyVerificationEvent(
       ...(withdraws ? { applicationsWithdrawnAt: now } : {}),
     };
 
-    await tx.taskerVerification.upsert({
-      where: { userId },
-      create: { userId, ...data },
-      update: data,
-    });
+    if (existing) {
+      // These fields identify a lifecycle step: transitions never return to a
+      // previous combination of status, appeal status, and appeal count.
+      const claimed = await tx.taskerVerification.updateMany({
+        where: {
+          id: existing.id,
+          status: existing.status,
+          appealStatus: existing.appealStatus,
+          appealCount: existing.appealCount,
+        },
+        data,
+      });
+      if (claimed.count === 0) return { claimed: false as const, affectedPosters };
+    } else {
+      // The unique userId arbitrates concurrent first submissions. Never use
+      // an upsert here: its update could reset a decision made since our read.
+      const claimed = await tx.taskerVerification.createMany({
+        data: { userId, ...data },
+        skipDuplicates: true,
+      });
+      if (claimed.count === 0) return { claimed: false as const, affectedPosters };
+    }
+
+    if (withdraws) {
+      affectedPosters = await collectAffectedPosters(tx, userId);
+      await tx.bid.updateMany({
+        where: { taskerId: userId, status: "SUBMITTED" },
+        data: { status: "WITHDRAWN" },
+      });
+      await tx.taskRequest.updateMany({
+        where: { taskerId: userId, status: "SUBMITTED" },
+        data: { status: "WITHDRAWN" },
+      });
+    }
 
     if (options.adminId && (event.type === "appeal_approved" || event.type === "appeal_denied")) {
       await tx.adminAction.create({
@@ -208,7 +225,7 @@ export async function applyVerificationEvent(
     return {
       ok: false,
       code: "invalid_transition",
-      reason: "The one available appeal has already been used.",
+      reason: "Verification changed while this request was being processed. Reload its status before trying again.",
     };
   }
 
