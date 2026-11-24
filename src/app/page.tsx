@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { Space_Grotesk } from "next/font/google";
 import { redirect } from "next/navigation";
 import { ArrowRight, ShieldCheck, Star, MapPin, ShoppingBasket, Wrench, Sparkles, Package, Truck, BookOpen } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { loadCurrentActor } from "@/lib/auth/current-actor";
-import FaultyTerminal from "./faulty-terminal";
+import { CursorHoneycomb } from "./cursor-honeycomb";
 import heroStyles from "./home-hero.module.css";
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 
 const steps = [
   {
@@ -43,7 +46,7 @@ const benefits = [
 
 const contentFrame = "mx-auto w-full max-w-7xl px-6 sm:px-8 lg:px-10";
 const panel = "rounded-[clamp(1rem,2.5vw,2rem)] border border-[#E3E7ED] px-[clamp(1rem,4vw,4rem)] py-[clamp(2rem,5vw,5rem)] dark:border-zinc-800";
-const surface = "bg-white dark:bg-[#18181B]";
+const surface = "bg-white/85 dark:bg-[#18181B]/60";
 const sectionHeading = "text-[clamp(2rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-tight";
 
 const questions = [
@@ -63,27 +66,7 @@ export default async function Home() {
       <div className={heroStyles.landing}>
         <div aria-hidden="true" className={heroStyles.backdrop}>
           <div className={heroStyles.fade}>
-            <FaultyTerminal
-              aria-hidden="true"
-              tint="#FFC800"
-              glyphs="hexagons"
-              scale={2.5}
-              digitSize={1.65}
-              timeScale={0.5}
-              brightness={1.2}
-              glow={0.8}
-              persistence={0.51}
-              mouseStrength={0.5}
-              mouseGlow={0.6}
-              curvature={0.15}
-              vignette={0}
-              clickEffect="degauss"
-              glitchAmount={0}
-              flickerAmount={0}
-              noiseAmp={0.5}
-              dpr={1}
-            />
-            <div aria-hidden="true" className={heroStyles.scrim} />
+            <CursorHoneycomb />
           </div>
         </div>
 
@@ -92,9 +75,9 @@ export default async function Home() {
         <main>
           <section aria-labelledby="hero-title" className="grid min-h-svh content-end pt-32 pb-[clamp(2.5rem,9svh,7rem)] text-white md:pt-24 md:pb-[clamp(3rem,10svh,7rem)]">
             <div className={contentFrame}>
-              <h1 id="hero-title" className="text-[clamp(2.25rem,7.5vw,7.5rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
-                <span className="block">CAN YOUR</span>{" "}
-                <span className="text-[#FFC800]">TASKS</span> GET DONE?
+              <h1 id="hero-title" className={`${spaceGrotesk.className} leading-[1.02] tracking-[-0.045em]`}>
+                <span className="block text-[clamp(2rem,5.5vw,5.25rem)] font-medium">Got a task?</span>{" "}
+                <span className="block text-[clamp(2.75rem,8vw,8rem)] font-bold text-[#FFC800]">Ask the Hive.</span>
               </h1>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-200 sm:text-lg">
                 When digital tools fall short, TaskHive brings real help to your doorstep. Post a task, pick a hero, and get it done.
@@ -126,7 +109,7 @@ export default async function Home() {
               </div>
             </section>
 
-            <section aria-labelledby="steps-title" className={`${panel} bg-[#FFFDF7] dark:bg-[#18181B]`}>
+            <section aria-labelledby="steps-title" className={`${panel} bg-[#FFFDF7]/85 dark:bg-[#18181B]/60`}>
               <h2 id="steps-title" className={sectionHeading}>How it works</h2>
               <ol className="mt-7 grid gap-4 md:grid-cols-3">
                 {steps.map((step) => (
@@ -166,7 +149,7 @@ export default async function Home() {
               </div>
             </section>
 
-            <section aria-labelledby="join-title" className={`${panel} flex flex-col items-center gap-6 border-[#FFC800] bg-[#FFC800] text-center text-zinc-950 dark:border-[#FFC800]`}>
+            <section aria-labelledby="join-title" className={`${panel} flex flex-col items-center gap-6 border-[#FFC800] bg-[#FFC800]/85 text-center text-zinc-950 dark:border-[#FFC800]`}>
               <h2 id="join-title" className={sectionHeading}>Ready to get started?</h2>
               <Button asChild size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 focus-visible:ring-zinc-950"><Link href="/signup">Join the Hive <ArrowRight aria-hidden="true" className="size-4" /></Link></Button>
             </section>
