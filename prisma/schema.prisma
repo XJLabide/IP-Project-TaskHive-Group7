@@ -144,6 +144,7 @@ model User {
   chatsOpened   TaskChat[] @relation("ChatsOpened")
   chatMessages  ChatMessage[] @relation("ChatMessages")
   notifications Notification[]
+  @@index([isAdmin, updatedAt(sort: Desc), id(sort: Desc)])
 }
 
 model Session {
@@ -227,6 +228,7 @@ model TaskerVerification {
   user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
+  @@index([appealStatus, appealedAt, userId])
 }
 
 model Category {
@@ -270,6 +272,7 @@ model Task {
   disputes    Dispute[]
   cancellations CancellationRequest[]
   chats       TaskChat[]
+  @@index([updatedAt(sort: Desc), id(sort: Desc)])
 }
 
 model Bid {
@@ -465,6 +468,7 @@ model Report {
   message        ChatMessage?     @relation(fields: [messageId], references: [id])
 
   @@index([messageId])
+  @@index([status, createdAt, id])
 }
 
 /// One conversation per signed-in user per task. The Poster is the other
@@ -514,6 +518,7 @@ model Dispute {
   resolvedBy User?           @relation("DisputesResolved", fields: [resolvedById], references: [id])
 
   @@index([status, createdAt])
+  @@index([status, createdAt, id])
 }
 
 /// A post-hire cancellation request, distinct from a completion dispute.
@@ -537,6 +542,7 @@ model CancellationRequest {
 
   @@index([status, reviewDueAt])
   @@index([taskId])
+  @@index([status, createdAt, id])
 }
 
 model AdminAction {
@@ -553,6 +559,7 @@ model AdminAction {
 
   @@index([targetType, targetId])
   @@index([adminId, createdAt])
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
 }
 
 model UploadAsset {

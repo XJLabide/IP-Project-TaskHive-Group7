@@ -58,7 +58,6 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 vi.mock("@/lib/notifications", () => ({ notifyUser: notifyUserMock }));
 
 import {
-  listSupportQueue,
   requestCancellation,
   resolveCancellation,
   resolveDispute,
@@ -403,109 +402,5 @@ describe("user oversight", () => {
       status: "SUSPENDED",
     });
     expect(otherAdmin).toMatchObject({ ok: false, code: "forbidden" });
-  });
-});
-
-describe("support queue", () => {
-  it("combines reports, disputes, cancellations, and verification appeals", async () => {
-    prismaMock.report.findMany.mockResolvedValue([
-      {
-        id: "report_1",
-        reason: "Abuse",
-        status: "OPEN",
-        createdAt: friday,
-        reporter: { name: "Reporter" },
-        reportedUser: { name: "Reported" },
-        task: { title: "Task" },
-      },
-    ]);
-    prismaMock.dispute.findMany.mockResolvedValue([
-      {
-        id: "dispute_1",
-        taskId: "task_1",
-        reason: "Scope",
-        status: "OPEN",
-        createdAt: friday,
-        openedBy: { name: "Ana" },
-        task: { title: "Task" },
-      },
-    ]);
-    prismaMock.cancellationRequest.findMany.mockResolvedValue([
-      {
-        id: "request_1",
-        taskId: "task_1",
-        reason: "Cannot start",
-        status: "OPEN",
-        createdAt: friday,
-        reviewDueAt: new Date("2026-11-03T09:00:00.000Z"),
-        requestedBy: { name: "Maria" },
-        task: { title: "Task" },
-      },
-    ]);
-    prismaMock.taskerVerification.findMany.mockResolvedValue([
-      {
-        userId: "tasker_1",
-        appealedAt: friday,
-        appealNote: "Please review",
-        user: { name: "Tasker" },
-      },
-    ]);
-    prismaMock.adminAction.findMany.mockResolvedValue([
-      {
-        id: "audit_1",
-        action: "support.dispute.resolve",
-        targetType: "Dispute",
-        targetId: "dispute_1",
-        notes: "Resolved",
-        createdAt: friday,
-        admin: { name: "Admin" },
-      },
-    ]);
-    prismaMock.task.findMany.mockResolvedValue([
-      {
-        id: "task_1",
-        title: "Task",
-        status: "OPEN",
-        updatedAt: friday,
-        poster: { name: "Maria" },
-      },
-    ]);
-    prismaMock.user.findMany.mockResolvedValue([
-      {
-        id: "user_1",
-        name: "Ana",
-        status: "ACTIVE",
-        isAdmin: false,
-        updatedAt: friday,
-      },
-    ]);
-    prismaMock.user.count.mockResolvedValue(10);
-    prismaMock.task.groupBy.mockResolvedValue([
-      { status: "COMPLETED", _count: { _all: 4 } },
-    ]);
-
-    const queue = await listSupportQueue();
-
-    expect(queue.totals).toEqual({
-      users: 10,
-      tasks: 4,
-      completedTasks: 4,
-      openReports: 1,
-      openDisputes: 1,
-      openCancellations: 1,
-      pendingVerificationAppeals: 1,
-    });
-    expect(prismaMock.task.groupBy).toHaveBeenCalledWith({
-      by: ["status"],
-      _count: { _all: true },
-    });
-    expect(prismaMock.task.count).not.toHaveBeenCalled();
-    expect(queue.disputes[0].dueAt).toEqual(
-      new Date("2026-11-03T09:00:00.000Z"),
-    );
-    expect(queue.verificationAppeals[0].name).toBe("Tasker");
-    expect(queue.recentTasks[0]).toMatchObject({ id: "task_1", poster: "Maria" });
-    expect(queue.recentUsers[0]).toMatchObject({ id: "user_1", status: "ACTIVE" });
-    expect(queue.recentDecisions[0]).toMatchObject({ admin: "Admin" });
   });
 });

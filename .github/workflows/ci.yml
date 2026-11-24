@@ -71,5 +71,10 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test Admin reads against PostgreSQL
+        env:
+          ADMIN_TEST_DATABASE_URL: postgresql://taskhive:taskhive@localhost:5432/taskhive?schema=public&connection_limit=2
+        run: pnpm test:admin
+
       - name: Build
         run: pnpm build

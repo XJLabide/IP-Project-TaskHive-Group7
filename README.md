@@ -58,6 +58,10 @@ The database security check and PostgreSQL regression suite are documented in
 [Public-table database security](docs/database-security.md). CI runs these against
 a disposable migrated database; integration tests require an explicit test URL.
 
+Admin queue pagination, timing diagnostics, regional-placement evaluation, and
+the disposable PostgreSQL suite are documented in
+[Admin dashboard performance](docs/admin-performance.md).
+
 ## Important Notes
 - PayMongo is an evaluation candidate, not a confirmed provider. Do not implement provider-managed payout until marketplace eligibility and required capabilities are verified.
 - TaskHive must not describe provider-managed payout as legal escrow.

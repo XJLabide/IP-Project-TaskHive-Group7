@@ -1,6 +1,5 @@
-import { ok, requireAdmin } from "@/lib/api/response";
-import { prisma } from "@/lib/prisma";
-import { listSupportQueue } from "@/lib/support/service";
+import { ok, problem, requireAdmin } from "@/lib/api/response";
+import { getAdminSection, getAdminTotals } from "@/lib/support/reads";
 
 export const runtime = "nodejs";
 
@@ -9,25 +8,8 @@ export async function GET(request: Request) {
   const authResult = await requireAdmin(request);
   if (authResult.response) return authResult.response;
 
-  const [queue, fees] = await Promise.all([
-    listSupportQueue(),
-    prisma.payment.aggregate({
-      where: { status: "RELEASED" },
-      _sum: { platformFeeCents: true },
-    }),
-  ]);
-
-  return ok({
-    totals: {
-      users: queue.totals.users,
-      tasks: queue.totals.tasks,
-      completedTasks: queue.totals.completedTasks,
-      openDisputes: queue.totals.openDisputes,
-      openCancellations: queue.totals.openCancellations,
-      openReports: queue.totals.openReports,
-      pendingVerificationAppeals: queue.totals.pendingVerificationAppeals,
-      platformFeesCents: fees._sum.platformFeeCents ?? 0,
-    },
-    reports: queue.reports,
-  });
+  try {
+    const [totals, reports] = await Promise.all([getAdminTotals(true), getAdminSection("reports")]);
+    return ok({ totals, reports: reports.items, pagination: reports.pagination });
+  } catch { return problem("Admin overview could not load. Try again.", 503); }
 }
