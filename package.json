@@ -21,7 +21,9 @@
     "prisma:generate": "DATABASE_URL=\"postgresql://taskhive:taskhive@localhost:5432/taskhive?schema=public\" prisma generate",
     "prisma:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
-    "verify": "pnpm lint && pnpm typecheck && pnpm prisma:validate && pnpm test && pnpm build"
+    "verify": "pnpm lint && pnpm typecheck && pnpm prisma:validate && pnpm test && pnpm build",
+    "db:security:check": "node scripts/check-database-security.mjs",
+    "test:db-security": "vitest run --config vitest.security.config.mts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.2",

@@ -63,19 +63,23 @@ function timedQueueRead<T>(
   });
 }
 
+class SupportPaymentChangedError extends Error {}
+
 async function payoutTotals(taskId: string): Promise<{
   paymentId: string | null;
   amountCents: number;
   platformFeeCents: number;
   netCents: number;
+  refundedCents: number;
 }> {
   const payment = await prisma.payment.findUnique({
     where: { taskId },
-    select: { id: true, amountCents: true, platformFeeCents: true },
+    select: { id: true, amountCents: true, platformFeeCents: true, refundedCents: true },
   });
 
   return {
     paymentId: payment?.id ?? null,
+    refundedCents: payment?.refundedCents ?? 0,
     amountCents: payment?.amountCents ?? 0,
     platformFeeCents: payment?.platformFeeCents ?? 0,
     netCents: payment ? payment.amountCents - payment.platformFeeCents : 0,
@@ -264,6 +268,9 @@ async function resolveCase(input: {
   if (!decision.allowed) return failure(decision.code, decision.reason);
 
   const totals = await payoutTotals(caseRow.taskId);
+  if (totals.refundedCents > 0) {
+    return failure("invalid_state", "This payment already has a refund. Reconcile the provider refund and remaining funds before resolving the case.");
+  }
   const effect = payoutEffect(input.outcome, {
     netCents: totals.netCents,
     requestedCents: input.payoutCents,
@@ -335,6 +342,7 @@ async function resolveCase(input: {
       const paymentUpdate = await tx.payment.updateMany({
         where: {
           id: totals.paymentId,
+          refundedCents: 0,
           status: { in: ["PAID_PENDING_COMPLETION", "DISPUTED"] },
         },
         data: {
@@ -344,7 +352,8 @@ async function resolveCase(input: {
         },
       });
 
-      if (paymentUpdate.count === 0) return false;
+      // Roll back earlier case/task changes if a refund raced the initial read.
+      if (paymentUpdate.count === 0) throw new SupportPaymentChangedError();
 
       if (effect.effect.releasePayout) {
         const payoutUpdate = await tx.payout.updateMany({
@@ -375,6 +384,9 @@ async function resolveCase(input: {
     );
 
     return true;
+  }).catch((error: unknown) => {
+    if (error instanceof SupportPaymentChangedError) return false;
+    throw error;
   });
 
   if (!applied) {

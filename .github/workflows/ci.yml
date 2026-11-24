@@ -8,6 +8,20 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taskhive
+          POSTGRES_PASSWORD: taskhive
+          POSTGRES_DB: taskhive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskhive -d taskhive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://taskhive:taskhive@localhost:5432/taskhive?schema=public
     steps:
@@ -36,6 +50,20 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm prisma:generate
+
+      - name: Model API roles in disposable PostgreSQL
+        run: docker exec -i "${{ job.services.postgres.id }}" psql --username=taskhive --dbname=taskhive --set=ON_ERROR_STOP=1 < tests/database/api-roles.sql
+
+      - name: Replay committed migrations
+        run: pnpm db:migrate
+
+      - name: Check public-table security
+        run: pnpm db:security:check
+
+      - name: Test PostgreSQL security boundary
+        env:
+          SECURITY_TEST_DATABASE_URL: postgresql://taskhive:taskhive@localhost:5432/taskhive?schema=public
+        run: pnpm test:db-security
 
       - name: Typecheck
         run: pnpm typecheck
