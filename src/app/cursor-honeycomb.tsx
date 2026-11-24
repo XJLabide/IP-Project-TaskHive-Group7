@@ -43,6 +43,8 @@ export function CursorHoneycomb() {
     let nextAmbient = 0;
     let visible = true;
     let pulses: Pulse[] = [];
+    let gridColor: string;
+    let rippleColor: string;
 
     const startPulse = ({ x, y }: Point, started: number) => {
       pulses = pulses.slice(-7);
@@ -57,7 +59,7 @@ export function CursorHoneycomb() {
 
       context.clearRect(0, 0, width, height);
       context.lineWidth = 1;
-      context.strokeStyle = "#FFFFFF";
+      context.strokeStyle = gridColor;
       context.globalAlpha = 0.09;
       context.stroke(grid);
 
@@ -81,8 +83,8 @@ export function CursorHoneycomb() {
       }
 
       pulses = pulses.filter(pulse => pulseDistance(now, pulse) < pulse.reach + cellWidth);
-      context.strokeStyle = "#FFC800";
-      context.fillStyle = "#FFC800";
+      context.strokeStyle = rippleColor;
+      context.fillStyle = rippleColor;
 
       for (const cell of cells) {
         const proximity = pointer ? smooth(1 - Math.hypot(cell.x - pointer.x, cell.y - pointer.y) / hoverRadius) : 0;
@@ -173,6 +175,16 @@ export function CursorHoneycomb() {
       wake();
     };
 
+    const updateColors = () => {
+      const palette = getComputedStyle(canvas);
+      gridColor = palette.getPropertyValue("--landing-grid").trim();
+      rippleColor = palette.getPropertyValue("--landing-ripple").trim();
+      wake();
+    };
+    const theme = new MutationObserver(updateColors);
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    updateColors();
+
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     const intersection = new IntersectionObserver(([entry]) => {
@@ -192,6 +204,7 @@ export function CursorHoneycomb() {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      theme.disconnect();
       intersection.disconnect();
       scroller?.removeEventListener("scroll", clearPointer);
       window.removeEventListener("pointermove", onMove);
