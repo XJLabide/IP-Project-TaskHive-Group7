@@ -37,7 +37,24 @@ import { POST } from "./route";
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
 describe("payment webhook", () => {
-  it("acknowledges a signed but unpaid Stripe checkout without activating payment", async () => {
+  it("returns unavailable without database work when production provider verification is incomplete", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("PAYMENT_PROVIDER", "stripe");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_synthetic");
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_synthetic");
+    vi.stubEnv("PAYMENT_SANDBOX_VERIFIED", "");
+    vi.stubEnv("PAYMENT_WEBHOOK_VERIFIED", "");
+    const response = await POST(new Request("https://taskhive.example/api/payments/webhook", { method: "POST", body: "{}" }));
+    expect(response.status).toBe(503);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("acknowledges a signed but unpaid Stripe checkout without activating payment (attested production: %s)", async (production) => {
+    if (production) {
+      vi.stubEnv("VERCEL_ENV", "production");
+      vi.stubEnv("PAYMENT_SANDBOX_VERIFIED", "true");
+      vi.stubEnv("PAYMENT_WEBHOOK_VERIFIED", "true");
+    }
     vi.stubEnv("PAYMENT_PROVIDER", "stripe");
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_example");
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_example");

@@ -1,5 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { deliverEmailMock, completionMocks, paymentMocks } = vi.hoisted(() => ({
   deliverEmailMock: vi.fn(),
@@ -59,12 +59,14 @@ function signedRequest(body: string) {
 
 describe("signed QStash job route", () => {
   beforeEach(() => {
+    vi.stubEnv("QSTASH_TOKEN", "test-token");
     vi.stubEnv("QSTASH_CURRENT_SIGNING_KEY", currentSigningKey);
     vi.stubEnv("QSTASH_NEXT_SIGNING_KEY", nextSigningKey);
     vi.stubEnv("QSTASH_DESTINATION_URL", url);
     vi.clearAllMocks();
     deliverEmailMock.mockResolvedValue({ status: "SENT" });
   });
+  afterEach(() => vi.unstubAllEnvs());
 
   it("dispatches an authenticated email job", async () => {
     const response = await POST(
@@ -91,6 +93,38 @@ describe("signed QStash job route", () => {
     );
 
     expect(response.status).not.toBe(200);
+    expect(deliverEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses even correctly signed production jobs until delivery verification is attested", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("QSTASH_TOKEN", "test-token");
+    vi.stubEnv("QSTASH_DELIVERY_VERIFIED", "");
+    const response = await POST(signedRequest(JSON.stringify({ jobName: "notifications.deliver_email", notificationId: "notification_1" })));
+    expect(response.status).toBe(503);
+    expect(deliverEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("dispatches signed production jobs only after verification is attested", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("QSTASH_DELIVERY_VERIFIED", "true");
+    const response = await POST(signedRequest(JSON.stringify({ jobName: "notifications.deliver_email", notificationId: "notification_1" })));
+    expect(response.status).toBe(200);
+    expect(deliverEmailMock).toHaveBeenCalledWith("notification_1");
+  });
+
+  it("allows signed sandbox deliveries in a Preview production build", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("QSTASH_DELIVERY_VERIFIED", "");
+    const response = await POST(signedRequest(JSON.stringify({ jobName: "notifications.deliver_email", notificationId: "notification_1" })));
+    expect(response.status).toBe(200);
+  });
+
+  it.each(["QSTASH_TOKEN", "QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY", "QSTASH_DESTINATION_URL"])("returns 503 without dispatch when %s is absent", async (name) => {
+    vi.stubEnv(name, "");
+    const response = await POST(signedRequest(JSON.stringify({ jobName: "notifications.deliver_email", notificationId: "notification_1" })));
+    expect(response.status).toBe(503);
     expect(deliverEmailMock).not.toHaveBeenCalled();
   });
 });

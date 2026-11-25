@@ -78,6 +78,23 @@ describe("upsertSchedules", () => {
     });
   });
 
+  it("refuses production provisioning until signed delivery is verified", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("QSTASH_DELIVERY_VERIFIED", "");
+    const create = vi.fn();
+    const list = vi.fn(async () => []);
+    expect(await upsertSchedules({ client: fakeClient({ list, create }) })).toMatchObject({ ok: false });
+    expect(list).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a destination override that does not match the configured signed receiver", async () => {
+    const list = vi.fn(async () => []);
+    expect(await upsertSchedules({ client: fakeClient({ list }), destination: "https://other.example/api/jobs" }))
+      .toMatchObject({ ok: false });
+    expect(list).not.toHaveBeenCalled();
+  });
+
   it("creates missing schedules and skips ones that already match", async () => {
     const create = vi.fn(async () => ({ scheduleId: "sched_new" }));
     const list = vi.fn(async () => [

@@ -16,6 +16,10 @@ Provisioning and monitoring live behind the admin-only `/api/admin/jobs` route. 
 ## Provisioning exercise (requires QStash credentials)
 
 1. Set `QSTASH_TOKEN`, `QSTASH_DESTINATION_URL`, `QSTASH_CURRENT_SIGNING_KEY`, and `QSTASH_NEXT_SIGNING_KEY` in the target environment.
+   Use an HTTPS `/api/jobs` destination without credentials, query, or fragment.
+   First complete this exercise in Preview. Production also requires
+   `QSTASH_DELIVERY_VERIFIED=true` after recording the signed delivery/retry
+   evidence described in [provider readiness](provider-readiness.md).
 2. As an admin, call `POST /api/admin/jobs`. Expect a 200 whose `data` lists four `created` schedules and empty `drifted`/`failures`.
 3. Call `GET /api/admin/jobs`. Every schedule should report its `scheduleId`, an `actualCron` matching `expectedCron`, and `isPaused: false`.
 4. Re-run `POST /api/admin/jobs`. It should now `skipped` all four (idempotent) rather than creating duplicates.

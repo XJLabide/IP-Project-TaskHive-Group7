@@ -98,6 +98,17 @@ describe("Maya sandbox provider", () => {
 });
 
 describe("provider selection", () => {
+  it.each(["stripe", "paymongo"])("keeps production %s disabled until sandbox and webhook verification are attested", (provider) => {
+    const env = {
+      NODE_ENV: "production", PAYMENT_PROVIDER: provider,
+      STRIPE_SECRET_KEY: "sk_live_synthetic", STRIPE_WEBHOOK_SECRET: "whsec_synthetic",
+      PAYMONGO_SECRET_KEY: "sk_live_synthetic", PAYMONGO_WEBHOOK_SECRET: "whsec_synthetic",
+    };
+    expect(selectPaymentProvider(env).name).toBe("disabled");
+    expect(selectPaymentProvider({ ...env, PAYMENT_SANDBOX_VERIFIED: "true" }).name).toBe("disabled");
+    expect(selectPaymentProvider({ ...env, PAYMENT_SANDBOX_VERIFIED: "true", PAYMENT_WEBHOOK_VERIFIED: "true" }).name).toBe(provider);
+  });
+
   it("uses the fake provider for local development and tests", () => {
     expect(selectPaymentProvider({}).name).toBe("fake");
     expect(selectPaymentProvider({ PAYMENT_PROVIDER: "paymongo" }).name).toBe("fake");
@@ -134,6 +145,10 @@ describe("provider selection", () => {
         ALLOW_FAKE_PAYMENTS: "1",
       }).name,
     ).toBe("disabled");
+  });
+
+  it("never falls back to unsigned fake payments in a deployed Preview build", () => {
+    expect(selectPaymentProvider({ NODE_ENV: "production", VERCEL_ENV: "preview" }).name).toBe("disabled");
   });
 });
 

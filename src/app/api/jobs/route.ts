@@ -1,4 +1,5 @@
 import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+import { jobsReadiness } from "@/lib/providers/readiness.mjs";
 import { ok, problem } from "@/lib/api/response";
 import {
   autoReleaseCompletions,
@@ -52,6 +53,10 @@ export async function POST(request: Request) {
 
   if (!currentSigningKey || !nextSigningKey) {
     return problem("Background job signature validation is not configured", 503);
+  }
+
+  if (!jobsReadiness().ready) {
+    return problem("Background jobs are unavailable until provider readiness checks pass.", 503);
   }
 
   const destinationUrl = process.env.QSTASH_DESTINATION_URL;

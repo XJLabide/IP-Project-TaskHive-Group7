@@ -52,7 +52,13 @@ pnpm test
 pnpm prisma:validate
 pnpm build
 pnpm verify
+pnpm providers:check
 ```
+
+Before enabling payment adapters or production jobs, follow the
+[provider readiness checks](docs/provider-readiness.md). The check uses explicitly
+exported deployment settings, reports missing configuration without secrets,
+and fails until both integrations are ready. Production checkout remains disabled.
 
 The database security check and PostgreSQL regression suite are documented in
 [Public-table database security](docs/database-security.md). CI runs these against

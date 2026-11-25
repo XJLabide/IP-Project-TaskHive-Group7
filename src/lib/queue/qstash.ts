@@ -1,4 +1,5 @@
 import { Client } from "@upstash/qstash";
+import { jobsReadiness } from "@/lib/providers/readiness.mjs";
 
 export const qstash = new Client({
   token: process.env.QSTASH_TOKEN ?? "development-placeholder-token",
@@ -18,16 +19,18 @@ export async function publishJob(
   body: Record<string, unknown>,
   options: PublishJobOptions = {},
 ): Promise<PublishJobResult> {
-  if (!process.env.QSTASH_TOKEN || !process.env.QSTASH_DESTINATION_URL) {
+  const readiness = jobsReadiness();
+  const destination = process.env.QSTASH_DESTINATION_URL;
+  if (!readiness.ready || !destination) {
     return {
       queued: false,
       jobName,
-      reason: "QStash is not configured in this environment.",
+      reason: `Background jobs are unavailable: ${readiness.issues.join("; ")}.`,
     };
   }
 
   await qstash.publishJSON({
-    url: process.env.QSTASH_DESTINATION_URL,
+    url: destination,
     body: {
       jobName,
       ...body,
