@@ -140,6 +140,7 @@ function PendingTasks() {
   const [newestFirst, setNewestFirst] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [now, setNow] = useState(0);
+  const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -164,7 +165,7 @@ function PendingTasks() {
     }
     void loadTasks();
     return () => controller.abort();
-  }, []);
+  }, [reloadCount]);
 
   const filteredHistory = history
     .filter((item) => roleFilter === "all" || item.role === roleFilter)
@@ -233,15 +234,16 @@ function PendingTasks() {
           <Card className="xl:min-h-[320px]">
             <CardContent className="grid h-full content-start gap-4 p-5 sm:p-6">
               <h2 className="text-lg font-semibold">Pending payments</h2>
-              {error ? <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+              {error ? <div className="grid gap-2"><p role="alert" className="text-sm text-red-700 dark:text-red-400">We couldn’t load your payments. Check your connection and try again.</p><Button className="w-fit" onClick={() => { setError(""); setTasks(null); setReloadCount((count) => count + 1); }} size="sm" type="button" variant="outline">Try again</Button></div> : null}
               {!tasks && !error ? <p className="text-sm text-zinc-500">Loading pending payments…</p> : null}
               {tasks?.length === 0 ? (
                 <div className="grid min-h-56 content-center justify-items-center gap-3 px-2 text-center">
                   <span className="grid h-16 w-16 place-items-center rounded-xl bg-[#FFF4CF] text-zinc-900 dark:bg-[#403716] dark:text-[#FFE99E]">
                     <WalletCards aria-hidden="true" className="h-8 w-8" strokeWidth={1.7} />
                   </span>
-                  <h3 className="text-base font-semibold">No pending payments</h3>
-                  <p className="max-w-xs text-sm leading-6 text-zinc-600 dark:text-zinc-400">Payments waiting for your action will appear here.</p>
+                  <h3 className="text-base font-semibold">You’re all caught up</h3>
+                  <p className="max-w-xs text-sm leading-6 text-zinc-600 dark:text-zinc-400">Payments that need your action will appear here. Completed payments and payouts stay in your history.</p>
+                  <Button asChild size="sm" variant="outline"><Link href="/my-work">View your work</Link></Button>
                 </div>
               ) : null}
               {tasks?.map((task) => (

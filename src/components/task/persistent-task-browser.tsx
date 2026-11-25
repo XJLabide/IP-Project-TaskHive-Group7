@@ -58,12 +58,12 @@ function buildDiscoveryQuery(input: {
 
 export function PersistentTaskBrowser({ initialParams }: { initialParams: Record<string, string> }) {
   const { viewer } = useViewer();
-  const [search, setSearch] = useState(initialParams.search ?? "");
+  const [search, setSearch] = useState(initialParams.search ?? initialParams.q ?? "");
   const [category, setCategory] = useState(initialParams.category || "All categories");
-  const [type, setType] = useState<TaskType>("all");
-  const [budget, setBudget] = useState<BudgetRange>("any");
-  const [deadlineDays, setDeadlineDays] = useState("any");
-  const [sort, setSort] = useState("recommended");
+  const [type, setType] = useState<TaskType>((initialParams.type as TaskType) || "all");
+  const [budget, setBudget] = useState<BudgetRange>((initialParams.budget as BudgetRange) || "any");
+  const [deadlineDays, setDeadlineDays] = useState(initialParams.deadline ?? "any");
+  const [sort, setSort] = useState(initialParams.sort ?? "recommended");
   const [view, setView] = useState<"list" | "map">(initialParams.view === "map" ? "map" : "list");
   const [publicTasks, setPublicTasks] = useState<Array<{ task: TaskSummary; distanceKm: number | null }>>([]);
   const [ownedTasks, setOwnedTasks] = useState<TaskSummary[]>([]);
@@ -72,12 +72,30 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
   const [error, setError] = useState("");
   const [ownedError, setOwnedError] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
 
   const query = useMemo(() => buildDiscoveryQuery({ search, category, type, budget, deadlineDays, sort, initialParams }), [
     search, category, type, budget, deadlineDays, sort, initialParams,
   ]);
   const isLoading = loadedQuery !== query;
   const categories = [...new Set([...launchCategories.map((item) => item.label), ...ownedTasks.map((task) => task.category)])].sort();
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("search", search.trim());
+    if (category !== "All categories") params.set("category", category);
+    if (type !== "all") params.set("type", type);
+    if (budget !== "any") params.set("budget", budget);
+    if (deadlineDays !== "any") params.set("deadline", deadlineDays);
+    if (sort !== "recommended") params.set("sort", sort);
+    if (initialParams.lat) params.set("lat", initialParams.lat);
+    if (initialParams.lng) params.set("lng", initialParams.lng);
+    if (initialParams.radiusKm) params.set("radiusKm", initialParams.radiusKm);
+    if (view === "map") params.set("view", "map");
+    const nextPath = view === "map" ? "/map" : "/tasks";
+    const next = `${nextPath}${params.size ? `?${params}` : ""}`;
+    window.history.replaceState(null, "", next);
+  }, [search, category, type, budget, deadlineDays, sort, view, initialParams]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -100,7 +118,16 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query]);
+  }, [query, reloadCount]);
+
+  function clearFilters() {
+    setSearch("");
+    setCategory("All categories");
+    setType("all");
+    setBudget("any");
+    setDeadlineDays("any");
+    setSort("recommended");
+  }
 
   useEffect(() => {
     if (!viewer.signedIn) return;
@@ -137,22 +164,19 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
       <div className="grid gap-4">
         <Card><CardContent className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:p-5">
           <label className="grid gap-1.5 text-sm font-medium"><span>Search tasks</span><input aria-label="Search tasks, locations, or categories" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" onChange={(event) => setSearch(event.target.value)} placeholder="Title, details, or area" type="search" value={search} /></label>
-          <label className="grid gap-1.5 text-sm font-medium"><span>Category</span><select className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setCategory(event.target.value)} value={category}><option>All categories</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className="grid gap-1.5 text-sm font-medium"><span>Sort</span><select className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setSort(event.target.value)} value={sort}><option value="recommended">Recommended</option><option value="nearest">Nearest first</option><option value="budget_asc">Lowest budget</option><option value="budget_desc">Highest budget</option><option value="deadline">Deadline soonest</option></select></label>
-          <div className="flex flex-wrap gap-2 sm:col-span-3">
+          <div className="hidden gap-2 sm:flex sm:col-span-2">
             {([ ["all", "All tasks"], ["local", "Local"], ["remote", "Remote"], ["bidding", "Bidding"], ["fixed_price", "Fixed price"] ] as const).map(([value, label]) => <Button aria-pressed={type === value} key={value} onClick={() => setType(value)} size="sm" type="button" variant={type === value ? "default" : "outline"}>{label}</Button>)}
-            <select aria-label="Budget" className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setBudget(event.target.value as BudgetRange)} value={budget}><option value="any">Any budget</option><option value="under-500">Under PHP 500</option><option value="500-1000">PHP 500–1,000</option><option value="over-1000">Over PHP 1,000</option></select>
-            <select aria-label="Deadline" className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setDeadlineDays(event.target.value)} value={deadlineDays}><option value="any">Any deadline</option><option value="3">Within 3 days</option><option value="7">Within 7 days</option><option value="30">Within 30 days</option></select>
             <div aria-label="Task view" className="ml-auto flex gap-2"><Button aria-pressed={view === "list"} onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "outline"}>List</Button><Button aria-pressed={view === "map"} onClick={() => setView("map")} size="sm" type="button" variant={view === "map" ? "default" : "outline"}>Map</Button></div>
           </div>
+          <details className="group sm:col-span-3"><summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-lg border border-zinc-200 px-3 text-sm font-medium dark:border-zinc-700 sm:hidden"><span>Filters and sorting</span><span aria-hidden="true">{type !== "all" || budget !== "any" || deadlineDays !== "any" || category !== "All categories" ? "Filters active" : "＋"}</span></summary><div className="mt-3 grid gap-3 sm:mt-0 sm:grid-cols-3"><label className="grid gap-1.5 text-sm font-medium"><span className="hidden sm:block">Category</span><select aria-label="Category" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setCategory(event.target.value)} value={category}><option>All categories</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label><label className="grid gap-1.5 text-sm font-medium"><span className="hidden sm:block">Sort</span><select aria-label="Sort tasks" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setSort(event.target.value)} value={sort}><option value="recommended">Recommended</option><option value="nearest">Nearest first</option><option value="budget_asc">Lowest budget</option><option value="budget_desc">Highest budget</option><option value="deadline">Deadline soonest</option></select></label><div className="flex flex-wrap gap-2">{([ ["all", "All tasks"], ["local", "Local"], ["remote", "Remote"], ["bidding", "Bidding"], ["fixed_price", "Fixed price"] ] as const).map(([value, label]) => <Button aria-pressed={type === value} key={value} onClick={() => setType(value)} size="sm" type="button" variant={type === value ? "default" : "outline"}>{label}</Button>)}</div><label className="grid gap-1.5 text-sm font-medium"><span>Budget</span><select aria-label="Budget" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setBudget(event.target.value as BudgetRange)} value={budget}><option value="any">Any budget</option><option value="under-500">Under PHP 500</option><option value="500-1000">PHP 500–1,000</option><option value="over-1000">Over PHP 1,000</option></select></label><label className="grid gap-1.5 text-sm font-medium"><span>Deadline</span><select aria-label="Deadline" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setDeadlineDays(event.target.value)} value={deadlineDays}><option value="any">Any deadline</option><option value="3">Within 3 days</option><option value="7">Within 7 days</option><option value="30">Within 30 days</option></select></label><div className="flex items-end gap-2 sm:hidden"><Button aria-pressed={view === "list"} onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "outline"}>List</Button><Button aria-pressed={view === "map"} onClick={() => setView("map")} size="sm" type="button" variant={view === "map" ? "default" : "outline"}>Map</Button></div></div></details>
         </CardContent></Card>
 
         {!viewer.signedIn ? <p className="text-sm text-zinc-500 dark:text-zinc-400">Sign in to apply or message. <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFD50D]" href="/login">Sign in</Link></p> : null}
-        {error ? <Card><CardContent className="p-5"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p></CardContent></Card> : null}
+        {error ? <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p><Button onClick={() => setReloadCount((count) => count + 1)} size="sm" type="button" variant="outline">Try again</Button></CardContent></Card> : null}
         <div aria-live="polite" className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400"><span>{isLoading ? "Loading tasks…" : `${pagination?.total ?? publicTasks.length} tasks`}</span></div>
         {view === "map" ? (
           <TaskMap tasks={publicTasks.map(({ task }) => task)} />
-        ) : isLoading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((item) => <div aria-hidden="true" className="h-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" key={item} />)}</div> : publicTasks.length === 0 && !error ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No open tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try a wider search or clear a filter.</p></div></CardContent></Card> : (
+        ) : isLoading ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((item) => <div aria-hidden="true" className="h-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" key={item} />)}</div> : publicTasks.length === 0 && !error ? <Card><CardContent className="grid min-h-40 place-items-center p-6 text-center"><div><p className="font-semibold">No open tasks match these filters.</p><p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try another location or clear your filters to see more nearby work.</p><Button className="mt-4" onClick={clearFilters} size="sm" type="button" variant="outline">Clear filters</Button></div></CardContent></Card> : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{publicTasks.map(({ task, distanceKm }) => <TaskCard applicationCount={task.applications} distanceKm={distanceKm} key={task.id} task={task} variant="browse" />)}</div>
         )}
         {pagination && pagination.page < pagination.totalPages ? <div className="flex justify-center"><Button disabled={loadingMore || isLoading} onClick={() => void loadMore()} type="button" variant="outline">{loadingMore ? "Loading…" : "Load more tasks"}</Button></div> : null}

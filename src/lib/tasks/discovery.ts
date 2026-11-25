@@ -183,6 +183,13 @@ export type PublicTaskDetail = PublicTaskSummary & {
   taskStatus: TaskLifecycleStatus;
   isPoster: boolean;
   isAssignedTasker: boolean;
+  paymentSummary: {
+    amountCents: number;
+    platformFeeCents: number;
+    payoutCents: number;
+    holdExpiresAt: string | null;
+    status: string;
+  } | null;
 };
 
 export function toPublicTaskDetail(
@@ -200,6 +207,7 @@ export function toPublicTaskDetail(
     isPoster: access.viewerId !== null && access.viewerId === access.posterId,
     isAssignedTasker:
       access.viewerId !== null && access.viewerId === access.assignmentTaskerId,
+    paymentSummary: null,
   };
 }
 

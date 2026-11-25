@@ -266,6 +266,8 @@ function PersistentTaskChat({ task }: { task: TaskSummary }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const [loading, setLoading] = useState(viewer.signedIn);
   const [loadedThreadId, setLoadedThreadId] = useState<string | null>(null);
   const [canPost, setCanPost] = useState(task.status === "open");
@@ -288,13 +290,13 @@ function PersistentTaskChat({ task }: { task: TaskSummary }) {
         setIsOwner(taskApplications.role === "poster");
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setFeedback(error instanceof Error ? error.message : "Could not load conversations.");
+        if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : "Could not load conversations.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [task.id, viewer.signedIn]);
+  }, [task.id, viewer.signedIn, retryCount]);
 
   useEffect(() => {
     if (!selected || !viewer.signedIn) {
@@ -313,13 +315,13 @@ function PersistentTaskChat({ task }: { task: TaskSummary }) {
         setCanPost(result.canPost);
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted) setFeedback(error instanceof Error ? error.message : "Could not load messages.");
+        if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : "Could not load messages.");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadedThreadId(selected.id);
       });
     return () => controller.abort();
-  }, [selected, task.id, viewer.signedIn]);
+  }, [selected, task.id, viewer.signedIn, retryCount]);
 
   async function handleOpen() {
     setFeedback("");
@@ -377,6 +379,7 @@ function PersistentTaskChat({ task }: { task: TaskSummary }) {
         <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="font-bold">Messages</h2><p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">About: {task.title}</p></div>{!canPost ? <Badge className="border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">Read-only · task closed</Badge> : null}</div>
         {!viewer.signedIn ? <><GateNotice code="sign_in_required" /><Button asChild size="sm" variant="outline"><Link href="/login">Sign in to message</Link></Button></> : viewer.denials.chat ? <GateNotice code={viewer.denials.chat} /> : null}
         {loading ? <p role="status" className="text-sm text-zinc-500">Loading conversations…</p> : null}
+        {loadError ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60"><p aria-live="assertive" role="alert" className="text-sm text-zinc-600 dark:text-zinc-300">{loadError}</p><Button onClick={() => { setLoadError(""); setLoading(true); setLoadedThreadId(null); setRetryCount((count) => count + 1); }} size="sm" type="button" variant="outline">Reload conversation</Button></div> : null}
         {feedback ? <p aria-live="polite" role="status" className="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">{feedback}</p> : null}
         {viewer.signedIn && !viewer.denials.chat ? <>
           {isOwner && taskThreads.length > 1 ? <div aria-label="Conversations" className="flex flex-wrap gap-2">{taskThreads.map((thread) => <Button aria-pressed={thread.id === selected?.id} key={thread.id} onClick={() => setActiveId(thread.id)} size="sm" type="button" variant={thread.id === selected?.id ? "default" : "outline"}>{thread.openerName ?? `Tasker ${taskThreads.indexOf(thread) + 1}`}</Button>)}</div> : null}

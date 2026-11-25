@@ -53,6 +53,7 @@ export type DashboardAssignment = {
   amountCents: number;
   payoutCents: number;
   paidAt: string | null;
+  taskStatus: UiTaskStatus;
   href: string;
 };
 
@@ -229,6 +230,7 @@ export function buildDashboard(input: DashboardInput): DashboardData {
           amountCents: assignment.amountCents,
           payoutCents: assignment.payoutCents,
           paidAt: assignment.paidAt,
+          taskStatus: task.status,
           href: taskHref(task.id),
         },
       ];
@@ -262,7 +264,7 @@ export function buildDashboard(input: DashboardInput): DashboardData {
           taskId: task.id,
           taskTitle: task.title,
           ...actionMeta[kind],
-          href: taskHref(task.id),
+          href: kind === "hold_expired" ? taskHref(task.id) : `/checkout?taskId=${encodeURIComponent(task.id)}`,
           dueAt: assignment.holdExpiresAt,
         },
       ];

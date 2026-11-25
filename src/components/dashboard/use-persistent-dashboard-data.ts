@@ -16,6 +16,7 @@ export function usePersistentDashboardData() {
   const { viewer } = useViewer();
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,7 +35,7 @@ export function usePersistentDashboardData() {
         if (!controller.signal.aborted) setError(true);
       });
     return () => controller.abort();
-  }, [viewer.displayName, viewer.signedIn]);
+  }, [viewer.displayName, viewer.signedIn, reloadCount]);
 
   const data = payload?.data ?? emptyDashboardData({ signedIn: viewer.signedIn, displayName: viewer.displayName });
   const state = dashboardViewState({
@@ -50,5 +51,6 @@ export function usePersistentDashboardData() {
     data,
     now: new Date(),
     state,
+    retry: () => { setError(false); setReloadCount((count) => count + 1); },
   };
 }

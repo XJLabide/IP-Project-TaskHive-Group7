@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GateNotice } from "@/components/viewer/gate-notice";
 import { ProfileChecklist } from "@/components/viewer/profile-checklist";
 import { AgeAttestationForm } from "@/components/viewer/age-attestation-form";
+import { ProfileNameForm } from "@/components/viewer/profile-name-form";
 import { useViewer } from "@/components/viewer/viewer-provider";
 
 export default function ProfilePage() {
@@ -44,7 +45,7 @@ export default function ProfilePage() {
         </div>
 
         <aside className="grid content-start gap-4">
-          <Card>
+          <Card id="contact-details">
             <CardContent className="grid gap-4 p-5">
               <p className="text-sm font-bold">Contact details</p>
               <ContactRow
@@ -59,6 +60,7 @@ export default function ProfilePage() {
                 label="Email"
                 value={emailDone ? "Verified" : "Verification needed"}
               />
+              {!viewer.displayName ? <ProfileNameForm /> : null}
               {!emailDone ? (
                 <Button asChild className="w-full" size="sm" variant="outline">
                   <Link href="/verify-email">Verify email</Link>

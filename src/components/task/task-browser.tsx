@@ -217,7 +217,8 @@ function DemoTaskBrowser({ initialParams }: { initialParams: InitialParams }) {
       query.set("lat", String(pinnedOrigin.latitude));
       query.set("lng", String(pinnedOrigin.longitude));
     }
-    const next = query.toString() ? `/tasks?${query.toString()}` : "/tasks";
+    const nextPath = view === "map" ? "/map" : "/tasks";
+    const next = query.toString() ? `${nextPath}?${query.toString()}` : nextPath;
     if (typeof window !== "undefined" && window.location.pathname + window.location.search !== next) window.history.replaceState(null, "", next);
   }, [budget, category, deadline, originId, pinnedOrigin, quickFilter, radiusKm, router, search, sortOrder, view, viewer.signedIn]);
 
