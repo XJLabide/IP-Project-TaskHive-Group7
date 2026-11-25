@@ -25,7 +25,8 @@
     "db:security:check": "node scripts/check-database-security.mjs",
     "test:db-security": "vitest run --config vitest.security.config.mts",
     "providers:check": "node scripts/check-provider-config.mjs",
-    "test:verification": "vitest run --config vitest.verification.config.mts"
+    "test:verification": "vitest run --config vitest.verification.config.mts",
+    "test:admin": "vitest run --config vitest.admin.config.mts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.2",
