@@ -1,38 +1,42 @@
 import Link from "next/link";
+import { Space_Grotesk } from "next/font/google";
 import { redirect } from "next/navigation";
-import { ArrowRight, ShieldCheck, Star, MapPin, ShoppingBasket, Wrench, Sparkles, Package, Truck, BookOpen } from "lucide-react";
+import { ArrowRight, Minus, Plus, Search, ShieldCheck, Star, MapPin, ShoppingBasket, Wrench, Sparkles, Package, Truck, BookOpen } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
 import { loadCurrentActor } from "@/lib/auth/current-actor";
-import FaultyTerminal from "./faulty-terminal";
+import { CursorHoneycomb } from "./cursor-honeycomb";
+import { StepAccordion } from "./step-accordion";
 import heroStyles from "./home-hero.module.css";
+
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 
 const steps = [
   {
-    number: "01",
+    number: "1",
     title: "Post a task",
     text: "Describe what you need, where you need it, and the budget you have in mind.",
   },
   {
-    number: "02",
+    number: "2",
     title: "Choose your Tasker",
     text: "Compare offers from people nearby, check their profiles, and chat before you hire.",
   },
   {
-    number: "03",
+    number: "3",
     title: "Get it done",
     text: "Pay securely after hiring and confirm the task when the work is complete.",
   },
 ];
 
 const categories = [
-  { title: "Groceries & errands", icon: ShoppingBasket },
-  { title: "Home repairs", icon: Wrench },
-  { title: "Cleaning", icon: Sparkles },
-  { title: "Delivery", icon: Package },
-  { title: "Moving help", icon: Truck },
-  { title: "Tutoring", icon: BookOpen },
+  { title: "Groceries & errands", filter: "Errands", icon: ShoppingBasket, text: "Get help with shopping, pickups, and everyday to-dos." },
+  { title: "Home repairs", filter: "Repairs", icon: Wrench, text: "Find a hand with small fixes and home projects." },
+  { title: "Cleaning", filter: "Cleaning", icon: Sparkles, text: "Get your space ready for a move, a visit, or a fresh start." },
+  { title: "Delivery", filter: "Delivery", icon: Package, text: "Find someone to pick up and drop off items nearby." },
+  { title: "Moving help", filter: "Moving", icon: Truck, text: "Get an extra pair of hands for boxes and furniture." },
+  { title: "Tutoring", filter: "Tutoring", icon: BookOpen, text: "Connect with someone who can help you learn." },
 ];
 
 const benefits = [
@@ -42,9 +46,8 @@ const benefits = [
 ];
 
 const contentFrame = "mx-auto w-full max-w-7xl px-6 sm:px-8 lg:px-10";
-const panel = "rounded-[clamp(1rem,2.5vw,2rem)] border border-[#E3E7ED] px-[clamp(1rem,4vw,4rem)] py-[clamp(2rem,5vw,5rem)] dark:border-zinc-800";
-const surface = "bg-white dark:bg-[#18181B]";
-const sectionHeading = "text-[clamp(2rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-tight";
+const panel = `${heroStyles.panel} rounded-[1.75rem] border px-[clamp(1.25rem,4vw,3.5rem)] py-[clamp(2rem,5vw,4rem)]`;
+const sectionHeading = `${spaceGrotesk.className} ${heroStyles.accent} text-[clamp(2rem,4vw,3.5rem)] font-bold leading-[1.05] tracking-tight`;
 
 const questions = [
   ["How does TaskHive work?", "Post a task, review offers from local Taskers, and hire the person who suits your needs."],
@@ -59,116 +62,129 @@ export default async function Home() {
   if (actor?.signedIn) redirect("/dashboard");
 
   return (
-    <div data-page-scroll className="h-dvh overflow-y-auto bg-[#F7F8FA] text-[#17191D] dark:bg-[#09090B] dark:text-[#FAFAFA]">
+    <div data-page-scroll className={`${heroStyles.page} h-dvh overflow-y-auto`}>
       <div className={heroStyles.landing}>
         <div aria-hidden="true" className={heroStyles.backdrop}>
           <div className={heroStyles.fade}>
-            <FaultyTerminal
-              aria-hidden="true"
-              tint="#FFC800"
-              glyphs="hexagons"
-              scale={2.5}
-              digitSize={1.65}
-              timeScale={0.5}
-              brightness={1.2}
-              glow={0.8}
-              persistence={0.51}
-              mouseStrength={0.5}
-              mouseGlow={0.6}
-              curvature={0.15}
-              vignette={0}
-              clickEffect="degauss"
-              glitchAmount={0}
-              flickerAmount={0}
-              noiseAmp={0.5}
-              dpr={1}
-            />
-            <div aria-hidden="true" className={heroStyles.scrim} />
+            <CursorHoneycomb />
           </div>
         </div>
 
         <SiteHeader active="home" />
 
         <main>
-          <section aria-labelledby="hero-title" className="grid min-h-svh content-end pt-32 pb-[clamp(2.5rem,9svh,7rem)] text-white md:pt-24 md:pb-[clamp(3rem,10svh,7rem)]">
-            <div className={contentFrame}>
-              <h1 id="hero-title" className="text-[clamp(2.25rem,7.5vw,7.5rem)] font-semibold leading-[0.98] tracking-[-0.055em]">
-                <span className="block">CAN YOUR</span>{" "}
-                <span className="text-[#FFC800]">TASKS</span> GET DONE?
+          <section aria-labelledby="hero-title" className={`${heroStyles.hero} px-6 pb-16 pt-32 text-center sm:pb-24 sm:pt-40`}>
+            <div className="mx-auto max-w-3xl">
+              <h1 id="hero-title" className={`${spaceGrotesk.className} text-[clamp(3rem,8vw,7rem)] font-bold leading-[0.98] tracking-[-0.06em]`}>
+                Got a task?<br />
+                <span className={heroStyles.accent}>Ask the Hive.</span>
               </h1>
-              <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-200 sm:text-lg">
-                When digital tools fall short, TaskHive brings real help to your doorstep. Post a task, pick a hero, and get it done.
+              <p className={`${heroStyles.muted} mx-auto mt-6 max-w-lg text-base leading-relaxed sm:text-lg`}>
+                Find a Tasker nearby for errands, repairs, and the everyday jobs you could use a hand with.
               </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Button asChild size="lg"><Link href="/tasks/new">Post a task <ArrowRight aria-hidden="true" className="size-4" /></Link></Button>
-                <Button asChild size="lg" variant="outline" className="border-zinc-500 bg-transparent text-white hover:bg-zinc-800 hover:text-white dark:border-zinc-500 dark:bg-transparent dark:text-white"><Link href="/tasks">Browse tasks</Link></Button>
-              </div>
+
+              <form action="/tasks" method="get" role="search" aria-label="Search tasks" className={`${heroStyles.search} mx-auto mt-8 flex max-w-xl flex-wrap items-center gap-2 rounded-2xl border p-2 text-left sm:flex-nowrap`}>
+                <label htmlFor="landing-task-search" className="sr-only">Search for a task</label>
+                <div className="flex min-w-0 flex-1 basis-full items-center gap-3 px-3 sm:basis-auto">
+                  <Search aria-hidden="true" className={`${heroStyles.accent} size-5 shrink-0`} />
+                  <input id="landing-task-search" name="search" type="search" placeholder="Try “furniture assembly”" className="h-11 w-full min-w-0 rounded-md bg-transparent px-1 text-base" />
+                </div>
+                <Button type="submit" size="lg" className="w-full sm:w-auto">
+                  Browse tasks <ArrowRight aria-hidden="true" className="size-4" />
+                </Button>
+              </form>
+
+              <ul aria-label="Popular task categories" className="mt-4 flex flex-wrap justify-center gap-2">
+                {categories.slice(0, 3).map(({ filter, icon: Icon }) => (
+                  <li key={filter}>
+                    <Link href={{ pathname: "/tasks", query: { category: filter } }} className={`${heroStyles.chip} inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold`}>
+                      <Icon aria-hidden="true" className={`${heroStyles.accent} size-4`} />{filter}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/tasks/new" className={`${heroStyles.accent} mt-6 inline-flex items-center gap-2 rounded-sm text-sm font-bold underline underline-offset-4`}>
+                Post a task <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
             </div>
           </section>
 
-          <div className={`${contentFrame} flex flex-col gap-[clamp(1rem,2.5vw,2rem)] pb-[clamp(1rem,2.5vw,2rem)] pt-3 sm:pt-5`}>
-            <section aria-labelledby="categories-title" className={`${panel} ${surface}`}>
-              <h2 id="categories-title" className={sectionHeading}>What can we help you with?</h2>
+          <div className={`${contentFrame} flex flex-col gap-6 pb-8 sm:gap-8`}>
+            <section aria-labelledby="categories-title" className={panel}>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h2 id="categories-title" className={sectionHeading}>What Can We Help You With?</h2>
+                  <p className={`${heroStyles.muted} mt-3 max-w-lg leading-relaxed`}>Explore everyday tasks that people can help with, close to home.</p>
+                </div>
+                <Link href="/tasks" className={`${heroStyles.accent} inline-flex items-center gap-2 rounded-sm text-sm font-bold underline underline-offset-4`}>
+                  View all tasks <ArrowRight aria-hidden="true" className="size-4" />
+                </Link>
+              </div>
               <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {categories.map(({ title, icon: Icon }) => (
+                {categories.map(({ title, filter, text, icon: Icon }) => (
                   <Link
-                    className="group flex items-center gap-3 rounded-2xl border border-[#E3E7ED] bg-white p-4 font-semibold hover:border-[#D19300] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D19300] sm:p-5 dark:border-zinc-800 dark:bg-[#18181B] dark:hover:border-[#FFC800]"
-                    href="/tasks"
-                    key={title}
+                    className={`${heroStyles.card} ${heroStyles.chip} group block rounded-2xl border p-5 sm:p-6`}
+                    href={{ pathname: "/tasks", query: { category: filter } }}
+                    key={filter}
                   >
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#FFC800]/25 text-[#674900] dark:text-[#FFC800]">
-                      <Icon aria-hidden="true" className="size-5" />
+                    <span className="flex items-center justify-between">
+                      <span className={`${heroStyles.icon} grid size-11 place-items-center rounded-xl`}>
+                        <Icon aria-hidden="true" className="size-5" />
+                      </span>
+                      <ArrowRight aria-hidden="true" className={`${heroStyles.accent} size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none`} />
                     </span>
-                    <span className="min-w-0 flex-1">{title}</span>
-                    <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-zinc-500 group-hover:text-current dark:text-zinc-400" />
+                    <h3 className="mt-5 text-lg font-bold">{title}</h3>
+                    <p className={`${heroStyles.muted} mt-1 text-sm leading-relaxed`}>{text}</p>
                   </Link>
                 ))}
               </div>
             </section>
 
-            <section aria-labelledby="steps-title" className={`${panel} bg-[#FFFDF7] dark:bg-[#18181B]`}>
-              <h2 id="steps-title" className={sectionHeading}>How it works</h2>
-              <ol className="mt-7 grid gap-4 md:grid-cols-3">
-                {steps.map((step) => (
-                  <li className="rounded-2xl border border-[#E3E7ED] bg-white p-5 sm:p-6 dark:border-zinc-800 dark:bg-[#09090B]" key={step.number}>
-                    <span aria-hidden="true" className="inline-flex rounded-lg bg-[#FFC800] px-3 py-1 text-sm font-bold text-zinc-950">{step.number}</span>
-                    <h3 className="mt-4 text-xl font-bold">{step.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-[#5D6571] dark:text-zinc-300">{step.text}</p>
-                  </li>
-                ))}
-              </ol>
-            </section>
+            <div className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <section aria-labelledby="steps-title" className={`${panel} ${heroStyles.pairedSection}`}>
+                <h2 id="steps-title" className={sectionHeading}>How It Works</h2>
+                <StepAccordion steps={steps} />
+              </section>
 
-            <section aria-labelledby="benefits-title" className={`${panel} ${surface}`}>
-              <h2 id="benefits-title" className={sectionHeading}>Why TaskHive?</h2>
-              <div className="mt-7 grid gap-4 md:grid-cols-3">
-                {benefits.map(({ title, text, icon: Icon }) => (
-                  <article className="rounded-2xl border border-[#E3E7ED] bg-white p-5 sm:p-6 dark:border-zinc-800 dark:bg-[#18181B]" key={title}>
-                    <Icon aria-hidden="true" className="size-6 text-[#805A00] dark:text-[#FFC800]" />
-                    <h3 className="mt-4 text-xl font-bold">{title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-[#5D6571] dark:text-zinc-300">{text}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
+              <section aria-labelledby="benefits-title" className={`${panel} ${heroStyles.pairedSection}`}>
+                <h2 id="benefits-title" className={sectionHeading}>Why TaskHive?</h2>
+                <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-1">
+                  {benefits.map(({ title, text, icon: Icon }) => (
+                    <article className={`${heroStyles.card} flex items-start gap-3 rounded-2xl border p-4`} key={title}>
+                      <Icon aria-hidden="true" className={`${heroStyles.accent} mt-0.5 size-5 shrink-0`} />
+                      <div>
+                        <h3 className="font-bold">{title}</h3>
+                        <p className={`${heroStyles.muted} mt-1 text-sm leading-relaxed`}>{text}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
 
-            <section aria-labelledby="faq-title" className={`${panel} ${surface} grid gap-6 lg:grid-cols-[1fr_1.6fr] lg:gap-12`}>
-              <h2 id="faq-title" className={sectionHeading}>Frequently asked questions</h2>
-              <div className="divide-y divide-[#E3E7ED] border-y border-[#E3E7ED] dark:divide-zinc-700 dark:border-zinc-700">
+            <section aria-labelledby="faq-title" className={`${panel} grid items-start gap-6 lg:grid-cols-2 lg:gap-12`}>
+              <h2 id="faq-title" className={`${sectionHeading} lg:text-[clamp(2.5rem,4.2vw,4rem)]`}>
+                Frequently Asked <span className="lg:block">Questions</span>
+              </h2>
+              <div>
                 {questions.map(([question, answer]) => (
-                  <details className="group py-4" key={question}>
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D19300] [&::-webkit-details-marker]:hidden">
-                      {question}<span aria-hidden="true" className="text-xl leading-none text-zinc-500 group-open:rotate-45 dark:text-zinc-400">+</span>
+                  <details className={`${heroStyles.faqRow} group`} key={question}>
+                    <summary className="grid cursor-pointer list-none grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-4 rounded-sm py-5 text-[clamp(1.0625rem,2vw,1.375rem)] font-medium [&::-webkit-details-marker]:hidden">
+                      <span aria-hidden="true" className={heroStyles.accent}>
+                        <Plus className="size-6 group-open:hidden" />
+                        <Minus className="hidden size-6 group-open:block" />
+                      </span>
+                      <span>{question}</span>
                     </summary>
-                    <p className="mt-3 text-sm leading-relaxed text-[#5D6571] dark:text-zinc-300">{answer}</p>
+                    <p className={`${heroStyles.muted} pb-5 pl-10 text-base leading-relaxed`}>{answer}</p>
                   </details>
                 ))}
               </div>
             </section>
 
-            <section aria-labelledby="join-title" className={`${panel} flex flex-col items-center gap-6 border-[#FFC800] bg-[#FFC800] text-center text-zinc-950 dark:border-[#FFC800]`}>
-              <h2 id="join-title" className={sectionHeading}>Ready to get started?</h2>
-              <Button asChild size="lg" className="bg-zinc-950 text-white hover:bg-zinc-800 focus-visible:ring-zinc-950"><Link href="/signup">Join the Hive <ArrowRight aria-hidden="true" className="size-4" /></Link></Button>
+            <section aria-labelledby="join-title" className={`${panel} flex flex-col items-center gap-6 ${heroStyles.join} text-center`}>
+              <h2 id="join-title" className={sectionHeading}>Ready to Get Started?</h2>
+              <Button asChild size="lg" className="focus-visible:ring-offset-zinc-950"><Link href="/signup">Join the Hive <ArrowRight aria-hidden="true" className="size-4" /></Link></Button>
             </section>
           </div>
         </main>

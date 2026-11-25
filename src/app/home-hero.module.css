@@ -14,13 +14,13 @@
   align-self: start;
 }
 
-.terminal {
+.honeycomb {
   position: absolute;
   inset: 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  background: radial-gradient(ellipse at 78% 30%, #3b3017, #18181b 65%, #101012);
+  background: var(--landing-bg);
 }
 
 .canvas {
@@ -29,15 +29,6 @@
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.scrim {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(0deg, #09090bf5, transparent 82%),
-    linear-gradient(90deg, #09090bd9, transparent 85%);
 }
 
 .backdrop {
@@ -58,13 +49,273 @@
   .fade {
     animation: fade-backdrop linear both;
     animation-timeline: scroll(nearest block);
-    animation-range: 0% 92%;
+    animation-range: 0% 100%;
   }
 }
 
 @keyframes fade-backdrop {
   0% { opacity: 1; }
-  35% { opacity: 0.68; }
-  70% { opacity: 0.22; }
+  35% { opacity: 0.76; }
+  70% { opacity: 0.42; }
+  90% { opacity: 0.16; }
   100% { opacity: 0; }
+}
+
+.page {
+  --landing-bg: #faf5e9;
+  --landing-ink: #211b14;
+  --landing-muted: #544638;
+  --landing-accent: #725000;
+  --landing-line: #d9c9ae;
+  --landing-panel: #fffaf0f2;
+  --landing-card: #fffdf7;
+  --landing-icon: #ffe9a3;
+  --landing-search-line: #9d8155;
+  --landing-grid: #795c2d;
+  --landing-ripple: #a26e08;
+  background: var(--landing-bg);
+  color: var(--landing-ink);
+}
+
+:global(.dark) .page {
+  --landing-bg: #17130f;
+  --landing-ink: #faf3e7;
+  --landing-muted: #ccbfad;
+  --landing-accent: #ffcf40;
+  --landing-line: #514438;
+  --landing-panel: #211b16f2;
+  --landing-card: #2b231c;
+  --landing-icon: #4b3514;
+  --landing-search-line: #8d7961;
+  --landing-grid: #f9dfaf;
+  --landing-ripple: #ffc800;
+}
+
+.hero {
+  background: radial-gradient(ellipse at center, var(--landing-bg) 12%, transparent 76%);
+}
+
+.accent {
+  color: var(--landing-accent);
+}
+
+.muted {
+  color: var(--landing-muted);
+}
+
+.panel,
+.card,
+.chip {
+  border-color: var(--landing-line);
+}
+
+.panel {
+  background: var(--landing-panel);
+}
+
+.card,
+.chip,
+.search {
+  background: var(--landing-card);
+}
+
+.search {
+  border-color: var(--landing-search-line);
+  box-shadow: 0 12px 32px #2416051c;
+}
+
+.search input::placeholder {
+  color: var(--landing-muted);
+}
+
+.icon {
+  background: var(--landing-icon);
+  color: var(--landing-accent);
+}
+
+.chip:hover {
+  border-color: var(--landing-accent);
+}
+
+.faqRow + .faqRow {
+  border-top: 1px solid var(--landing-line);
+}
+
+.join {
+  --landing-accent: #ffc800;
+  background: #211b14;
+  border-color: var(--landing-line);
+}
+
+.page :is(main a, main summary, main input):focus-visible {
+  outline: 2px solid var(--landing-accent);
+  outline-offset: 3px;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    animation: none;
+  }
+}
+
+.pairedSection {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: clamp(1.25rem, 3vw, 2rem);
+}
+
+.stepAccordion {
+  container-type: inline-size;
+  display: flex;
+  gap: 0.625rem;
+}
+
+.stepCard {
+  --step-weight: 3;
+  --step-preview-height: 4.75rem;
+  --step-gold: #936500;
+  position: relative;
+  flex: var(--step-weight) 1 0;
+  min-width: 0;
+  min-height: 15rem;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--landing-line);
+  border-radius: 1rem;
+  background: var(--landing-card);
+  transition: flex-grow 500ms cubic-bezier(0.22, 1, 0.36, 1), border-color 200ms ease;
+}
+
+.stepCard:nth-child(2) {
+  --step-weight: 2;
+  --step-preview-height: 4.25rem;
+  --step-gold: #805400;
+}
+
+.stepCard:nth-child(3) {
+  --step-weight: 1;
+  --step-preview-height: 3.75rem;
+  --step-gold: #654200;
+}
+
+:global(.dark) .stepCard {
+  --step-gold: #ffdc6a;
+}
+
+:global(.dark) .stepCard:nth-child(2) {
+  --step-gold: #eab941;
+}
+
+:global(.dark) .stepCard:nth-child(3) {
+  --step-gold: #c58c24;
+}
+
+.stepCard[data-expanded="true"] {
+  flex-grow: 5;
+  border-color: var(--step-gold);
+}
+
+.stepCard:focus-within {
+  outline: 2px solid var(--landing-accent);
+  outline-offset: 3px;
+}
+
+.stepButton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.stepNumber {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: clamp(0.75rem, 1.5vw, 1.5rem);
+  transform: translateY(-50%);
+  color: transparent;
+  -webkit-text-stroke: 2px var(--step-gold);
+  font-size: clamp(2rem, 7cqi, 4.75rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: top 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stepCard[data-expanded="true"] .stepNumber {
+  top: 28%;
+}
+
+.stepCaption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 0 0.75rem 1.125rem;
+  margin-inline: clamp(0.5rem, 1.5vw, 1.5rem);
+  border-inline-start: 3px solid var(--step-gold);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(-0.5rem);
+}
+
+.stepCard[data-expanded="true"] .stepCaption {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition: opacity 220ms 100ms ease, transform 300ms 100ms ease;
+}
+
+.stepCaption h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.stepCaption p {
+  margin-top: 0.25rem;
+  color: var(--landing-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 767px) {
+  .stepAccordion {
+    flex-direction: column;
+  }
+
+  .stepCard {
+    flex: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: var(--step-preview-height) 0fr;
+    transition: grid-template-rows 400ms cubic-bezier(0.22, 1, 0.36, 1), border-color 200ms ease;
+  }
+
+  .stepCard[data-expanded="true"] {
+    grid-template-rows: var(--step-preview-height) 1fr;
+  }
+
+  .stepNumber,
+  .stepCard[data-expanded="true"] .stepNumber {
+    top: calc(var(--step-preview-height) / 2);
+  }
+
+  .stepCaption {
+    position: relative;
+    grid-row: 2;
+    min-height: 0;
+    overflow: hidden;
+    padding-block: 0;
+  }
+
+  .stepCaption p {
+    padding-bottom: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepCard,
+  .stepNumber,
+  .stepCard[data-expanded="true"] .stepCaption {
+    transition: none;
+  }
 }

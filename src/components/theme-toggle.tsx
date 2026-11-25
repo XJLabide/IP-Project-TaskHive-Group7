@@ -1,36 +1,31 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-type ThemeMode = "light" | "dark" | "system";
+import { Moon, Sun } from "lucide-react";
 
 function subscribe(onChange: () => void) {
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme-mode"],
+    attributeFilter: ["class"],
   });
   return () => observer.disconnect();
 }
 
-function getThemeMode(): ThemeMode {
-  const mode = document.documentElement.dataset.themeMode;
-  return mode === "light" || mode === "dark" ? mode : "system";
+function isDarkTheme() {
+  return document.documentElement.classList.contains("dark");
 }
 
-function getServerThemeMode(): ThemeMode {
-  return "system";
+function getServerSnapshot() {
+  return false;
 }
 
-function setThemeMode(mode: ThemeMode) {
+function toggleTheme() {
   const root = document.documentElement;
+  const dark = !isDarkTheme();
+  const mode = dark ? "dark" : "light";
   root.dataset.themeMode = mode;
-  root.classList.toggle(
-    "dark",
-    mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches),
-  );
+  root.classList.toggle("dark", dark);
 
   try {
     window.localStorage.setItem("taskhive-theme", mode);
@@ -39,36 +34,20 @@ function setThemeMode(mode: ThemeMode) {
   }
 }
 
-const themeIcons = { light: Sun, dark: Moon, system: Monitor };
-
-export function ThemeToggle({ iconOnly = false }: { iconOnly?: boolean }) {
-  const mode = useSyncExternalStore(subscribe, getThemeMode, getServerThemeMode);
-  const Icon = themeIcons[mode];
-
-  const select = (
-    <select
-      aria-label="Color theme"
-      value={mode}
-      onChange={(event) => setThemeMode(event.target.value as ThemeMode)}
-      className={cn(
-        "cursor-pointer text-sm font-medium dark:[color-scheme:dark]",
-        iconOnly
-          ? "absolute inset-0 size-full opacity-0"
-          : "h-9 shrink-0 rounded-lg border border-zinc-300 bg-white px-2 text-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100",
-      )}
-    >
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-      <option value="system">System</option>
-    </select>
-  );
-
-  if (!iconOnly) return select;
+export function ThemeToggle() {
+  const dark = useSyncExternalStore(subscribe, isDarkTheme, getServerSnapshot);
+  const label = dark ? "Switch to light mode" : "Switch to dark mode";
 
   return (
-    <div className="relative grid size-9 shrink-0 place-items-center rounded-xl border border-zinc-300 bg-white text-zinc-800 hover:border-[#D19300] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-[#D19300] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
-      <Icon aria-hidden="true" className="size-[18px]" />
-      {select}
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={toggleTheme}
+      className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-zinc-800 hover:text-[#725000] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#725000] dark:text-zinc-100 dark:hover:text-[#FFC800] dark:focus-visible:outline-[#FFC800]"
+    >
+      <Moon aria-hidden="true" className="size-[18px] dark:hidden" />
+      <Sun aria-hidden="true" className="hidden size-[18px] dark:block" />
+    </button>
   );
 }
