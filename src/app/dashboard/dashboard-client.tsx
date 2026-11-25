@@ -36,7 +36,7 @@ function PersistentDashboard() {
 function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardData> & { retry?: () => void } }) {
   const { viewer, data: dashboard, state } = data;
   const [role, setRole] = useState<Role>("all");
-  const canSwitchRole = viewer.isAdmin || (viewer.canPost && viewer.canApply && viewer.canChat && viewer.canBeAssigned);
+  const canSwitchRole = viewer.isAdmin || viewer.canPost || viewer.canApply;
   const activeRole = canSwitchRole ? role : "all";
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadLoaded, setUnreadLoaded] = useState(false);

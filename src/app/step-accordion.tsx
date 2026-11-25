@@ -27,7 +27,7 @@ export function StepAccordion({ steps }: { steps: Step[] }) {
             <button
               type="button"
               className={styles.stepButton}
-              aria-label={`Step ${number}`}
+              aria-label={`Step ${number}: ${title}`}
               aria-expanded={expanded}
               aria-controls={captionId}
               onPointerEnter={(event) => {

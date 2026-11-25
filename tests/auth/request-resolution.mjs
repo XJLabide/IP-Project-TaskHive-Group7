@@ -4,11 +4,13 @@ import { registerHooks, createRequire } from 'node:module';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import * as React from 'react';
 import { renderToReadableStream } from 'next/dist/compiled/react-server-dom-webpack/server.node.js';
 // Source modules are loaded only after registering the boundary substitutions.
 const loadSource = createRequire(import.meta.url);
+const sourceRootUrl = pathToFileURL(`${resolve('src')}/`).href;
 const requests = new AsyncLocalStorage();
 // Capture only the structured auth event, never silence unrelated test errors.
 for (const level of ['warn', 'info']) {
@@ -54,8 +56,8 @@ registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier === './firebase-admin' && context.parentURL?.endsWith('/auth/session.ts')) specifier = '@/lib/auth/firebase-admin';
     if (Object.hasOwn(mocks, specifier) || specifier.endsWith('.css')) return { url: `mock:${specifier}`, shortCircuit: true };
-    if (specifier.startsWith('@/')) return { url: `file://${resolve('src', specifier.slice(2))}.ts`, shortCircuit: true };
-    if (specifier.startsWith('.') && context.parentURL?.startsWith(`file://${resolve('src')}/`) && !/\.[cm]?[jt]sx?$/.test(specifier)) {
+    if (specifier.startsWith('@/')) return { url: pathToFileURL(`${resolve('src', specifier.slice(2))}.ts`).href, shortCircuit: true };
+    if (specifier.startsWith('.') && context.parentURL?.startsWith(sourceRootUrl) && !/\.[cm]?[jt]sx?$/.test(specifier)) {
       return { url: new URL(`${specifier}.ts`, context.parentURL).href, shortCircuit: true };
     }
     return nextResolve(specifier, context);

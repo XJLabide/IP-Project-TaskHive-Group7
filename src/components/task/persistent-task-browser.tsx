@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { PublicShell } from "@/components/layout/public-shell";
@@ -29,7 +29,7 @@ function buildDiscoveryQuery(input: {
   budget: BudgetRange;
   deadlineDays: string;
   sort: string;
-  initialParams: Record<string, string>;
+  locationParams: { lat: string; lng: string; radiusKm: string };
 }) {
   const query = new URLSearchParams({ page: "1", pageSize: "50" });
   if (input.search.trim()) query.set("q", input.search.trim());
@@ -47,7 +47,7 @@ function buildDiscoveryQuery(input: {
     query.set("deadlineBefore", deadline.toISOString());
   }
   if (["recommended", "nearest", "budget_asc", "budget_desc", "deadline"].includes(input.sort)) query.set("sort", input.sort);
-  const { lat, lng, radiusKm } = input.initialParams;
+  const { lat, lng, radiusKm } = input.locationParams;
   if (lat && lng) {
     query.set("lat", lat);
     query.set("lng", lng);
@@ -65,6 +65,12 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
   const [deadlineDays, setDeadlineDays] = useState(initialParams.deadline ?? "any");
   const [sort, setSort] = useState(initialParams.sort ?? "recommended");
   const [view, setView] = useState<"list" | "map">(initialParams.view === "map" ? "map" : "list");
+  const [locationParams, setLocationParams] = useState(() => ({
+    lat: initialParams.lat ?? "",
+    lng: initialParams.lng ?? "",
+    radiusKm: initialParams.radiusKm ?? "",
+  }));
+  const filterDetailsRef = useRef<HTMLDetailsElement>(null);
   const [publicTasks, setPublicTasks] = useState<Array<{ task: TaskSummary; distanceKm: number | null }>>([]);
   const [ownedTasks, setOwnedTasks] = useState<TaskSummary[]>([]);
   const [pagination, setPagination] = useState<PublicTaskListResponse["pagination"] | null>(null);
@@ -74,11 +80,21 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
   const [loadingMore, setLoadingMore] = useState(false);
   const [reloadCount, setReloadCount] = useState(0);
 
-  const query = useMemo(() => buildDiscoveryQuery({ search, category, type, budget, deadlineDays, sort, initialParams }), [
-    search, category, type, budget, deadlineDays, sort, initialParams,
+  const query = useMemo(() => buildDiscoveryQuery({ search, category, type, budget, deadlineDays, sort, locationParams }), [
+    search, category, type, budget, deadlineDays, sort, locationParams,
   ]);
   const isLoading = loadedQuery !== query;
   const categories = [...new Set([...launchCategories.map((item) => item.label), ...ownedTasks.map((task) => task.category)])].sort();
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 640px)");
+    const syncDisclosure = () => {
+      if (filterDetailsRef.current) filterDetailsRef.current.open = desktop.matches;
+    };
+    syncDisclosure();
+    desktop.addEventListener("change", syncDisclosure);
+    return () => desktop.removeEventListener("change", syncDisclosure);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -88,14 +104,14 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
     if (budget !== "any") params.set("budget", budget);
     if (deadlineDays !== "any") params.set("deadline", deadlineDays);
     if (sort !== "recommended") params.set("sort", sort);
-    if (initialParams.lat) params.set("lat", initialParams.lat);
-    if (initialParams.lng) params.set("lng", initialParams.lng);
-    if (initialParams.radiusKm) params.set("radiusKm", initialParams.radiusKm);
+    if (locationParams.lat) params.set("lat", locationParams.lat);
+    if (locationParams.lng) params.set("lng", locationParams.lng);
+    if (locationParams.radiusKm) params.set("radiusKm", locationParams.radiusKm);
     if (view === "map") params.set("view", "map");
     const nextPath = view === "map" ? "/map" : "/tasks";
     const next = `${nextPath}${params.size ? `?${params}` : ""}`;
     window.history.replaceState(null, "", next);
-  }, [search, category, type, budget, deadlineDays, sort, view, initialParams]);
+  }, [search, category, type, budget, deadlineDays, sort, view, locationParams]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -127,6 +143,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
     setBudget("any");
     setDeadlineDays("any");
     setSort("recommended");
+    setLocationParams({ lat: "", lng: "", radiusKm: "" });
   }
 
   useEffect(() => {
@@ -168,7 +185,7 @@ export function PersistentTaskBrowser({ initialParams }: { initialParams: Record
             {([ ["all", "All tasks"], ["local", "Local"], ["remote", "Remote"], ["bidding", "Bidding"], ["fixed_price", "Fixed price"] ] as const).map(([value, label]) => <Button aria-pressed={type === value} key={value} onClick={() => setType(value)} size="sm" type="button" variant={type === value ? "default" : "outline"}>{label}</Button>)}
             <div aria-label="Task view" className="ml-auto flex gap-2"><Button aria-pressed={view === "list"} onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "outline"}>List</Button><Button aria-pressed={view === "map"} onClick={() => setView("map")} size="sm" type="button" variant={view === "map" ? "default" : "outline"}>Map</Button></div>
           </div>
-          <details className="group sm:col-span-3"><summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-lg border border-zinc-200 px-3 text-sm font-medium dark:border-zinc-700 sm:hidden"><span>Filters and sorting</span><span aria-hidden="true">{type !== "all" || budget !== "any" || deadlineDays !== "any" || category !== "All categories" ? "Filters active" : "＋"}</span></summary><div className="mt-3 grid gap-3 sm:mt-0 sm:grid-cols-3"><label className="grid gap-1.5 text-sm font-medium"><span className="hidden sm:block">Category</span><select aria-label="Category" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setCategory(event.target.value)} value={category}><option>All categories</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label><label className="grid gap-1.5 text-sm font-medium"><span className="hidden sm:block">Sort</span><select aria-label="Sort tasks" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setSort(event.target.value)} value={sort}><option value="recommended">Recommended</option><option value="nearest">Nearest first</option><option value="budget_asc">Lowest budget</option><option value="budget_desc">Highest budget</option><option value="deadline">Deadline soonest</option></select></label><div className="flex flex-wrap gap-2">{([ ["all", "All tasks"], ["local", "Local"], ["remote", "Remote"], ["bidding", "Bidding"], ["fixed_price", "Fixed price"] ] as const).map(([value, label]) => <Button aria-pressed={type === value} key={value} onClick={() => setType(value)} size="sm" type="button" variant={type === value ? "default" : "outline"}>{label}</Button>)}</div><label className="grid gap-1.5 text-sm font-medium"><span>Budget</span><select aria-label="Budget" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setBudget(event.target.value as BudgetRange)} value={budget}><option value="any">Any budget</option><option value="under-500">Under PHP 500</option><option value="500-1000">PHP 500–1,000</option><option value="over-1000">Over PHP 1,000</option></select></label><label className="grid gap-1.5 text-sm font-medium"><span>Deadline</span><select aria-label="Deadline" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setDeadlineDays(event.target.value)} value={deadlineDays}><option value="any">Any deadline</option><option value="3">Within 3 days</option><option value="7">Within 7 days</option><option value="30">Within 30 days</option></select></label><div className="flex items-end gap-2 sm:hidden"><Button aria-pressed={view === "list"} onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "outline"}>List</Button><Button aria-pressed={view === "map"} onClick={() => setView("map")} size="sm" type="button" variant={view === "map" ? "default" : "outline"}>Map</Button></div></div></details>
+          <details className="group sm:col-span-3" ref={filterDetailsRef}><summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-lg border border-zinc-200 px-3 text-sm font-medium dark:border-zinc-700 sm:hidden"><span>Filters and sorting</span><span aria-hidden="true">{type !== "all" || budget !== "any" || deadlineDays !== "any" || category !== "All categories" ? "Filters active" : "＋"}</span></summary><div className="mt-3 grid gap-3 sm:mt-0 sm:grid-cols-3"><label className="grid gap-1.5 text-sm font-medium"><span className="hidden sm:block">Category</span><select aria-label="Category" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setCategory(event.target.value)} value={category}><option>All categories</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label><label className="grid gap-1.5 text-sm font-medium"><span className="hidden sm:block">Sort</span><select aria-label="Sort tasks" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setSort(event.target.value)} value={sort}><option value="recommended">Recommended</option><option value="nearest">Nearest first</option><option value="budget_asc">Lowest budget</option><option value="budget_desc">Highest budget</option><option value="deadline">Deadline soonest</option></select></label><div className="flex flex-wrap gap-2">{([ ["all", "All tasks"], ["local", "Local"], ["remote", "Remote"], ["bidding", "Bidding"], ["fixed_price", "Fixed price"] ] as const).map(([value, label]) => <Button aria-pressed={type === value} key={value} onClick={() => setType(value)} size="sm" type="button" variant={type === value ? "default" : "outline"}>{label}</Button>)}</div><label className="grid gap-1.5 text-sm font-medium"><span>Budget</span><select aria-label="Budget" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setBudget(event.target.value as BudgetRange)} value={budget}><option value="any">Any budget</option><option value="under-500">Under PHP 500</option><option value="500-1000">PHP 500–1,000</option><option value="over-1000">Over PHP 1,000</option></select></label><label className="grid gap-1.5 text-sm font-medium"><span>Deadline</span><select aria-label="Deadline" className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900" onChange={(event) => setDeadlineDays(event.target.value)} value={deadlineDays}><option value="any">Any deadline</option><option value="3">Within 3 days</option><option value="7">Within 7 days</option><option value="30">Within 30 days</option></select></label><div className="flex items-end gap-2 sm:hidden"><Button aria-pressed={view === "list"} onClick={() => setView("list")} size="sm" type="button" variant={view === "list" ? "default" : "outline"}>List</Button><Button aria-pressed={view === "map"} onClick={() => setView("map")} size="sm" type="button" variant={view === "map" ? "default" : "outline"}>Map</Button></div></div></details>
         </CardContent></Card>
 
         {!viewer.signedIn ? <p className="text-sm text-zinc-500 dark:text-zinc-400">Sign in to apply or message. <Link className="font-semibold text-[#D19300] underline underline-offset-4 dark:text-[#FFD50D]" href="/login">Sign in</Link></p> : null}

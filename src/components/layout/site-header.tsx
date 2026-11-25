@@ -88,7 +88,7 @@ export function SiteHeader({ active }: { active?: "home" | "tasks" | "map" }) {
         </nav>
 
         <div className="flex items-center gap-1.5 whitespace-nowrap sm:gap-2 md:justify-self-end">
-          <ThemeToggle />
+          <ThemeToggle iconOnly />
           <Button asChild size="sm" variant="outline" className="rounded-xl border-[#D19300] bg-[#FFC800]/14 px-2.5 text-[#674900] dark:border-[#D19300] dark:bg-[#FFC800]/10 dark:text-[#FFC800]">
             <Link href="/login">Log in</Link>
           </Button>

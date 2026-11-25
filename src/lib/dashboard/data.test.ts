@@ -284,7 +284,7 @@ describe("payment actions", () => {
         label: "Complete payment",
         dueAt: "2026-10-28T12:00:00.000Z",
         tone: "pending",
-        href: "/tasks/task_hold",
+        href: "/checkout?taskId=task_hold",
       }),
     ]);
     expect(data.summary?.paymentActions).toBe(1);
