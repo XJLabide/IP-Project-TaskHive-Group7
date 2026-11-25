@@ -6,6 +6,7 @@ import {
   FIREBASE_SESSION_MAX_AGE_SECONDS,
 } from "@/lib/auth/session";
 import { isAllowedSessionOrigin } from "@/lib/auth/session-origin";
+import { authRequestId, createAuthDiagnostics } from "@/lib/auth/diagnostics";
 
 export const runtime = "nodejs";
 
@@ -36,17 +37,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A valid Firebase ID token is required." }, { status: 400 });
   }
 
+  const diagnostics = createAuthDiagnostics(authRequestId(request.headers), "create_session");
+  let outcome: "authenticated" | "denied" = "denied";
   try {
-    const adminAuth = getFirebaseAdminAuth();
-    const decoded = await adminAuth.verifyIdToken(idToken, true);
+    const adminAuth = await diagnostics.measure("firebase_setup", getFirebaseAdminAuth);
+    const decoded = await diagnostics.measure("firebase_verify_id_token", () => adminAuth.verifyIdToken(idToken, true));
     if (!decoded.email) {
+      diagnostics.reject("identity_email_missing", "firebase_verify_id_token");
       return NextResponse.json({ error: "This sign-in method must provide an email address." }, { status: 400 });
     }
 
-    const user = await createDomainUser(decoded);
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+    const user = await createDomainUser(decoded, diagnostics);
+    const sessionCookie = await diagnostics.measure("firebase_create_session", () => adminAuth.createSessionCookie(idToken, {
       expiresIn: FIREBASE_SESSION_MAX_AGE_SECONDS * 1000,
-    });
+    }));
 
     const response = NextResponse.json({
       data: {
@@ -62,8 +66,10 @@ export async function POST(request: Request) {
       ...cookieOptions,
       maxAge: FIREBASE_SESSION_MAX_AGE_SECONDS,
     });
+    outcome = "authenticated";
     return response;
   } catch (error) {
+    diagnostics.unexpectedFailure();
     const code = typeof error === "object" && error !== null && "code" in error ? error.code : null;
     if (code === "auth/id-token-expired" || code === "auth/argument-error" || code === "auth/invalid-id-token") {
       return NextResponse.json({ error: "Your sign-in expired. Please sign in again." }, { status: 401 });
@@ -73,6 +79,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: "Authentication is temporarily unavailable." }, { status: 503 });
+  } finally {
+    diagnostics.finish(outcome);
   }
 }
 

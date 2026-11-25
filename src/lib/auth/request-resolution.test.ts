@@ -7,9 +7,10 @@ type Render = {
   actors: { id: string; isAdmin: boolean; ageAttested: boolean; verification: string; appealCount: number }[];
   errors: string[];
   sessions: { user: Record<string, unknown> }[];
+  diagnostics: { requestId: string; category: string; stage: string | null; timingsMs: Record<string, number> }[];
 };
 const result = JSON.parse(execFileSync(process.execPath, ["--conditions=react-server", "tests/auth/request-resolution.mjs"], {
-  cwd: process.cwd(), env: { ...process.env, NODE_ENV: "production" }, encoding: "utf8", timeout: 20_000,
+  cwd: process.cwd(), env: { ...process.env, NODE_ENV: "production", AUTH_DIAGNOSTICS: "1" }, encoding: "utf8", timeout: 20_000,
 })) as Record<string, Render> & { concurrent: Render[]; verificationChecks: boolean[]; uncached: { counts: Render["counts"]; signedIn: boolean; afterRevocation: null; afterMutation: { name: string } } };
 
 describe("request-scoped auth in the real React Server Component renderer", () => {
@@ -21,6 +22,32 @@ describe("request-scoped auth in the real React Server Component renderer", () =
 
   it("shares session-only and actor consumers in the same render", () => {
     expect(result.mixed.counts).toEqual({ verify: 1, reads: 1, updates: 0 });
+  });
+
+  it("emits one correlated diagnostic per render without changing cache or account isolation", () => {
+    expect(result.first.diagnostics).toHaveLength(1);
+    expect(result.mixed.diagnostics).toHaveLength(1);
+    expect(result.first.diagnostics[0].requestId).not.toBe(result.second.diagnostics[0].requestId);
+    expect(result.concurrent[0].diagnostics[0].requestId).not.toBe(result.concurrent[1].diagnostics[0].requestId);
+    expect(result.first.diagnostics[0]).toMatchObject({ category: "authenticated", timingsMs: { firebase_verify_session: expect.any(Number), database_read_user: expect.any(Number) } });
+  });
+
+  it.each([
+    ["revokedRequest", "session_revoked", "firebase_verify_session"],
+    ["invalid", "session_invalid", "firebase_verify_session"],
+    ["unavailable", "database_unavailable", "database_read_user"],
+    ["syncFailed", "database_failure", "database_sync_email"],
+    ["malformed", "malformed_cookie", "session_cookie_decode"],
+    ["missing", "domain_user_missing", "database_read_user"],
+  ])("records one redacted fail-closed event for %s", (key, category, stage) => {
+    const diagnostics = result[key].diagnostics;
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({ category, stage });
+    expect(JSON.stringify(diagnostics)).not.toMatch(/private-token|private-database-url|member@example|uid_1|user_1/);
+  });
+
+  it("does not log normal guest renders", () => {
+    expect(result.guest.diagnostics).toEqual([]);
   });
 
   it("rechecks the same cookie on a new render and isolates overlapping users", () => {

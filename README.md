@@ -62,6 +62,9 @@ Verification concurrency tests also run against disposable PostgreSQL in CI.
 See [verification concurrency](docs/verification-concurrency.md) for local setup
 and the state-conflict contract.
 
+Authentication correlation IDs, redacted failure categories, and opt-in dependency
+timings are documented in [Authentication diagnostics](docs/auth-diagnostics.md).
+
 ## Important Notes
 - PayMongo is an evaluation candidate, not a confirmed provider. Do not implement provider-managed payout until marketplace eligibility and required capabilities are verified.
 - TaskHive must not describe provider-managed payout as legal escrow.
