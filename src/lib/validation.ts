@@ -34,10 +34,11 @@ export const taskRequestSchema = z.object({
 });
 
 export const reviewSchema = z.object({
-  taskId: z.string(),
-  revieweeId: z.string(),
+  taskId: z.string().trim().min(1),
+  // Legacy callers may send this, but the service derives the counterpart.
+  revieweeId: z.string().trim().min(1).optional(),
   rating: z.number().int().min(1).max(5),
-  comment: z.string().optional(),
+  comment: z.string().trim().max(2000).optional(),
 });
 
 export const reportSchema = z.object({
@@ -56,8 +57,8 @@ export const chatMessageSchema = z.object({
 });
 
 export const disputeSchema = z.object({
-  taskId: z.string(),
-  reason: z.string().min(5),
+  taskId: z.string().trim().min(1),
+  reason: z.string().trim().min(5).max(2000),
 });
 
 export const verificationAppealSchema = z.object({
