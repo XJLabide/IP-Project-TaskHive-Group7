@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EyeOff, LockKeyhole, Star } from "lucide-react";
+import { LockKeyhole, Star } from "lucide-react";
 import { Stars } from "@/components/reviews/stars";
 import { AppShell } from "@/components/layout/app-shell";
 import { ReviewForm } from "@/components/reviews/review-form";
@@ -54,7 +54,7 @@ export default async function ReviewsPage() {
       description="Blind reviews from completed tasks. Nothing here is sample data."
       title="Two-Way Reviews"
     >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-6">
           {overview.opportunities.length > 0 ? (
             <section aria-labelledby="review-ready-title" className="grid gap-3">
@@ -170,17 +170,14 @@ export default async function ReviewsPage() {
 
           {isEmpty ? (
             <Card>
-              <CardContent className="grid gap-3 p-6">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#FFD50D]/25 text-[#D19300] dark:bg-[#FFC800]/15 dark:text-[#FFD50D]">
-                  <EyeOff className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <h2 className="text-lg font-bold">No reviews yet</h2>
-                <p className="max-w-xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                  Reviews appear after a task is completed and its payout is released.
-                  Both participants review once, and both reviews stay hidden until
-                  they are both in or 14 days pass.
-                </p>
-                <div className="flex flex-wrap gap-2">
+              <CardContent className="flex flex-wrap items-center justify-between gap-5 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h2 className="font-semibold">No reviews to show</h2>
+                  <p className="mt-1 text-sm leading-5 text-zinc-500 dark:text-zinc-400">
+                    Reviews appear here after a completed task’s payout is released.
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
                   <Button asChild size="sm">
                     <Link href="/dashboard">Back to dashboard</Link>
                   </Button>
@@ -196,26 +193,24 @@ export default async function ReviewsPage() {
         <aside className="grid content-start gap-4">
           <Card>
             <CardContent className="grid gap-3 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">
-                Your public rating
-              </p>
+              <h2 className="font-semibold">Your public rating</h2>
               {overview.averageRating === null ? (
-                <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                  No published reviews yet. Your first review appears after both
-                  participants submit or the 14-day window closes.
-                </p>
+                <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/60">
+                  <p className="text-sm font-medium">No published rating yet</p>
+                  <p className="mt-1 text-sm leading-5 text-zinc-500 dark:text-zinc-400">A rating appears after a completed task review is published.</p>
+                </div>
               ) : (
-                <div>
-                  <p className="flex items-center gap-2 text-3xl font-bold">
+                <div className="flex items-center justify-between gap-4 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/60">
+                  <p className="flex items-center gap-2 text-3xl font-bold tabular-nums">
                     <Star
                       aria-hidden="true"
                       className="h-5 w-5 fill-[#FFC800] text-[#FFC800]"
                     />
                     {overview.averageRating.toFixed(1)}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    From {overview.received.length} published review
-                    {overview.received.length === 1 ? "" : "s"}.
+                  <p className="text-right text-sm text-zinc-500 dark:text-zinc-400">
+                    {overview.received.length} published<br />
+                    {overview.received.length === 1 ? "review" : "reviews"}
                   </p>
                 </div>
               )}
@@ -223,19 +218,26 @@ export default async function ReviewsPage() {
           </Card>
 
           <Card>
-            <CardContent className="grid gap-2 p-5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-              <p className="font-bold text-zinc-950 dark:text-zinc-50">
-                How the blind window works
-              </p>
-              <p>
-                Your review is saved as soon as you submit it, but stays hidden. It
-                publishes when the other participant submits theirs, or automatically
-                14 days after completion.
-              </p>
-              <p>
-                Disputes freeze the payout, so reviews stay locked until the dispute is
-                resolved.
-              </p>
+            <CardContent className="grid gap-4 p-5">
+              <div>
+                <h2 className="font-semibold">How reviews become public</h2>
+                <p className="mt-1 text-sm leading-5 text-zinc-500 dark:text-zinc-400">Both participants can review each completed task once.</p>
+              </div>
+              <ol className="grid gap-3 text-sm">
+                <li className="flex items-start gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#FFC800]/20 text-xs font-bold text-zinc-900 dark:text-[#FFD50D]">1</span>
+                  <span><strong className="font-medium">Submit.</strong> Your review is saved immediately.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#FFC800]/20 text-xs font-bold text-zinc-900 dark:text-[#FFD50D]">2</span>
+                  <span><strong className="font-medium">Stay hidden.</strong> Neither review is shown while the other participant can still respond.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#FFC800]/20 text-xs font-bold text-zinc-900 dark:text-[#FFD50D]">3</span>
+                  <span><strong className="font-medium">Publish.</strong> Both reviews appear after both submit, or when the 14-day window closes.</span>
+                </li>
+              </ol>
+              <p className="border-t border-zinc-200 pt-3 text-xs leading-5 text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">If a task is disputed, reviews stay locked until the dispute is resolved.</p>
             </CardContent>
           </Card>
         </aside>

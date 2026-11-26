@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
-import { LocateFixed, MapPin } from "lucide-react";
+import { LocateFixed } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TaskSummary } from "@/lib/tasks/types";
 import { isCoordinates } from "@/lib/tasks/location";
@@ -177,6 +177,21 @@ export function TaskMap({ tasks }: { tasks: TaskSummary[] }) {
   return (
     <Card>
       <CardContent className="p-3 sm:p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-2xl text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            Pins show approximate service areas only. Exact addresses are never shown here.
+          </p>
+          <button
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition-colors hover:border-[#D19300] hover:bg-[#FFFDF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] disabled:cursor-wait disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-[#FFD50D] dark:hover:bg-zinc-800"
+            disabled={locating}
+            onClick={locateUser}
+            type="button"
+          >
+            <LocateFixed aria-hidden="true" className="h-4 w-4" />
+            {locating ? "Finding you…" : "Use my location"}
+          </button>
+        </div>
+        {locationError ? <p className="mb-3 text-xs text-[#a01a26] dark:text-[#F04452]" role="alert">{locationError}</p> : null}
         <div
           aria-label="Map of open local tasks"
           className="taskhive-leaflet-map h-[min(68vh,680px)] min-h-[420px] w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700"
@@ -188,23 +203,7 @@ export function TaskMap({ tasks }: { tasks: TaskSummary[] }) {
             No task pins to display. The map stays centered on the Philippines.
           </p>
         ) : null}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition-colors hover:border-[#D19300] hover:bg-[#FFFDF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] disabled:cursor-wait disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-[#FFD50D] dark:hover:bg-zinc-800"
-            disabled={locating}
-            onClick={locateUser}
-            type="button"
-          >
-            <LocateFixed aria-hidden="true" className="h-4 w-4" />
-            {locating ? "Finding you…" : "Use my location"}
-          </button>
-          {locationError ? <p className="text-xs text-[#a01a26] dark:text-[#F04452]" role="alert">{locationError}</p> : null}
-        </div>
         {tileError ? <p className="mt-3 text-sm text-[#a01a26] dark:text-[#F04452]" role="status">Map tiles could not load. Check your connection and try again.</p> : null}
-        <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-          <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-          Pins show approximate service areas only. Exact addresses are never shown here.
-        </p>
       </CardContent>
     </Card>
   );

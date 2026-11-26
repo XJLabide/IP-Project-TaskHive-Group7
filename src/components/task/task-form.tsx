@@ -673,7 +673,7 @@ function TaskFormFields({
           </CardContent>
         </Card>
 
-        <aside className="grid content-start gap-5">
+        <aside className="grid content-start gap-5 self-start xl:sticky xl:top-28 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto xl:overscroll-contain">
           <Card>
             <CardContent className="p-5">
               <div className="flex items-center gap-2">
