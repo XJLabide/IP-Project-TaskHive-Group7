@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BriefcaseBusiness, ClipboardList, ListTodo, Plus } from "lucide-react";
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PublicShell } from "@/components/layout/public-shell";
 import { DashboardError, DashboardLoading, DashboardSignedOut } from "@/components/dashboard/states";
 import { StatusChip } from "@/components/dashboard/status-chip";
 import { useDemoDashboardData } from "@/components/dashboard/use-dashboard-data";
@@ -225,7 +226,10 @@ function WorkTable({ rows, tab, canPost }: { rows: WorkRow[]; tab: WorkTab; canP
 }
 
 export default function MyWorkPage() {
-  const { isPreview } = useViewer();
+  const { isPreview, viewer } = useViewer();
+  if (!viewer.signedIn) {
+    return <PublicShell active={null} description="Sign in to see your tasks and assignments." title="My Work"><DashboardSignedOut /></PublicShell>;
+  }
   return shouldUseMarketplacePreview(isPreview) ? <DemoMyWorkPage /> : <PersistentMyWorkPage />;
 }
 

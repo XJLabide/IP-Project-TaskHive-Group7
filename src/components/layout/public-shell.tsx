@@ -14,12 +14,12 @@ export function PublicShell({
 }: {
   title: string;
   description: string;
-  active?: "home" | "tasks" | "map";
+  active?: "home" | "tasks" | "map" | null;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-white text-zinc-950 transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50">
-      <SiteHeader active={active} />
+      <SiteHeader active={active ?? undefined} />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-10 md:px-8 lg:px-12">
         <header className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D19300] dark:text-[#FFD50D]">

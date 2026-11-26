@@ -1,6 +1,13 @@
+"use client";
+
 import { AppShell } from "@/components/layout/app-shell";
+import { PublicPageLoading } from "@/components/layout/public-page-loading";
+import { useViewer } from "@/components/viewer/viewer-provider";
 
 export default function AppLoading() {
+  const { viewer } = useViewer();
+  if (!viewer.signedIn) return <PublicPageLoading />;
+
   return (
     <AppShell description="Loading the next TaskHive section." title="Loading workspace">
       <div aria-busy="true" className="grid gap-6" role="status">

@@ -1,6 +1,13 @@
+"use client";
+
 import { AppShell } from "@/components/layout/app-shell";
+import { PublicPageLoading } from "@/components/layout/public-page-loading";
+import { useViewer } from "@/components/viewer/viewer-provider";
 
 export default function DashboardLoading() {
+  const { viewer } = useViewer();
+  if (!viewer.signedIn) return <PublicPageLoading />;
+
   return (
     <AppShell
       title="Dashboard"

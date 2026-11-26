@@ -1,7 +1,14 @@
+"use client";
+
 import { AppShell } from "@/components/layout/app-shell";
+import { PublicPageLoading } from "@/components/layout/public-page-loading";
 import { Card, CardContent } from "@/components/ui/card";
+import { useViewer } from "@/components/viewer/viewer-provider";
 
 export default function ReviewsLoading() {
+  const { viewer } = useViewer();
+  if (!viewer.signedIn) return <PublicPageLoading />;
+
   return (
     <AppShell description="Blind reviews from completed tasks." title="Two-Way Reviews">
       <div aria-busy="true" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]" role="status">
