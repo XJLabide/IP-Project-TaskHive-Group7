@@ -1,0 +1,17 @@
+.panel {
+  position: relative;
+  isolation: isolate;
+  background-color: #fafafa;
+  background-image: repeating-radial-gradient(circle at 68% 28%, transparent 0 88px, rgb(162 110 8 / 10%) 89px 90px, transparent 91px 158px);
+  --landing-bg: transparent;
+  --landing-grid: #795c2d;
+  --landing-ripple: #a26e08;
+}
+
+:global(.dark) .panel {
+  background-color: #111113;
+  background-image: repeating-radial-gradient(circle at 68% 28%, transparent 0 88px, rgb(255 200 0 / 12%) 89px 90px, transparent 91px 158px);
+  --landing-bg: transparent;
+  --landing-grid: #f9dfaf;
+  --landing-ripple: #ffc800;
+}

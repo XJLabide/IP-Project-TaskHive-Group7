@@ -1,6 +1,8 @@
 import { CheckCircle2 } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import { TaskHiveBrand } from "@/components/layout/taskhive-brand";
+import { CursorHoneycomb } from "@/app/cursor-honeycomb";
+import rippleStyles from "@/components/auth/auth-ripple.module.css";
 
 const benefits = [
   "Post tasks and apply for work",
@@ -11,7 +13,8 @@ const benefits = [
 export default function LoginPage() {
   return (
     <main className="relative grid min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 transition-colors duration-200 lg:h-dvh lg:min-h-0 lg:grid-cols-2 lg:overflow-hidden">
-      <section className="hidden border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-10 lg:grid lg:h-dvh lg:content-between lg:overflow-y-auto transition-colors">
+      <section className={`${rippleStyles.panel} hidden border-r border-zinc-200 dark:border-zinc-800 p-10 lg:grid lg:h-dvh lg:content-between lg:overflow-y-auto transition-colors`}>
+        <CursorHoneycomb />
         <TaskHiveBrand className="text-xl text-zinc-950 dark:text-zinc-50" iconClassName="h-9 w-9" />
         <div>
           <h1 className="max-w-md text-5xl font-semibold leading-tight tracking-tight dark:text-zinc-50">

@@ -251,7 +251,6 @@
   inset: auto 0 0;
   padding: 0 0.75rem 1.125rem;
   margin-inline: clamp(0.5rem, 1.5vw, 1.5rem);
-  border-inline-start: 3px solid var(--step-gold);
   pointer-events: none;
   visibility: hidden;
   opacity: 0;
