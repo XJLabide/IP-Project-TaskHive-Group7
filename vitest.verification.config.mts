@@ -7,7 +7,12 @@ if (!databaseUrl) {
 }
 
 export default defineConfig({
-  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "server-only": fileURLToPath(new URL("./src/lib/server-only-test-stub.ts", import.meta.url)),
+    },
+  },
   test: {
     environment: "node",
     include: ["src/lib/verification/service.integration.ts"],
