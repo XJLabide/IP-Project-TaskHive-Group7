@@ -130,7 +130,8 @@ describe("verification summaries", () => {
 
     expect(summary.label).toBe("Pending verification");
     expect(summary.tone).toBe("pending");
-    expect(summary.description).toMatch(/cannot be assigned/i);
+    expect(summary.description).toMatch(/applications reach Posters/i);
+    expect(summary.description).toMatch(/Admin must approve your ID before you can be assigned/i);
     expect(summary.action).toBeNull();
   });
 
