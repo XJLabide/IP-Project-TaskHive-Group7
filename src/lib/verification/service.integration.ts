@@ -11,6 +11,12 @@ import { applyProviderResult, applyVerificationEvent, decideAppeal, getVerificat
 vi.mock("next/server", () => ({ after: () => {} }));
 
 const coordinator = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
+const uploadedTestDocument = {
+  publicId: "taskhive/verification/test-fixture",
+  format: "png",
+  uploadedAt: new Date("2026-01-01T00:00:00.000Z"),
+  consentedAt: new Date("2026-01-01T00:00:00.000Z"),
+};
 let userId = "";
 let fixtureUserIds: string[] = [];
 
@@ -136,8 +142,8 @@ describe("verification transitions against PostgreSQL", () => {
   it.each([false, true])("accepts only one first submission (record already exists: %s)", async (exists) => {
     if (exists) await prisma.taskerVerification.create({ data: { userId } });
     const results = await overlap([
-      () => applyVerificationEvent(userId, { type: "submitted" }),
-      () => applyVerificationEvent(userId, { type: "submitted" }),
+      () => applyVerificationEvent(userId, { type: "submitted" }, { document: uploadedTestDocument }),
+      () => applyVerificationEvent(userId, { type: "submitted" }, { document: uploadedTestDocument }),
     ]);
 
     expect(results.filter((result) => result.ok)).toHaveLength(1);
@@ -159,7 +165,7 @@ describe("verification transitions against PostgreSQL", () => {
   it.each(["approved", "denied"] as const)("rejects late provider decisions after an appeal is %s", async (outcome) => {
     const adminId = await createUser(true);
     await createApplications();
-    expect(await applyVerificationEvent(userId, { type: "submitted" })).toMatchObject({ ok: true });
+    expect(await applyVerificationEvent(userId, { type: "submitted" }, { document: uploadedTestDocument })).toMatchObject({ ok: true });
     expect(await applyProviderResult(userId, { status: "rejected", reference: "initial-ref", reason: "Check failed" })).toMatchObject({ ok: true });
     expect(await submitAppeal(userId, "Please review")).toMatchObject({ ok: true });
     expect(await decideAppeal(userId, outcome, "Admin decision", adminId)).toMatchObject({ ok: true });
