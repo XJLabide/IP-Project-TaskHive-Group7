@@ -91,11 +91,13 @@ function DashboardContent({ data }: { data: ReturnType<typeof useDemoDashboardDa
           </section>
 
           <aside aria-label="Trust and recent messages" className="grid gap-4">
-            <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="mb-4 flex items-center gap-2"><CircleDollarSign aria-hidden="true" className="h-5 w-5 text-[#B77900] dark:text-[#FFD50D]" /><h2 className="font-semibold">Trust & verification</h2></div>
-              {viewer.missingProfileFields.includes("18+ attestation") ? <div className="mb-4 rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-sm dark:border-amber-300/20 dark:bg-amber-400/10"><p className="font-semibold">Confirm you’re 18 or older</p><p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-300">Complete your profile before posting or applying.</p><Link className="mt-2 inline-flex text-sm font-semibold underline underline-offset-4" href="/profile">Complete profile</Link></div> : null}
-              <VerificationCard viewer={viewer} onStartVerification={startVerification} onSubmitAppeal={submitAppeal} />
-            </section>
+            {!viewer.canBeAssigned || viewer.missingProfileFields.includes("18+ attestation") ? (
+              <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-4 flex items-center gap-2"><CircleDollarSign aria-hidden="true" className="h-5 w-5 text-[#B77900] dark:text-[#FFD50D]" /><h2 className="font-semibold">Trust & verification</h2></div>
+                {viewer.missingProfileFields.includes("18+ attestation") ? <div className="mb-4 rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-sm dark:border-amber-300/20 dark:bg-amber-400/10"><p className="font-semibold">Confirm you’re 18 or older</p><p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-300">Complete your profile before posting or applying.</p><Link className="mt-2 inline-flex text-sm font-semibold underline underline-offset-4" href="/profile">Complete profile</Link></div> : null}
+                {!viewer.canBeAssigned ? <VerificationCard viewer={viewer} onStartVerification={startVerification} onSubmitAppeal={submitAppeal} /> : null}
+              </section>
+            ) : null}
             <section aria-labelledby="recent-messages-title" className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800"><div><h2 className="font-semibold" id="recent-messages-title">Recent messages</h2><p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Task conversations, latest first</p></div><Link aria-label="Open chat inbox" className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" href="/chats"><MessageSquare aria-hidden="true" className="h-4 w-4" /></Link></div>
               {messages.length ? <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">{messages.map((message) => <li key={message.id}><Link className="block p-4 transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] focus-visible:ring-inset dark:hover:bg-zinc-800/50" href={message.href}><p className="line-clamp-2 text-sm leading-5">{message.description}</p><p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{message.taskTitle}</p></Link></li>)}</ul> : <p className="p-5 text-sm text-zinc-500 dark:text-zinc-400">Your task messages will appear here.</p>}

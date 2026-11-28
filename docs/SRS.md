@@ -29,6 +29,7 @@ The first production release must complete the core marketplace loop—discover,
 - Public browsing of tasks and marketplace information.
 - Account creation, sign-in, verified email, 18+ attestation, and a basic profile.
 - A single account that can post and task, with Tasker identity verification before assignment.
+- Admin review of one consented ID image for Tasker identity verification.
 - Local tasks across the Philippines and curated remote tasks.
 - Separate fulfillment mode (local or remote) and hiring mode (bidding or fixed-price).
 - Task creation, browsing, search, filters, task-scoped pre-application chat, bids/requests, withdrawal, manual Poster selection, and assignment.
@@ -62,7 +63,7 @@ Native mobile apps, multiple Taskers per task, advanced analytics, category mana
 | Verification-rejected Tasker | Browse only; may make one Admin appeal. Existing applications are withdrawn and Posters are notified. If the appeal succeeds, the Tasker must submit new applications. |
 | Admin | Global platform operator for reports, disputes, verification exceptions, and basic user/task oversight. Admin decisions and consequential actions must be recorded. |
 
-Identity documents are collected and retained by the verification provider. TaskHive stores the verification status and provider reference needed to enforce the assignment gate and handle exceptions.
+TaskHive collects one valid, unexpired government-issued photo ID image with the Tasker's explicit consent. The image is stored as an authenticated private asset and can be opened only by an Admin through the application. The image is deleted after an Admin decision; the database keeps the decision, consent timestamp, and audit record, not the image. A rejected Tasker may submit one written appeal after the image is deleted.
 
 ## 4. Marketplace rules
 
@@ -110,7 +111,7 @@ Either party may request cancellation after hire. Work and payout pause while Ad
 - **FR-003** One account shall be able to act as Poster and Tasker.
 - **FR-004** Before posting or applying, a participant shall have a name, verified email, and 18+ attestation. Phone verification is not required because TaskHive does not send SMS.
 - **FR-005** The system shall require Tasker identity verification before assignment, while permitting pending Taskers to browse, bid, and request tasks.
-- **FR-006** The system shall store verification status/reference, not identity-document images, as the platform’s verification record.
+- **FR-006** The system shall collect one valid ID image with explicit consent, protect it from public access, restrict review to Admins, and delete it after an Admin decision while retaining the decision and audit metadata.
 - **FR-007** The system shall allow one Admin appeal after verification rejection and support exception review.
 - **FR-008** The system shall show tasks created, applications, assignments, messages, and relevant account/verification state in the signed-in experience.
 
@@ -176,15 +177,16 @@ The model must preserve task and payment history, exact-address access rules, ap
 
 1. A guest can browse tasks, but must sign in and complete basic profile gates before posting or applying.
 2. A pending Tasker can apply, the Poster sees the application as pending verification, and cannot select that Tasker.
-3. A verified Tasker can apply; the Poster manually selects one person. Payment success activates the assignment; a payment failure keeps the selected pair on hold for up to 24 hours.
-4. If payment hold expires, the task reopens and other pending applications remain. A material edit clears applications and notifies their authors.
-5. The exact local address is hidden before successful payment/active assignment and visible to the assigned Tasker afterward.
-6. Either party may request cancellation after hire; work and payout pause while Admin reviews. Admin records an evidence-based outcome within the target window.
-7. Completion evidence differs by fulfillment: note for local, deliverable for remote. Poster can confirm; either party can dispute before release; no response leads to reminder at 24 hours and auto-release at 48 hours if undisputed.
-8. Reviews unlock after confirmation or auto-release and remain hidden until both submit or the 14-day window expires.
-9. A published task is cancelled and retained; only an unpublished draft is deleted.
-10. Admin v1 can review reports, disputes, verification exceptions, and basic user/task records, with auditable decisions.
+3. A Tasker submits one valid ID image with consent; an Admin can review it and approve or reject it; the image is deleted after the decision.
+4. A verified Tasker can apply; the Poster manually selects one person. Payment success activates the assignment; a payment failure keeps the selected pair on hold for up to 24 hours.
+5. If payment hold expires, the task reopens and other pending applications remain. A material edit clears applications and notifies their authors.
+6. The exact local address is hidden before successful payment/active assignment and visible to the assigned Tasker afterward.
+7. Either party may request cancellation after hire; work and payout pause while Admin reviews. Admin records an evidence-based outcome within the target window.
+8. Completion evidence differs by fulfillment: note for local, deliverable for remote. Poster can confirm; either party can dispute before release; no response leads to reminder at 24 hours and auto-release at 48 hours if undisputed.
+9. Reviews unlock after confirmation or auto-release and remain hidden until both submit or the 14-day window expires.
+10. A published task is cancelled and retained; only an unpublished draft is deleted.
+11. Admin v1 can review ID submissions, appeals, reports, disputes, and basic user/task records, with auditable decisions.
 
 ## 10. Current prototype boundary
 
-The marketplace UI is a static frontend prototype. Firebase Authentication is configured for Production, but the Firebase-auth application build still needs deployment and live-flow verification. Treat local/static marketplace interactions as demonstration behavior only. Do not represent them as durable task records, secure Tasker identity checks, real provider payments/payouts, persistent support cases, or production notifications. Backend acceptance must be verified against the production scenarios above.
+The app supports Admin review of private Tasker ID submissions when authenticated Cloudinary storage is configured. This implementation still requires qualified privacy review and production verification of retention and access controls. Firebase Authentication is configured for Production, but the Firebase-auth application build still needs deployment and live-flow verification. Production payment/payout readiness and notification delivery remain environment-dependent; verify those behaviors against the production scenarios above.

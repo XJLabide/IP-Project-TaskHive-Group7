@@ -24,7 +24,7 @@ type ViewerContextValue = {
   previewKind: PreviewKind | null;
   isPreview: boolean;
   setPreviewKind: (kind: PreviewKind | null) => void;
-  startVerification: () => Promise<boolean>;
+  startVerification: (file: File) => Promise<boolean>;
   submitAppeal: (note: string) => Promise<boolean>;
 };
 
@@ -109,14 +109,17 @@ export function ViewerProvider({
     writePreview(kind);
   }, []);
 
-  const startVerification = useCallback(async () => {
+  const startVerification = useCallback(async (file: File) => {
     if (previewKind) {
       writePreview("pending");
       return true;
     }
 
     try {
-      const response = await fetch("/api/verification", { method: "POST" });
+      const form = new FormData();
+      form.append("document", file);
+      form.append("consent", "true");
+      const response = await fetch("/api/verification/document", { method: "POST", body: form });
       if (!response.ok) return false;
       router.refresh();
       return true;

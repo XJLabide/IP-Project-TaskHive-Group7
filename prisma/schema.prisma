@@ -207,9 +207,8 @@ model Profile {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/// Stronger Tasker identity check. The provider retains identity documents;
-/// TaskHive stores only the decision, provider reference, rejection reason,
-/// and the Tasker's own appeal note — never identity documents or images.
+/// Admin-reviewed Tasker identity check. One consented ID image is private and
+/// removed after review; the record retains only decision and consent metadata.
 model TaskerVerification {
   id                      String                   @id @default(cuid())
   userId                  String                   @unique
@@ -219,6 +218,10 @@ model TaskerVerification {
   appealStatus            VerificationAppealStatus @default(NONE)
   appealCount             Int                      @default(0)
   appealNote              String?
+  idDocumentPublicId      String?
+  idDocumentFormat        String?
+  idDocumentUploadedAt    DateTime?
+  idDocumentConsentAt     DateTime?
   submittedAt             DateTime?
   decidedAt               DateTime?
   appealedAt              DateTime?

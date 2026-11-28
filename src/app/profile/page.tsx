@@ -10,10 +10,11 @@ import { GateNotice } from "@/components/viewer/gate-notice";
 import { ProfileChecklist } from "@/components/viewer/profile-checklist";
 import { AgeAttestationForm } from "@/components/viewer/age-attestation-form";
 import { ProfileNameForm } from "@/components/viewer/profile-name-form";
+import { VerificationCard } from "@/components/viewer/verification-card";
 import { useViewer } from "@/components/viewer/viewer-provider";
 
 export default function ProfilePage() {
-  const { viewer } = useViewer();
+  const { viewer, startVerification, submitAppeal } = useViewer();
 
   if (!viewer.signedIn) {
     return (
@@ -42,6 +43,7 @@ export default function ProfilePage() {
         <div className="grid gap-6">
           <ProfileChecklist viewer={viewer} />
           {viewer.missingProfileFields.includes("18+ attestation") ? <AgeAttestationForm /> : null}
+          {!viewer.canBeAssigned ? <VerificationCard onStartVerification={startVerification} onSubmitAppeal={submitAppeal} viewer={viewer} /> : null}
         </div>
 
         <aside className="grid content-start gap-4">

@@ -1,6 +1,6 @@
 # TaskHive User Flows
 
-These flows describe the intended first production release. The current app is a static frontend prototype, so its local interactions do not imply a connected backend, real authentication, verification, or payment processing. Product terms are defined in `../../GLOSSARY.md`; requirements and acceptance scenarios are in `../SRS.md`.
+These flows describe the intended first production release. Product terms are defined in `../../GLOSSARY.md`; requirements and acceptance scenarios are in `../SRS.md`.
 
 ## 1. Public browse and account access
 
@@ -21,6 +21,9 @@ Create account / Sign in
   -> Attest age 18+
   -> Basic profile complete
   -> Enter marketplace dashboard
+  -> Upload one valid, unexpired government-issued photo ID with consent
+  -> Admin reviews and approves or rejects the ID
+  -> If approved, assignment is unlocked; if rejected, Tasker may submit one written appeal
 ```
 
 The same account supports Poster and Tasker activity. Skills and portfolio are optional/deferred for the first release. Public browsing remains available if a user has not signed in or a Tasker is restricted.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { BadgeCheck, FileWarning, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ const toneClass: Record<VerificationTone, string> = {
 type VerificationCardProps = {
   viewer: ViewerSnapshot;
   interactive?: boolean;
-  onStartVerification?: () => void | Promise<boolean>;
+  onStartVerification?: (file: File) => void | Promise<boolean>;
   onSubmitAppeal?: (note: string) => void | Promise<boolean>;
 };
 
@@ -34,14 +34,38 @@ export function VerificationCard({
     appealCount: viewer.appealCount,
   });
   const [note, setNote] = useState("");
+  const [idImage, setIdImage] = useState<File | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  async function handleStart() {
+  function selectIdImage(event: ChangeEvent<HTMLInputElement>) {
+    setIdImage(event.currentTarget.files?.[0] ?? null);
     setError("");
-    const ok = await onStartVerification?.();
-    if (ok === false) {
-      setError("Could not start verification. Check your connection and try again.");
+  }
+
+  async function handleStart(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!idImage) {
+      setError("Choose one clear photo of a valid, unexpired government-issued ID.");
+      return;
+    }
+    if (!consent) {
+      setError("Consent is required to submit your ID for Admin review.");
+      return;
+    }
+    setError("");
+    setUploading(true);
+    try {
+      const ok = await onStartVerification?.(idImage);
+      if (ok === false) {
+        setError("Could not submit your ID. Check your connection and try again.");
+      }
+    } catch {
+      setError("Could not submit your ID. Check your connection and try again.");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -79,15 +103,27 @@ export function VerificationCard({
         </p>
 
         {viewer.verification === "not_started" ? (
-          <Button
-            className="mt-4"
-            disabled={!interactive}
-            onClick={() => void handleStart()}
-            size="sm"
-            type="button"
-          >
-            <BadgeCheck className="h-4 w-4" /> Start verification
-          </Button>
+          <form className="mt-4 grid gap-3" onSubmit={(event) => void handleStart(event)}>
+            <label className="grid gap-2 text-sm font-medium">
+              Upload one photo of a valid, unexpired government-issued ID
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                className="block w-full cursor-pointer rounded-lg border border-zinc-300 bg-white p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-semibold dark:border-zinc-700 dark:bg-zinc-950 dark:file:bg-zinc-800"
+                disabled={!interactive || uploading}
+                onChange={selectIdImage}
+                required
+                type="file"
+              />
+              <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">JPG, PNG, or WebP · up to 8 MB. Make sure your name and photo are clear.</span>
+            </label>
+            <label className="flex items-start gap-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+              <input checked={consent} className="mt-1 accent-[#D19300]" disabled={!interactive || uploading} onChange={(event) => setConsent(event.target.checked)} type="checkbox" />
+              <span>I consent to TaskHive storing this ID image for verification review and showing it to authorized Admins. The image will be deleted after an Admin decides.</span>
+            </label>
+            <Button className="w-fit" disabled={!interactive || uploading} size="sm" type="submit">
+              <BadgeCheck className="h-4 w-4" />{uploading ? "Submitting ID…" : "Submit for verification"}
+            </Button>
+          </form>
         ) : null}
 
         {error && !viewer.canAppeal ? (
@@ -134,10 +170,10 @@ export function VerificationCard({
         <div className="mt-5 flex gap-3 rounded-xl border border-zinc-200 p-3 text-sm leading-6 text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#D19300] dark:text-[#FFD50D]" />
           <div>
-            <p className="font-semibold">TaskHive never accepts identity documents.</p>
+            <p className="font-semibold">Your ID is private to verification review.</p>
             <p className="mt-1">
-              The verification provider checks your identity and keeps the documents. TaskHive
-              stores only the decision, a provider reference, and any appeal you write here.
+              Only authorized Admins can open the image. TaskHive deletes it after a decision and
+              stores the verification result and any appeal you write here.
             </p>
           </div>
         </div>

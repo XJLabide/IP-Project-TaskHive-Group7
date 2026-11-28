@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notifyAdmins, notifyUser } from "@/lib/notifications";
 import { parseProviderResult } from "./provider";
 import { toDbAppeal, toDbStatus, toDomainAppeal, toDomainStatus } from "./mapping";
+import { deleteVerificationDocument } from "./document";
 import {
   initialVerificationState,
   transition,
@@ -119,8 +120,12 @@ async function runEffects(
 export async function applyVerificationEvent(
   userId: string,
   event: VerificationEvent,
-  options: { adminId?: string; notes?: string } = {},
+  options: { adminId?: string; notes?: string; document?: { publicId: string; format: string; uploadedAt: Date; consentedAt: Date } } = {},
 ): Promise<VerificationResult> {
+  if (event.type === "submitted" && !options.document) {
+    return { ok: false, code: "invalid_transition", reason: "Upload an ID image before submitting verification." };
+  }
+
   const existing = await prisma.taskerVerification.findUnique({ where: { userId } });
   const result = transition(toState(existing), event);
 
@@ -133,6 +138,8 @@ export async function applyVerificationEvent(
   const decided =
     event.type === "provider_approved" ||
     event.type === "provider_rejected" ||
+    event.type === "admin_approved" ||
+    event.type === "admin_rejected" ||
     event.type === "appeal_approved" ||
     event.type === "appeal_denied";
 
@@ -162,6 +169,12 @@ export async function applyVerificationEvent(
       appealStatus: toDbAppeal[result.state.appealStatus],
       appealCount: result.state.appealCount,
       ...(event.type === "submitted" ? { submittedAt: now } : {}),
+      ...(event.type === "submitted" && options.document ? {
+        idDocumentPublicId: options.document.publicId,
+        idDocumentFormat: options.document.format,
+        idDocumentUploadedAt: options.document.uploadedAt,
+        idDocumentConsentAt: options.document.consentedAt,
+      } : {}),
       ...(decided ? { decidedAt: now } : {}),
       ...(withdraws ? { applicationsWithdrawnAt: now } : {}),
     };
@@ -201,18 +214,20 @@ export async function applyVerificationEvent(
       });
     }
 
-    if (options.adminId && (event.type === "appeal_approved" || event.type === "appeal_denied")) {
+    if (options.adminId && (event.type === "admin_approved" || event.type === "admin_rejected" || event.type === "appeal_approved" || event.type === "appeal_denied")) {
       await tx.adminAction.create({
         data: {
           adminId: options.adminId,
-          action: `verification.appeal.${event.type === "appeal_approved" ? "approved" : "denied"}`,
+          action: event.type === "admin_approved" || event.type === "admin_rejected"
+            ? `verification.identity.${event.type === "admin_approved" ? "approved" : "rejected"}`
+            : `verification.appeal.${event.type === "appeal_approved" ? "approved" : "denied"}`,
           targetType: "TaskerVerification",
           targetId: userId,
           notes:
             options.notes?.trim() ||
-            (event.type === "appeal_denied" ? event.reason : null),
+            (event.type === "appeal_denied" || event.type === "admin_rejected" ? event.reason : null),
           metadata: {
-            outcome: event.type === "appeal_approved" ? "approved" : "denied",
+            outcome: event.type === "appeal_approved" || event.type === "admin_approved" ? "approved" : "denied",
           },
         },
       });
@@ -229,6 +244,20 @@ export async function applyVerificationEvent(
     };
   }
 
+  const finalReviewDecision = event.type === "admin_approved" || event.type === "admin_rejected" || event.type === "appeal_approved" || event.type === "appeal_denied";
+  if (finalReviewDecision) {
+    const document = await prisma.taskerVerification.findUnique({ where: { userId }, select: { idDocumentPublicId: true } });
+    if (document?.idDocumentPublicId) {
+      const deleted = await deleteVerificationDocument(document.idDocumentPublicId).catch(() => false);
+      if (deleted) {
+        await prisma.taskerVerification.updateMany({
+          where: { userId, status: toDbStatus[result.state.status], idDocumentPublicId: document.idDocumentPublicId },
+          data: { idDocumentPublicId: null, idDocumentFormat: null, idDocumentUploadedAt: null },
+        });
+      }
+    }
+  }
+
   await runEffects(
     userId,
     result.effects,
@@ -237,6 +266,19 @@ export async function applyVerificationEvent(
   );
 
   return { ok: true, state: result.state };
+}
+
+export async function decideIdentitySubmission(
+  userId: string,
+  outcome: "approved" | "denied",
+  reason: string,
+  adminId: string,
+) {
+  return applyVerificationEvent(
+    userId,
+    outcome === "approved" ? { type: "admin_approved" } : { type: "admin_rejected", reason },
+    { adminId, notes: reason },
+  );
 }
 
 /** Provider callback: accepts a decision, ignores anything else it carries. */

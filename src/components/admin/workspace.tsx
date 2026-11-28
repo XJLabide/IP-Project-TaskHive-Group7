@@ -16,8 +16,13 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getAdminSection, getAdminTotals, type AdminPagination } from "@/lib/support/reads";
-import { adminPageHref, adminSectionLabels, type AdminPages, type AdminSection } from "@/lib/support/pagination";
+import { adminPageHref, adminSectionLabels, adminSections, type AdminPages, type AdminSection } from "@/lib/support/pagination";
 import { REVIEW_TARGET_BUSINESS_DAYS } from "@/lib/support/rules";
+import { VerificationQueue } from "@/components/admin/verification-queue";
+
+type AdminTab = AdminSection | "identityChecks";
+const adminTabSections: AdminTab[] = ["recentTasks", "recentUsers", "identityChecks", "cancellations", "disputes", "reports", "verificationAppeals", "recentDecisions"];
+const adminTabLabels: Record<AdminTab, string> = { ...adminSectionLabels, identityChecks: "Tasker identity checks" };
 
 function QueueSection({
   title,
@@ -65,8 +70,8 @@ function Pagination({ section, pagination, pages }: { section: AdminSection; pag
   return <nav aria-label={`${adminSectionLabels[section]} pages`} className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
     <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-400">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total}</p>
     <div className="flex items-center gap-2">
-      {page > 1 ? <Button asChild className="h-11 sm:h-9" size="sm" variant="outline"><Link href={adminPageHref(section, page - 1, pages)} scroll={false} prefetch={false}>Previous<span className="sr-only"> {adminSectionLabels[section]} page</span></Link></Button> : <Button className="h-11 sm:h-9" disabled size="sm" variant="outline">Previous</Button>}
-      {page < totalPages ? <Button asChild className="h-11 sm:h-9" size="sm" variant="outline"><Link href={adminPageHref(section, page + 1, pages)} scroll={false} prefetch={false}>Next<span className="sr-only"> {adminSectionLabels[section]} page</span></Link></Button> : <Button className="h-11 sm:h-9" disabled size="sm" variant="outline">Next</Button>}
+      {page > 1 ? <Button asChild className="h-11 sm:h-9" size="sm" variant="outline"><Link href={adminPaginationHref(section, page - 1, pages)} scroll={false} prefetch={false}>Previous<span className="sr-only"> {adminSectionLabels[section]} page</span></Link></Button> : <Button className="h-11 sm:h-9" disabled size="sm" variant="outline">Previous</Button>}
+      {page < totalPages ? <Button asChild className="h-11 sm:h-9" size="sm" variant="outline"><Link href={adminPaginationHref(section, page + 1, pages)} scroll={false} prefetch={false}>Next<span className="sr-only"> {adminSectionLabels[section]} page</span></Link></Button> : <Button className="h-11 sm:h-9" disabled size="sm" variant="outline">Next</Button>}
     </div>
   </nav>;
 }
@@ -75,7 +80,7 @@ function SectionError({ title, section, pages }: { title: string; section: Admin
   return <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900" role="alert">
     <h2 className="text-lg font-bold">{title} could not load</h2>
     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Other sections are still available. Try loading this workspace again.</p>
-    <a className="mt-3 inline-block rounded text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#D19300]" href={adminPageHref(section === "totals" ? "cancellations" : section, pages[section as AdminSection] ?? 1, pages)}>Try again</a>
+    <a className="mt-3 inline-block rounded text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#D19300]" href={adminPaginationHref(section === "totals" ? "cancellations" : section, pages[section as AdminSection] ?? 1, pages)}>Try again</a>
   </section>;
 }
 
@@ -474,7 +479,34 @@ async function TotalsSection({ pages }: { pages: AdminPages }) {
           ))}
         </section>);
 }
-export function AdminWorkspace({ pages = {} }: { pages?: AdminPages }) {
+function adminSectionHref(section: AdminTab, pages: AdminPages) {
+  const params = new URLSearchParams();
+  for (const name of adminSections) {
+    const page = pages[name] ?? 1;
+    if (page > 1) params.set(`${name}Page`, String(page));
+  }
+  params.set("section", section);
+  return `/admin?${params.toString()}#${section}`;
+}
+
+function adminPaginationHref(section: AdminSection, page: number, pages: AdminPages) {
+  const href = adminPageHref(section, page, pages);
+  const [path, anchor] = href.split("#");
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}section=${section}${anchor ? `#${anchor}` : ""}`;
+}
+
+export function AdminWorkspace({ pages = {}, activeSection = "recentTasks" }: { pages?: AdminPages; activeSection?: AdminTab }) {
+  const queuePanels: Record<AdminSection, React.ReactNode> = {
+    cancellations: <Suspense key={`cancellations-${pages.cancellations ?? 1}`} fallback={<SectionLoading title="Cancellation requests" />}><CancellationsSection pages={pages} /></Suspense>,
+    disputes: <Suspense key={`disputes-${pages.disputes ?? 1}`} fallback={<SectionLoading title="Completion disputes" />}><DisputesSection pages={pages} /></Suspense>,
+    reports: <Suspense key={`reports-${pages.reports ?? 1}`} fallback={<SectionLoading title="Reports" />}><ReportsSection pages={pages} /></Suspense>,
+    verificationAppeals: <Suspense key={`verificationAppeals-${pages.verificationAppeals ?? 1}`} fallback={<SectionLoading title="Verification appeals" />}><VerificationAppealsSection pages={pages} /></Suspense>,
+    recentTasks: <Suspense key={`recentTasks-${pages.recentTasks ?? 1}`} fallback={<SectionLoading title="Recent tasks" />}><RecentTasksSection pages={pages} /></Suspense>,
+    recentUsers: <Suspense key={`recentUsers-${pages.recentUsers ?? 1}`} fallback={<SectionLoading title="Users" />}><RecentUsersSection pages={pages} /></Suspense>,
+    recentDecisions: <Suspense key={`recentDecisions-${pages.recentDecisions ?? 1}`} fallback={<SectionLoading title="Recent decisions" />}><RecentDecisionsSection pages={pages} /></Suspense>,
+  };
+
   return (
     <AppShell description="Support queues, decisions, and marketplace oversight from real records." title="Global Admin">
       <div className="grid gap-6">
@@ -493,32 +525,22 @@ export function AdminWorkspace({ pages = {} }: { pages?: AdminPages }) {
         <Suspense fallback={<SectionLoading title="Marketplace totals" />}>
           <TotalsSection pages={pages} />
         </Suspense>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="grid min-w-0 content-start gap-6">
-            <Suspense key={`cancellations-${pages.cancellations ?? 1}`} fallback={<SectionLoading title="Cancellation requests" />}>
-              <CancellationsSection pages={pages} />
-            </Suspense>
-            <Suspense key={`disputes-${pages.disputes ?? 1}`} fallback={<SectionLoading title="Completion disputes" />}>
-              <DisputesSection pages={pages} />
-            </Suspense>
-            <Suspense key={`reports-${pages.reports ?? 1}`} fallback={<SectionLoading title="Reports" />}>
-              <ReportsSection pages={pages} />
-            </Suspense>
-            <Suspense key={`verificationAppeals-${pages.verificationAppeals ?? 1}`} fallback={<SectionLoading title="Verification appeals" />}>
-              <VerificationAppealsSection pages={pages} />
-            </Suspense>
-          </div>
-          <aside className="grid min-w-0 content-start gap-6">
-            <Suspense key={`recentTasks-${pages.recentTasks ?? 1}`} fallback={<SectionLoading title="Recent tasks" />}>
-              <RecentTasksSection pages={pages} />
-            </Suspense>
-            <Suspense key={`recentUsers-${pages.recentUsers ?? 1}`} fallback={<SectionLoading title="Users" />}>
-              <RecentUsersSection pages={pages} />
-            </Suspense>
-            <Suspense key={`recentDecisions-${pages.recentDecisions ?? 1}`} fallback={<SectionLoading title="Recent decisions" />}>
-              <RecentDecisionsSection pages={pages} />
-            </Suspense>
-          </aside>
+        <nav aria-label="Admin sections" className="flex gap-1 overflow-x-auto border-b border-zinc-200 pb-px dark:border-zinc-800">
+          {adminTabSections.map((section) => (
+            <Link
+              aria-current={activeSection === section ? "page" : undefined}
+              className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD50D] ${activeSection === section ? "border-[#D19300] text-zinc-950 dark:border-[#FFD50D] dark:text-zinc-50" : "border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"}`}
+              href={adminSectionHref(section, pages)}
+              key={section}
+              prefetch={false}
+              scroll={false}
+            >
+              {adminTabLabels[section]}
+            </Link>
+          ))}
+        </nav>
+        <div aria-label={adminTabLabels[activeSection]} className="min-w-0">
+          {activeSection === "identityChecks" ? <VerificationQueue /> : queuePanels[activeSection]}
         </div>
       </div>
     </AppShell>

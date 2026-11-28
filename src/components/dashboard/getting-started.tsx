@@ -19,7 +19,7 @@ export function GettingStarted({ viewer }: { viewer: ViewerSnapshot }) {
     { label: "Confirm you’re 18 or older", complete: !missing.has("18+ attestation"), href: "/profile#age-attestation", action: "Confirm age" },
   ];
   const completedCount = basicSteps.filter((step) => step.complete).length;
-  const identityVerified = viewer.verification === "verified";
+  const identityVerified = viewer.canBeAssigned;
   const identityLabel = identityVerified
     ? "Verified"
     : viewer.verification === "pending"
@@ -32,7 +32,7 @@ export function GettingStarted({ viewer }: { viewer: ViewerSnapshot }) {
   const identityDescription = identityVerified
     ? "You can be assigned to Tasker work."
     : viewer.verification === "pending"
-      ? "Your provider is reviewing the check. You can browse and apply while it is pending."
+      ? "An Admin is reviewing your ID. You can browse and apply while it is pending."
       : viewer.verification === "rejected"
         ? viewer.appealCount > 0
           ? "Your appeal is with an Admin. Assignment stays closed while it is reviewed."
@@ -73,11 +73,15 @@ export function GettingStarted({ viewer }: { viewer: ViewerSnapshot }) {
             <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[#9A6500] dark:text-[#FFD50D]" />
             <div className="min-w-0"><p className="text-sm font-semibold">Tasker identity check <span className="font-medium text-zinc-500 dark:text-zinc-400">· {identityLabel}</span></p><p className="mt-1 text-xs leading-5 text-zinc-600 dark:text-zinc-400">{identityDescription}</p></div>
           </div>
-          <Link className="shrink-0 text-xs font-semibold text-[#835700] underline underline-offset-4 dark:text-[#FFD50D]" href="/dashboard#verification">{viewer.verification === "not_started" ? "Start check" : "View status"}</Link>
+          <Link className="shrink-0 text-xs font-semibold text-[#835700] underline underline-offset-4 dark:text-[#FFD50D]" href="/profile#verification">{viewer.verification === "not_started" ? "Start check" : "View status"}</Link>
         </div>
       )}
 
-      <p className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">You can browse tasks now. Your name, verified email, and 18+ confirmation unlock posting and applying; identity verification is required before assignment.</p>
+      <p className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+        {identityVerified
+          ? "Your profile is ready for posting, applying, and assignment."
+          : "You can browse tasks now. Your name, verified email, and 18+ confirmation unlock posting and applying; identity verification is required before assignment."}
+      </p>
     </section>
   );
 }

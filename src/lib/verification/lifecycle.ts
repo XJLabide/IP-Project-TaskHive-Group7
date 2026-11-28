@@ -15,6 +15,8 @@ export type VerificationEvent =
   | { type: "submitted" }
   | { type: "provider_approved"; providerReference: string }
   | { type: "provider_rejected"; providerReference: string; reason: string }
+  | { type: "admin_approved" }
+  | { type: "admin_rejected"; reason: string }
   | { type: "appeal_submitted"; note?: string }
   | { type: "appeal_approved"; note?: string }
   | { type: "appeal_denied"; reason: string };
@@ -77,6 +79,17 @@ export function transition(
     };
   }
 
+  if (event.type === "admin_approved") {
+    if (state.status !== "pending") {
+      return reject("Only a pending verification can be approved.");
+    }
+    return {
+      ok: true,
+      state: { ...state, status: "verified", rejectionReason: null },
+      effects: [{ type: "notify_applicant", reason: "An Admin approved your identity check." }],
+    };
+  }
+
   if (event.type === "provider_rejected") {
     if (state.status !== "pending") {
       return reject("Only a pending verification can be rejected.");
@@ -93,6 +106,21 @@ export function transition(
       effects: [
         { type: "withdraw_applications" },
         { type: "notify_posters", reason: "verification_rejected" },
+      ],
+    };
+  }
+
+  if (event.type === "admin_rejected") {
+    if (state.status !== "pending") {
+      return reject("Only a pending verification can be rejected.");
+    }
+    return {
+      ok: true,
+      state: { ...state, status: "rejected", rejectionReason: event.reason },
+      effects: [
+        { type: "withdraw_applications" },
+        { type: "notify_posters", reason: "verification_rejected" },
+        { type: "notify_applicant", reason: event.reason },
       ],
     };
   }

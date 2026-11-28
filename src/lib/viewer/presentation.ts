@@ -106,7 +106,7 @@ export function verificationSummary(state: {
       label: "Pending verification",
       tone: "pending",
       description:
-        "Your applications reach Posters marked pending verification. You cannot be assigned until the provider confirms your identity.",
+        "Your applications reach Posters marked pending verification. An Admin must approve your ID before you can be assigned.",
       action: null,
       canAppeal: false,
     };
@@ -163,7 +163,7 @@ export function gateMessage(code: DenialCode): GateMessage {
     case "verification_required":
       return {
         title: "Verify your identity to be assigned",
-        body: "You can apply while the check is pending. Assignment opens once the verification provider confirms your identity.",
+        body: "You can apply while the check is pending. Assignment opens once an Admin approves your ID.",
         action: { label: "View verification", href: "/profile#verification" },
       };
     case "verification_rejected":

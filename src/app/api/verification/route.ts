@@ -1,5 +1,5 @@
 import { ok, problem, requireCapability } from "@/lib/api/response";
-import { applyVerificationEvent, getVerification } from "@/lib/verification/service";
+import { getVerification } from "@/lib/verification/service";
 
 export const runtime = "nodejs";
 
@@ -10,16 +10,10 @@ export async function GET(request: Request) {
   return ok(await getVerification(gate.actor.id));
 }
 
-/**
- * Records that the Tasker has begun the provider check. The provider's
- * decision arrives later through the webhook; TaskHive never sees documents.
- */
+/** Legacy status-only submissions are blocked; verification starts with an ID upload. */
 export async function POST(request: Request) {
   const gate = await requireCapability(request, "start_verification");
   if (gate.response) return gate.response;
 
-  const result = await applyVerificationEvent(gate.actor.id, { type: "submitted" });
-  if (!result.ok) return problem(result.reason, 409);
-
-  return ok(result.state, { status: 202 });
+  return problem("Upload one valid ID image to submit identity verification.", 422);
 }

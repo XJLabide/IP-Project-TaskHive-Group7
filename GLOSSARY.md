@@ -20,13 +20,16 @@ A user who creates a task. The same account may also act as a Tasker.
 A user who bids on or requests a task and may complete it after being selected by the Poster.
 
 **Identity-verified Tasker**:
-A Tasker who has passed the stronger identity check required before being assigned to a task.
+A Tasker whose government-issued photo ID has been reviewed and approved by an Admin, allowing assignment.
 
 **Verification-rejected Tasker**:
-A Tasker who failed the provider check; they may browse but cannot apply or be assigned, and may submit one appeal for Admin review. Existing bids/requests are withdrawn and their Posters are notified; after a successful appeal the Tasker may submit again.
+A Tasker whose ID review was rejected; they may browse but cannot apply or be assigned, and may submit one written appeal for Admin review. Existing bids/requests are withdrawn and their Posters are notified; after a successful appeal the Tasker may submit again.
 
 **Pending-verification Tasker**:
-A Tasker who may browse, bid, or request fixed-price work but cannot be assigned until stronger identity verification is complete. Their applications remain visible to the Poster with a pending status and cannot be approved yet.
+A Tasker who has submitted an ID image for Admin review. They may browse, bid, or request fixed-price work but cannot be assigned until the ID is approved; their applications remain visible to the Poster as pending verification.
+
+**Verification ID image**:
+One consented photo of a valid, unexpired government-issued photo ID submitted for Admin review. It is stored privately and deleted after an Admin decision.
 
 **Task conversation**:
 A conversation tied to one open task between its Poster and a signed-in user; it may begin before a bid or fixed-price request.
