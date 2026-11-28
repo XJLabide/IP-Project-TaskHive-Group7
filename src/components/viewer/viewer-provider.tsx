@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, reload } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { establishServerSession } from "@/lib/auth/client";
 import { getFirebaseClientAuth, isFirebaseClientConfigured } from "@/lib/auth/firebase-client";
 import { viewerSnapshot } from "@/lib/viewer/presentation";
@@ -181,7 +181,6 @@ function FirebaseSessionBridge() {
       if (!user || synchronizing) return;
       synchronizing = true;
       try {
-        await reload(user);
         await establishServerSession(user);
         router.refresh();
       } catch {

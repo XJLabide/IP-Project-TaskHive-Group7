@@ -8,7 +8,10 @@ import {
 import { getFirebaseClientAuth } from "./firebase-client";
 
 export async function establishServerSession(user: FirebaseUser) {
-  const idToken = await getIdToken(user, true);
+  // Firebase refreshes the token automatically when it is expired or close to
+  // expiry. Forcing a refresh here adds a network round trip to every session
+  // sync, including the passive auth-state check on page load.
+  const idToken = await getIdToken(user);
   const response = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "content-type": "application/json" },
